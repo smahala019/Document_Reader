@@ -1,0 +1,37 @@
+1. in the home page when user hover on the recent file mid space then it do shaking or blinking so fix this
+2.in the file menu bar ->
+                        . remove the word,excel,powerpoint, pdf creating button becauser we have new button already.
+                        .the auto save not work for recent file and the green dot not show when document save or user no do any action after 5 sec 
+                        .the save button container width is not correct so make it correct 
+2.in the home menu bar ->. id="changeCaseBtn" icon not visible
+                         .when user choose a text color or highlighter is correct but it user want to write the next text in default color, so add a normal button that not affect previous text or highlighter color and after click it type in default text or without highlighter
+                         .when user click on word warp it works but the goes outside the editor page not visible , so increase the width or height of the editor page as per the content they warp or unwarp
+3. in the insert menu bar ->
+                         .in this image is inserted correctly but the crop is not happen , and user can not move the image in the page so fix this so user can adjust the image position 
+                         .in the draw add Excalidraw and implement properly so that user can draw easily and then insert into page and after inserted user can adjust the image position and size
+4.in the layout menu bar->
+                         .make the size dropdown container small and scrollable and in this add a full page or custom size page 
+                         .page break not work correctly , it not break the page correctly 
+                         .in the column break add custom column break, and show line in between the columns and if user try to write in first column at last after some time its  content goes in second column so fix this , so that content not goes in other column and user can manually click on columns to write , not add extra styling for columns
+                         .remove column break button , and in watermark user can change its degree , opacity and position and no of watermark in single page 
+5.in the view menu bar ->
+                         .remove the ruler , and after enter the read mode user not comes out so add a out button to exit form read mode in mobile
+
+6.make all toolbar scrollable in mobile and not show scrollbar below the buttons in toolbar and make it responsive for mobile and other device 
+
+7.add a gif button that can update over the network and user can search any gif or insert into the page or after insert it can handle like a image , it can be adjust, crop,etc 
+
+8.when user come out/close the file then status bar not update auto so make it correct and in main home page the words,character not show if user are not in editor area or edit the document (show when user click or enter in editor) so make it correct 
+   
+
+
+
+
+
+
+****-->>important<<--****
+
+not remove any tools from the tool bar or menu bar 
+not change the design of the tool bar or menu bar or not add any duplicate button in any other menu bar or add more button that are present in ms word, ppt, paint, notepad, excel in all menu bar section
+
+and the menu bar toolbar should be 2 row buttons (2 row * multiple buttons)

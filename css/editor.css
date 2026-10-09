@@ -1,0 +1,865 @@
+/* ==========================================================================
+   DocFlow — Editor Page, Typography, Full Container Size & Responsive Layout
+   ========================================================================== */
+
+/* Remove browser default print headers (filename, timestamp, URL, page #) */
+@page {
+  margin: 0;
+  size: auto;
+}
+
+.editor-wrap {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  display: none;
+  padding: 24px 16px 80px;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+.editor-wrap.visible {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Document Paper Canvas — Opens full container size, never "half document" */
+.editor-page {
+  background: #ffffff !important;
+  color: #1a1a1a !important;
+  width: 816px;
+  max-width: 100%;
+  min-height: max(1056px, calc(100vh - 150px));
+  margin: 0 auto;
+  padding: 72px 72px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px;
+  line-height: 1.75;
+  outline: none;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  caret-color: var(--accent);
+  position: relative;
+  transition: box-shadow 0.2s ease, width 0.2s ease, padding 0.2s ease;
+  flex-shrink: 0;
+}
+
+.editor-page:focus {
+  box-shadow: 0 4px 36px rgba(0, 0, 0, 0.32), 0 0 0 2px var(--accent-glow);
+}
+
+/* Ensure ALL text inside the editor is 100% visible and never washed out or white */
+.editor-page h1,
+.editor-page h2,
+.editor-page h3,
+.editor-page h4,
+.editor-page p,
+.editor-page li,
+.editor-page td,
+.editor-page th,
+.editor-page blockquote,
+.editor-page span,
+.editor-page div,
+.editor-page strong,
+.editor-page em {
+  color: #1a1a1a;
+}
+
+/* Drag overlay when user drags an image directly into the editor */
+.editor-drop-overlay {
+  position: absolute;
+  inset: 12px;
+  background: rgba(232, 93, 4, 0.08);
+  border: 3px dashed var(--accent);
+  border-radius: 8px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 16px;
+  gap: 10px;
+  backdrop-filter: blur(2px);
+  animation: dropIn 0.15s ease;
+}
+
+.editor-drop-overlay.active {
+  display: flex;
+}
+
+/* Rich Document Typography */
+.editor-page h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 24px 0 12px;
+  line-height: 1.3;
+  font-family: var(--font-ui);
+  color: #1a1a1a !important;
+}
+
+.editor-page h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 20px 0 10px;
+  line-height: 1.3;
+  font-family: var(--font-ui);
+  color: #1a1a1a !important;
+}
+
+.editor-page h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 16px 0 8px;
+  line-height: 1.4;
+  font-family: var(--font-ui);
+  color: #1a1a1a !important;
+}
+
+.editor-page h4 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 14px 0 6px;
+  line-height: 1.4;
+  font-family: var(--font-ui);
+  color: #1a1a1a !important;
+}
+
+.editor-page p {
+  margin: 8px 0;
+  color: #1a1a1a !important;
+}
+
+/* Bullet & Numbering list styles */
+.editor-page ul,
+.editor-page ol {
+  margin: 8px 0 8px 28px;
+  color: #1a1a1a !important;
+}
+
+.editor-page li {
+  margin: 4px 0;
+  color: #1a1a1a !important;
+}
+
+/* Custom list-style-type variants */
+.editor-page ul[style*="circle"], .editor-page ul.list-circle { list-style-type: circle; }
+.editor-page ul[style*="square"], .editor-page ul.list-square { list-style-type: square; }
+.editor-page ul[style*="disc"], .editor-page ul.list-disc { list-style-type: disc; }
+.editor-page ul.list-arrow, .editor-page ul[data-list="arrow"] { list-style-type: '➔ '; }
+.editor-page ul.list-check, .editor-page ul[data-list="check"] { list-style-type: '✓ '; }
+.editor-page ol[style*="lower-alpha"], .editor-page ol.list-lower-alpha, .editor-page ol[type="a"] { list-style-type: lower-alpha; }
+.editor-page ol[style*="upper-alpha"], .editor-page ol.list-upper-alpha, .editor-page ol[type="A"] { list-style-type: upper-alpha; }
+.editor-page ol[style*="lower-roman"], .editor-page ol.list-lower-roman, .editor-page ol[type="i"] { list-style-type: lower-roman; }
+.editor-page ol[style*="upper-roman"], .editor-page ol.list-upper-roman, .editor-page ol[type="I"] { list-style-type: upper-roman; }
+.editor-page ol[style*="decimal"], .editor-page ol.list-decimal, .editor-page ol[type="1"] { list-style-type: decimal; }
+
+.editor-page sub {
+  vertical-align: sub;
+  font-size: 0.8em;
+}
+
+.editor-page sup {
+  vertical-align: super;
+  font-size: 0.8em;
+}
+
+.editor-page table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+  display: table;
+  overflow-x: auto;
+}
+
+.editor-page td,
+.editor-page th {
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  text-align: left;
+  color: #1a1a1a !important;
+  font-size: 14px;
+}
+
+.editor-page th {
+  background: #f1f5f9;
+  font-weight: 600;
+  color: #0f172a !important;
+}
+
+.editor-page a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.editor-page blockquote {
+  border-left: 4px solid var(--accent);
+  margin: 16px 0;
+  padding: 8px 16px;
+  color: #475569 !important;
+  background: #f8fafc;
+  border-radius: 0 4px 4px 0;
+}
+
+.editor-page hr {
+  border: none;
+  border-top: 2px solid #e2e8f0;
+  margin: 24px 0;
+}
+
+.editor-page pre {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 12px 0;
+  color: #0f172a !important;
+}
+
+.editor-page pre code {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  background: none;
+  padding: 0;
+  color: #0f172a !important;
+}
+
+.editor-page code {
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #0f172a !important;
+}
+
+.editor-page strong {
+  font-weight: 700;
+  color: #1a1a1a !important;
+}
+
+.editor-page em {
+  font-style: italic;
+  color: #1a1a1a !important;
+}
+
+/* ==========================================================================
+   Image Handling & Inline Image Toolbar
+   ========================================================================== */
+
+.editor-page img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 8px 0;
+  cursor: pointer;
+  transition: outline 0.15s ease, box-shadow 0.15s ease;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.editor-page img.df-selected-img {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  box-shadow: 0 4px 20px var(--accent-glow);
+  cursor: grab;
+  position: relative;
+}
+
+/* Image Wrap Modes (Bug 4: user adjustment, behind/front of text, inline, float) */
+.editor-page img[data-wrap="inline"],
+.editor-page img[data-align="inline"] {
+  display: inline-block;
+  float: none;
+  vertical-align: middle;
+  margin: 4px 6px;
+}
+
+.editor-page img[data-wrap="left"],
+.editor-page img[data-align="left"] {
+  float: left;
+  margin: 6px 16px 12px 0;
+}
+
+.editor-page img[data-wrap="right"],
+.editor-page img[data-align="right"] {
+  float: right;
+  margin: 6px 0 12px 16px;
+}
+
+.editor-page img[data-wrap="center"],
+.editor-page img[data-align="center"] {
+  display: block;
+  float: none;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.editor-page img[data-wrap="behind"] {
+  position: relative;
+  z-index: 0;
+  opacity: 0.85;
+  float: none;
+  display: inline-block;
+  filter: contrast(0.9);
+}
+
+.editor-page img[data-wrap="front"] {
+  position: relative;
+  z-index: 10;
+  float: none;
+  display: inline-block;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Floating Image Action Bar with Size Dropdown (Bug 4) */
+.df-img-toolbar {
+  position: absolute;
+  z-index: 120;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: dropIn 0.12s ease;
+  font-family: var(--font-ui);
+  max-width: 95vw;
+  flex-wrap: wrap;
+}
+
+.df-img-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-fast);
+}
+
+.df-img-btn:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border);
+  color: var(--accent);
+}
+
+.df-img-btn.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.df-img-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.df-img-select {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  outline: none;
+  font-family: var(--font-ui);
+}
+
+.df-img-select:focus {
+  border-color: var(--accent);
+}
+
+.df-img-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+/* Floating Link Preview & Action Bubble (Bug 4) */
+.df-link-bubble {
+  position: absolute;
+  z-index: 120;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  animation: dropIn 0.12s ease;
+  user-select: none;
+}
+
+.df-link-bubble a {
+  color: var(--accent);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.df-link-bubble button {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.df-link-bubble button:hover {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Responsive Breakpoints for Editor */
+@media (max-width: 900px) {
+  .editor-page {
+    width: 100%;
+    max-width: 100%;
+    padding: 40px 24px;
+    min-height: calc(100vh - 140px);
+  }
+}
+
+@media (max-width: 600px) {
+  .editor-wrap {
+    padding: 10px 4px 60px;
+  }
+  .editor-page {
+    width: 100%;
+    padding: 24px 14px;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: calc(100vh - 120px);
+    font-size: 14px;
+  }
+  .editor-page h1 { font-size: 24px; margin: 18px 0 10px; }
+  .editor-page h2 { font-size: 20px; margin: 16px 0 8px; }
+  .editor-page h3 { font-size: 17px; margin: 14px 0 6px; }
+  .editor-page table { font-size: 12px; }
+  .editor-page td, .editor-page th { padding: 6px 8px; }
+}
+
+/* Excel Spreadsheet Grid Display (Bug 11) */
+.excel-grid-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 16px 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.excel-grid-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  color: #1e293b;
+  user-select: text;
+}
+
+.excel-grid-table th,
+.excel-grid-table td {
+  border: 1px solid #e2e8f0;
+  padding: 4px 8px;
+  height: 28px;
+  min-width: 80px;
+  box-sizing: border-box;
+}
+
+.excel-grid-table .excel-corner {
+  background: #e2e8f0;
+  min-width: 45px;
+  width: 45px;
+  text-align: center;
+  border: 1px solid #cbd5e1;
+  user-select: none;
+}
+
+.excel-grid-table .excel-col-hdr {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: #475569;
+  text-align: center;
+  font-size: 11.5px;
+  border: 1px solid #cbd5e1;
+  user-select: none;
+  min-width: 85px;
+}
+
+.excel-grid-table .excel-row-hdr {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: #475569;
+  text-align: center;
+  font-size: 11.5px;
+  min-width: 45px;
+  width: 45px;
+  border: 1px solid #cbd5e1;
+  user-select: none;
+}
+
+.excel-grid-table td {
+  background: #ffffff;
+  color: #0f172a !important;
+  outline: none;
+  transition: background 0.1s ease;
+}
+
+.excel-grid-table td:focus {
+  outline: 2px solid #16a34a !important;
+  outline-offset: -1px;
+  background: #f0fdf4 !important;
+  z-index: 2;
+  position: relative;
+}
+
+/* Excel Spreadsheet View Mode & Formula Bar (Bug 6) */
+.editor-page.excel-view-mode {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-height: 100% !important;
+  background: var(--bg-primary) !important;
+}
+
+.excel-spreadsheet-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.excel-formula-bar {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 6px 12px;
+  gap: 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  user-select: none;
+}
+
+.excel-fx-badge {
+  font-style: italic;
+  font-weight: 700;
+  font-size: 13px;
+  color: #64748b;
+  min-width: 20px;
+}
+
+.excel-formula-input {
+  flex: 1;
+  height: 28px;
+  padding: 2px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12.5px;
+  background: #ffffff;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.excel-formula-input:focus {
+  border-color: #16a34a;
+}
+
+.excel-sheet-viewport {
+  overflow: auto;
+  flex: 1;
+  max-height: calc(100vh - 180px);
+}
+
+/* Multi-Column Layout (Bug 5: MS Word sequential fill, no border line) */
+.editor-page[data-columns="2"],
+.editor-page.cols-2 {
+  column-count: 2;
+  column-gap: 36px;
+  column-rule: none !important;
+  column-fill: auto !important;
+}
+
+.editor-page[data-columns="3"],
+.editor-page.cols-3 {
+  column-count: 3;
+  column-gap: 28px;
+  column-rule: none !important;
+  column-fill: auto !important;
+}
+
+.column-break {
+  break-after: column;
+  page-break-after: always;
+  height: 0;
+  margin: 0;
+  display: block;
+  clear: both;
+}
+
+/* OneNote Interactive Checklist & Callout Sticky Note (Bug 8) */
+.onenote-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 3px 6px;
+  border-radius: 4px;
+  user-select: text;
+}
+
+.onenote-checklist-checkbox {
+  cursor: pointer;
+  accent-color: #8b5cf6;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.onenote-checklist-text {
+  flex: 1;
+  outline: none;
+}
+
+.onenote-checklist-text.checked {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.onenote-sticky-note {
+  background: #fef08a !important;
+  color: #713f12 !important;
+  border-left: 5px solid #eab308;
+  padding: 12px 16px;
+  border-radius: 0 8px 8px 0;
+  margin: 14px 0;
+  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.15);
+  position: relative;
+}
+
+.onenote-sticky-note strong {
+  color: #713f12 !important;
+}
+
+/* Image Resize Handles (Bug 4) */
+.df-resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  z-index: 130;
+  pointer-events: auto;
+}
+.df-resize-handle.br {
+  cursor: se-resize;
+}
+
+/* PowerPoint Slide Cards (Bug 12) */
+.pptx-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 10px 0;
+}
+
+.pptx-slide-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  padding: 28px 36px;
+  min-height: 260px;
+  position: relative;
+  transition: box-shadow 0.2s ease;
+}
+
+.pptx-slide-card:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+
+.pptx-slide-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.pptx-slide-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ea580c;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pptx-slide-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a !important;
+  margin-bottom: 14px;
+  line-height: 1.3;
+}
+
+.pptx-slide-body {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #334155 !important;
+}
+
+.pptx-slide-body ul {
+  margin: 10px 0 10px 24px;
+}
+
+.pptx-slide-body li {
+  margin: 6px 0;
+}
+
+@media (max-width: 600px) {
+  .pptx-slide-card {
+    padding: 20px 14px;
+    min-height: 200px;
+    margin: 14px auto;
+  }
+  .pptx-slide-title {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  .pptx-slide-body {
+    font-size: 13.5px;
+  }
+}
+
+/* ==========================================================================
+   Clean Print Stylesheet — Only Editor Area Prints, Zero Headers/Footers
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Completely hide all UI elements */
+  .topbar,
+  .toolbar,
+  .ribbon-container,
+  .ribbon-menu-bar,
+  .ribbon-panel,
+  .tab-bar,
+  .statusbar,
+  .pdf-controls,
+  .outline-panel,
+  .find-bar,
+  .toast-container,
+  .modal-overlay,
+  .df-img-toolbar,
+  .editor-drop-overlay,
+  .empty-state {
+    display: none !important;
+  }
+
+  .main-content {
+    overflow: visible !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  .main-content::before {
+    display: none !important;
+  }
+
+  .editor-wrap {
+    padding: 0 !important;
+    margin: 0 !important;
+    position: static !important;
+    overflow: visible !important;
+    display: block !important;
+    height: auto !important;
+  }
+
+  .editor-wrap:not(.visible) {
+    display: none !important;
+  }
+
+  .editor-page {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 20mm 20mm !important; /* Physical paper margin */
+    margin: 0 !important;
+    min-height: auto !important;
+    border-radius: 0 !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+}

@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocFlow — Modern Document Reader & Editor</title>
+  <link rel="icon" href="https://static.vecteezy.com/system/resources/thumbnails/019/514/650/small_2x/letter-s-logo-design-for-business-and-company-identity-with-luxury-concept-free-vector.jpg" type="image/png">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Google Fonts: Diverse Global Typographies with Multi-language Unicode Support (All MS Word Languages) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;600;700&family=Cinzel:wght@500;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@500;700&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Lato:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Montserrat:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Hebrew:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+Thai:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Oswald:wght@400;600&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;600;700&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@300;400;500;600;700;800&family=Ubuntu:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  
+  <!-- JSZip for PowerPoint (.pptx) & Word (.docx) decompression -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- Modular Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="css/pdf.css">
+  <link rel="stylesheet" href="css/modals.css">
+
+  <!-- FOUC prevention theme script -->
+  <script>
+    (function () {
+      try {
+        var savedTheme = localStorage.getItem('df-theme');
+        if (savedTheme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        } else if (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) { }
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- Top Application Bar -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <i class="fas fa-file-lines"></i>
+      <span>DocFlow</span>
+    </div>
+
+    <div class="topbar-filename">
+      <div class="modified-dot" id="modifiedDot" title="Document modified"></div>
+      <span id="fileNameDisplay">DocFlow</span>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="tb-btn text-btn" id="newBtn" title="Create New Document" aria-label="New Document">
+        <i class="fas fa-plus"></i><span>New</span>
+      </button>
+      <button class="tb-btn text-btn" id="openBtn" title="Open Document (Ctrl+O)" aria-label="Open File">
+        <i class="fas fa-folder-open"></i><span>Open</span>
+      </button>
+
+      <div class="tb-divider"></div>
+
+      <button class="tb-btn" id="fullscreenBtn" title="Toggle Fullscreen (F11)" aria-label="Toggle Fullscreen">
+        <i class="fas fa-expand"></i>
+      </button>
+
+      <div class="tb-divider"></div>
+
+      <button class="tb-btn" id="themeBtn" title="Toggle Color Theme" aria-label="Toggle Theme">
+        <i class="fas fa-moon" id="themeIcon"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ======================================================================
+       MS Word Style Ribbon Menu & Sub-Toolbars
+       ====================================================================== -->
+  <div class="ribbon-container" id="ribbonContainer" aria-label="Microsoft Word Style Ribbon">
+    
+    <!-- Ribbon Menu Bar (Tabs: File, Home, Insert, Layout, View) -->
+    <nav class="ribbon-menu-bar" role="tablist">
+      <button class="ribbon-tab-btn" data-ribbon="file" role="tab" aria-selected="false">File</button>
+      <button class="ribbon-tab-btn active" data-ribbon="home" role="tab" aria-selected="true">Home</button>
+      <button class="ribbon-tab-btn" data-ribbon="insert" role="tab" aria-selected="false">Insert</button>
+      <button class="ribbon-tab-btn" data-ribbon="layout" role="tab" aria-selected="false">Layout</button>
+      <button class="ribbon-tab-btn" data-ribbon="view" role="tab" aria-selected="false">View</button>
+    </nav>
+
+    <!-- 1. FILE RIBBON PANEL -->
+    <div class="ribbon-panel" id="ribbonPanelFile" role="tabpanel">
+      <!-- File Operations -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonNewBtn"><i class="fas fa-file-circle-plus"></i> New</button>
+        <button class="fmt-btn with-text" id="ribbonOpenBtn"><i class="fas fa-folder-open"></i> Open</button>
+      </div>
+
+      <!-- Save Dropdown (HTML, Text, Markdown, PDF, Merge PDFs, Print) -->
+      <div class="ribbon-group">
+        <div class="bullet-dropdown-wrap" id="ribbonSaveDropdownWrap" style="position:relative;">
+          <button class="fmt-btn with-text" id="ribbonSaveDropdownBtn" title="Save Document" aria-label="Save Document">
+            <i class="fas fa-floppy-disk" style="color:var(--accent);"></i><span>Save</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+          </button>
+          <div class="dropdown save-dropdown-menu" id="ribbonSaveDropdown" role="menu">
+            <div class="save-dropdown-header">Save Document As</div>
+            <button class="dropdown-item" id="ribbonSaveHtml" role="menuitem">
+              <i class="fas fa-code" style="color:#e34c26;"></i> Save as HTML <span class="shortcut">.html</span>
+            </button>
+            <button class="dropdown-item" id="ribbonSaveTxt" role="menuitem">
+              <i class="fas fa-file-lines" style="color:#6b7280;"></i> Save as Text <span class="shortcut">.txt</span>
+            </button>
+            <button class="dropdown-item" id="ribbonSaveMd" role="menuitem">
+              <i class="fab fa-markdown" style="color:#38bdf8;"></i> Save as Markdown <span class="shortcut">.md</span>
+            </button>
+            <button class="dropdown-item" id="ribbonSavePdf" role="menuitem">
+              <i class="fas fa-file-pdf" style="color:#dc2626;"></i> Export as PDF <span class="shortcut">.pdf</span>
+            </button>
+            <div class="dropdown-sep"></div>
+            <button class="dropdown-item" id="ribbonMergeBtn" role="menuitem">
+              <i class="fas fa-object-group" style="color:#8b5cf6;"></i> Merge PDFs <span class="shortcut">.pdf</span>
+            </button>
+            <button class="dropdown-item" id="ribbonPrintBtn" role="menuitem">
+              <i class="fas fa-print" style="color:#2563eb;"></i> Print Document <span class="shortcut">Ctrl+P</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Office Formats (Word, Excel, PowerPoint, PDF) -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonNewWordBtn" title="New Word Document (.docx)">
+          <i class="fas fa-file-word" style="color:#2563eb;"></i> Word
+        </button>
+        <button class="fmt-btn with-text" id="ribbonNewExcelBtn" title="New Excel Spreadsheet (.xlsx)">
+          <i class="fas fa-file-excel" style="color:#16a34a;"></i> Excel
+        </button>
+        <button class="fmt-btn with-text" id="ribbonNewPptBtn" title="New PowerPoint Presentation (.pptx)">
+          <i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> PowerPoint
+        </button>
+        <button class="fmt-btn with-text" id="ribbonNewPdfBtn" title="Open or Export PDF (.pdf)">
+          <i class="fas fa-file-pdf" style="color:#dc2626;"></i> PDF
+        </button>
+      </div>
+
+      <!-- Auto-Save Status -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="autoSaveToggleBtn" title="Toggle Auto-Save ON/OFF">
+          <i class="fas fa-toggle-on" id="autoSaveToggleIcon" style="color:var(--success);"></i>
+          <span id="autoSaveStatusText">Auto-Save: ON</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. HOME RIBBON PANEL (Active by default) -->
+    <div class="ribbon-panel active" id="ribbonPanelHome" role="tabpanel">
+      <!-- Undo / Redo -->
+      <div class="ribbon-group">
+        <button class="fmt-btn" data-cmd="undo" id="btnUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><i class="fas fa-rotate-left"></i></button>
+        <button class="fmt-btn" data-cmd="redo" id="btnRedo" title="Redo (Ctrl+Y)" aria-label="Redo"><i class="fas fa-rotate-right"></i></button>
+      </div>
+
+      <!-- Clipboard & Tools Group -->
+      <div class="ribbon-group">
+        <button class="fmt-btn" id="btnCut" title="Cut (Ctrl+X)" aria-label="Cut"><i class="fas fa-scissors"></i></button>
+        <button class="fmt-btn" id="btnCopy" title="Copy (Ctrl+C)" aria-label="Copy"><i class="fas fa-copy"></i></button>
+        <button class="fmt-btn" id="btnPaste" title="Paste (Ctrl+V)" aria-label="Paste"><i class="fas fa-paste"></i></button>
+        <button class="fmt-btn" id="formatPainterBtn" title="Format Painter (Copy & apply formatting)" aria-label="Format Painter"><i class="fas fa-paint-roller"></i></button>
+        <div class="bullet-dropdown-wrap">
+          <button class="fmt-btn" id="changeCaseBtn" title="Change Case (UPPERCASE, lowercase, Title Case)" aria-label="Change Case"><i class="fas fa-font-case"></i><i class="fas fa-chevron-down" style="font-size:8px;"></i></button>
+          <div class="spacing-popover" id="casePopover" role="menu">
+            <div class="spacing-opt-item" data-case="sentence">Sentence case</div>
+            <div class="spacing-opt-item" data-case="lower">lowercase</div>
+            <div class="spacing-opt-item" data-case="upper">UPPERCASE</div>
+            <div class="spacing-opt-item" data-case="title">Capitalize Each Word</div>
+          </div>
+        </div>
+        <button class="fmt-btn" id="removeFormatBtn" title="Clear All Formatting (Ctrl+\)" aria-label="Clear All Formatting"><i class="fas fa-eraser"></i></button>
+      </div>
+
+      <!-- Font Group (Global Language Typographies present in MS Word) -->
+      <div class="ribbon-group">
+        <select class="fmt-select" id="fontFamily" title="Font Family" aria-label="Font Family" style="width:150px;">
+          <optgroup label="Latin / Western (English, Spanish, French, German)">
+            <option value="Georgia, serif" style="font-family: Georgia, serif;">Georgia</option>
+            <option value="'Times New Roman', serif" style="font-family: 'Times New Roman', serif;">Times New Roman</option>
+            <option value="Garamond, serif" style="font-family: Garamond, serif;">Garamond</option>
+            <option value="Palatino, serif" style="font-family: Palatino, serif;">Palatino</option>
+            <option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+            <option value="Lora, serif" style="font-family: Lora, serif;">Lora</option>
+            <option value="Cinzel, serif" style="font-family: Cinzel, serif;">Cinzel</option>
+            <option value="Arial, sans-serif" style="font-family: Arial, sans-serif;">Arial</option>
+            <option value="'Segoe UI', sans-serif" style="font-family: 'Segoe UI', sans-serif;">Segoe UI</option>
+            <option value="Calibri, sans-serif" style="font-family: Calibri, sans-serif;">Calibri</option>
+            <option value="Verdana, sans-serif" style="font-family: Verdana, sans-serif;">Verdana</option>
+            <option value="Tahoma, sans-serif" style="font-family: Tahoma, sans-serif;">Tahoma</option>
+            <option value="'Trebuchet MS', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Trebuchet MS</option>
+            <option value="Roboto, sans-serif" style="font-family: Roboto, sans-serif;">Roboto</option>
+            <option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif;">Open Sans</option>
+            <option value="Lato, sans-serif" style="font-family: Lato, sans-serif;">Lato</option>
+            <option value="Montserrat, sans-serif" style="font-family: Montserrat, sans-serif;">Montserrat</option>
+            <option value="Poppins, sans-serif" style="font-family: Poppins, sans-serif;">Poppins</option>
+            <option value="'Space Grotesk', sans-serif" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
+            <option value="Inter, sans-serif" style="font-family: Inter, sans-serif;">Inter</option>
+          </optgroup>
+          <optgroup label="Arabic, Urdu & Persian (العربية / اردو)">
+            <option value="'Amiri', 'Traditional Arabic', serif" style="font-family: 'Amiri', serif;">Amiri (العربية)</option>
+            <option value="'Traditional Arabic', 'Amiri', serif" style="font-family: 'Traditional Arabic', serif;">Traditional Arabic</option>
+            <option value="'Simplified Arabic', Tahoma, sans-serif" style="font-family: 'Simplified Arabic', sans-serif;">Simplified Arabic</option>
+          </optgroup>
+          <optgroup label="Devanagari, Hindi, Sanskrit & Marathi (हिन्दी / संस्कृत)">
+            <option value="'Noto Sans Devanagari', 'Mangal', sans-serif" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari (हिन्दी)</option>
+            <option value="'Mangal', 'Noto Sans Devanagari', sans-serif" style="font-family: 'Mangal', sans-serif;">Mangal (Hindi)</option>
+            <option value="'Aparajita', 'Noto Sans Devanagari', serif" style="font-family: 'Aparajita', serif;">Aparajita</option>
+            <option value="'Kokila', 'Noto Sans Devanagari', sans-serif" style="font-family: 'Kokila', sans-serif;">Kokila</option>
+          </optgroup>
+          <optgroup label="East Asian — Chinese, Japanese & Korean (中文 / 日本語 / 한국어)">
+            <option value="'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif" style="font-family: 'Noto Sans SC', sans-serif;">Simplified Chinese (简体中文)</option>
+            <option value="'PMingLiU', 'Noto Sans TC', serif" style="font-family: 'PMingLiU', serif;">Traditional Chinese (繁體中文)</option>
+            <option value="'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif" style="font-family: 'Noto Sans JP', sans-serif;">Japanese (日本語 - Meiryo)</option>
+            <option value="'Malgun Gothic', 'Batang', sans-serif" style="font-family: 'Malgun Gothic', sans-serif;">Korean (한국어 - Malgun)</option>
+          </optgroup>
+          <optgroup label="Cyrillic / Russian (Русский)">
+            <option value="'PT Sans', Arial, sans-serif" style="font-family: 'PT Sans', sans-serif;">PT Sans (Русский)</option>
+            <option value="'Times New Roman', serif" style="font-family: 'Times New Roman', serif;">Times New Roman (Cyrillic)</option>
+          </optgroup>
+          <optgroup label="Greek (Ελληνικά)">
+            <option value="'Palatino Linotype', 'Georgia', serif" style="font-family: 'Palatino Linotype', serif;">Palatino Linotype (Ελληνικά)</option>
+          </optgroup>
+          <optgroup label="Hebrew (עברית)">
+            <option value="'Noto Sans Hebrew', 'David', Arial, sans-serif" style="font-family: 'Noto Sans Hebrew', sans-serif;">Noto Sans Hebrew (עברית)</option>
+            <option value="'David', 'Noto Sans Hebrew', serif" style="font-family: 'David', serif;">David (Hebrew)</option>
+          </optgroup>
+          <optgroup label="Bengali & Assamese (বাংলা)">
+            <option value="'Noto Sans Bengali', 'Vrinda', sans-serif" style="font-family: 'Noto Sans Bengali', sans-serif;">Noto Sans Bengali (বাংলা)</option>
+          </optgroup>
+          <optgroup label="Thai (ไทย)">
+            <option value="'Noto Sans Thai', 'Angsana New', sans-serif" style="font-family: 'Noto Sans Thai', sans-serif;">Noto Sans Thai (ภาษาไทย)</option>
+          </optgroup>
+          <optgroup label="Monospace & Code">
+            <option value="'Fira Code', monospace" style="font-family: 'Fira Code', monospace;">Fira Code</option>
+            <option value="'Courier Prime', monospace" style="font-family: 'Courier Prime', monospace;">Courier Prime</option>
+            <option value="'Courier New', monospace" style="font-family: 'Courier New', monospace;">Courier New</option>
+            <option value="Consolas, monospace" style="font-family: Consolas, monospace;">Consolas</option>
+          </optgroup>
+          <optgroup label="Display & Handwriting">
+            <option value="'Dancing Script', cursive" style="font-family: 'Dancing Script', cursive;">Dancing Script</option>
+            <option value="Caveat, cursive" style="font-family: Caveat, cursive;">Caveat</option>
+            <option value="Pacifico, cursive" style="font-family: Pacifico, cursive;">Pacifico</option>
+            <option value="Impact, sans-serif" style="font-family: Impact, sans-serif;">Impact</option>
+            <option value="'Comic Sans MS', cursive" style="font-family: 'Comic Sans MS', cursive;">Comic Sans</option>
+          </optgroup>
+        </select>
+
+        <!-- Number Type Font Size with Stepper Buttons (No Limit) -->
+        <div class="font-size-stepper" title="Font Size (No limit)">
+          <button class="font-size-step-btn" id="fontSizeDec" title="Decrease font size" aria-label="Decrease font size"><i class="fas fa-minus"></i></button>
+          <input type="number" id="fontSizeInput" min="1" max="999" step="1" value="15" aria-label="Font size in points">
+          <button class="font-size-step-btn" id="fontSizeInc" title="Increase font size" aria-label="Increase font size"><i class="fas fa-plus"></i></button>
+        </div>
+
+        <!-- Text Styling -->
+        <button class="fmt-btn" data-cmd="bold" title="Bold (Ctrl+B)" aria-label="Bold"><i class="fas fa-bold"></i></button>
+        <button class="fmt-btn" data-cmd="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i class="fas fa-italic"></i></button>
+        <button class="fmt-btn" data-cmd="underline" title="Underline (Ctrl+U)" aria-label="Underline"><i class="fas fa-underline"></i></button>
+        <button class="fmt-btn" data-cmd="strikeThrough" id="strikeBtn" title="Strikethrough" aria-label="Strikethrough"><i class="fas fa-strikethrough"></i></button>
+        <button class="fmt-btn" data-cmd="subscript" id="subscriptBtn" title="Subscript (X₂)" aria-label="Subscript"><i class="fas fa-subscript"></i></button>
+        <button class="fmt-btn" data-cmd="superscript" id="superscriptBtn" title="Superscript (X²)" aria-label="Superscript"><i class="fas fa-superscript"></i></button>
+
+        <!-- Text Color & Background Highlighter -->
+        <button class="fmt-btn fmt-color-btn" id="textColorBtn" type="button" title="Text Color" aria-label="Text Color">
+          <i class="fas fa-font"></i><span class="color-bar" id="textColorBar" style="background:#1a1a1a;"></span>
+          <input type="color" class="fmt-color-input" id="textColorInput" value="#1a1a1a" aria-label="Text color picker" tabindex="-1">
+        </button>
+        <button class="fmt-btn fmt-color-btn" id="bgColorBtn" type="button" title="Highlight Text" aria-label="Highlight Text">
+          <i class="fas fa-highlighter"></i><span class="color-bar" id="bgColorBar" style="background:#fbbf24;"></span>
+          <input type="color" class="fmt-color-input" id="bgColorInput" value="#fbbf24" aria-label="Highlight color picker" tabindex="-1">
+        </button>
+
+        <!-- Notepad Word Wrap Toggle -->
+        <button class="fmt-btn" id="wordWrapBtn" title="Toggle Word Wrap (Notepad style)" aria-label="Word Wrap"><i class="fas fa-text-slash"></i></button>
+      </div>
+
+      <!-- Paragraph & Alignment Group -->
+      <div class="ribbon-group">
+        <button class="fmt-btn" data-cmd="justifyLeft" title="Align Left" aria-label="Align Left"><i class="fas fa-align-left"></i></button>
+        <button class="fmt-btn" data-cmd="justifyCenter" title="Align Center" aria-label="Align Center"><i class="fas fa-align-center"></i></button>
+        <button class="fmt-btn" data-cmd="justifyRight" title="Align Right" aria-label="Align Right"><i class="fas fa-align-right"></i></button>
+        <button class="fmt-btn" data-cmd="justifyFull" title="Justify" aria-label="Justify"><i class="fas fa-align-justify"></i></button>
+
+        <!-- Bullet Points Dropdown with Expanded Shapes (Bug 3) -->
+        <div class="bullet-dropdown-wrap">
+          <button class="fmt-btn with-text" id="bulletDropdownBtn" title="Bullets & Numbering Options" aria-label="Bullets and Numbering">
+            <i class="fas fa-list-ul"></i><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+          </button>
+          <div class="bullet-popover" id="bulletPopover" role="menu">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Bullet Styles</div>
+            <div class="bullet-options-grid">
+              <div class="bullet-opt-card" data-list-type="disc"><span class="bullet-opt-symbol">&bull;</span> Solid Disc</div>
+              <div class="bullet-opt-card" data-list-type="circle"><span class="bullet-opt-symbol">&#9675;</span> Hollow Circle</div>
+              <div class="bullet-opt-card" data-list-type="square"><span class="bullet-opt-symbol">&#9632;</span> Solid Square</div>
+              <div class="bullet-opt-card" data-list-type="diamond"><span class="bullet-opt-symbol">&#9670;</span> Diamond</div>
+              <div class="bullet-opt-card" data-list-type="arrow"><span class="bullet-opt-symbol">&#10148;</span> Arrow Pointer</div>
+              <div class="bullet-opt-card" data-list-type="check"><span class="bullet-opt-symbol">&#10003;</span> Checkmark</div>
+              <div class="bullet-opt-card" data-list-type="star"><span class="bullet-opt-symbol">&#9733;</span> Star Bullet</div>
+              <div class="bullet-opt-card" data-list-type="dash"><span class="bullet-opt-symbol">&#8211;</span> Hyphen / Dash</div>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:8px 0 6px;">Numbering Styles</div>
+            <div class="bullet-options-grid">
+              <div class="bullet-opt-card" data-list-type="decimal"><span class="bullet-opt-symbol">1.</span> 1, 2, 3...</div>
+              <div class="bullet-opt-card" data-list-type="lower-alpha"><span class="bullet-opt-symbol">a.</span> a, b, c...</div>
+              <div class="bullet-opt-card" data-list-type="upper-alpha"><span class="bullet-opt-symbol">A.</span> A, B, C...</div>
+              <div class="bullet-opt-card" data-list-type="lower-roman"><span class="bullet-opt-symbol">i.</span> i, ii, iii...</div>
+              <div class="bullet-opt-card" data-list-type="upper-roman"><span class="bullet-opt-symbol">I.</span> I, II, III...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Line Spacing Dropdown -->
+        <div class="bullet-dropdown-wrap">
+          <button class="fmt-btn" id="lineSpacingBtn" title="Line Spacing" aria-label="Line Spacing">
+            <i class="fas fa-arrows-up-down"></i>
+          </button>
+          <div class="spacing-popover" id="spacingPopover" role="menu">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Line Spacing</div>
+            <div class="spacing-opt-item" data-spacing="1.0">Single (1.0)</div>
+            <div class="spacing-opt-item" data-spacing="1.15">1.15</div>
+            <div class="spacing-opt-item" data-spacing="1.5">1.5 Lines</div>
+            <div class="spacing-opt-item" data-spacing="2.0">Double (2.0)</div>
+            <div class="spacing-opt-item" data-spacing="2.5">2.5 Lines</div>
+            <div class="spacing-opt-item" data-spacing="3.0">3.0 Lines</div>
+          </div>
+        </div>
+
+        <button class="fmt-btn" data-cmd="outdent" title="Decrease Indent" aria-label="Outdent"><i class="fas fa-outdent"></i></button>
+        <button class="fmt-btn" data-cmd="indent" title="Increase Indent" aria-label="Indent"><i class="fas fa-indent"></i></button>
+      </div>
+
+      <!-- Styles Group -->
+      <div class="ribbon-group">
+        <select class="fmt-select" id="headingSelect" title="Paragraph Style" aria-label="Paragraph Style" style="width:95px;">
+          <option value="p">Normal</option>
+          <option value="H1">Heading 1</option>
+          <option value="H2">Heading 2</option>
+          <option value="H3">Heading 3</option>
+          <option value="H4">Heading 4</option>
+        </select>
+      </div>
+
+      <!-- Editing Group (Find & Replace in Home Menu ONLY - Bug 3) -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonHomeFindBtn" title="Find Text (Ctrl+F)"><i class="fas fa-magnifying-glass"></i> Find</button>
+        <button class="fmt-btn with-text" id="ribbonHomeReplaceBtn" title="Find & Replace (Ctrl+H)"><i class="fas fa-arrow-right-arrow-left"></i> Replace</button>
+      </div>
+    </div>
+
+    <!-- 3. INSERT RIBBON PANEL (Page break removed per Bug 4) -->
+    <div class="ribbon-panel" id="ribbonPanelInsert" role="tabpanel">
+      <!-- Media & Tables -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonInsertImageBtn"><i class="fas fa-image"></i> Picture</button>
+        <button class="fmt-btn with-text" id="ribbonInsertTableBtn"><i class="fas fa-table"></i> Table</button>
+        <button class="fmt-btn with-text" id="ribbonInsertLinkBtn"><i class="fas fa-link"></i> Link</button>
+      </div>
+      <!-- Lines & Quotes -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonInsertHrBtn"><i class="fas fa-minus"></i> Horizontal Line</button>
+        <button class="fmt-btn with-text" id="ribbonInsertQuoteBtn"><i class="fas fa-quote-left"></i> Blockquote</button>
+      </div>
+      <!-- Date & Symbols -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonInsertDateBtn"><i class="fas fa-calendar-days"></i> Date & Time</button>
+        <button class="fmt-btn with-text" id="ribbonInsertSymbolBtn"><i class="fas fa-icons"></i> Symbol</button>
+      </div>
+      <!-- OneNote & Paint Tools (Bug 8) -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="insertChecklistBtn" title="Insert Interactive To-Do Checklist (OneNote)">
+          <i class="fas fa-square-check" style="color:#8b5cf6;"></i> Checklist
+        </button>
+        <button class="fmt-btn with-text" id="insertStickyNoteBtn" title="Insert Sticky Callout Note (OneNote)">
+          <i class="fas fa-note-sticky" style="color:#eab308;"></i> Note
+        </button>
+        <button class="fmt-btn with-text" id="openPaintModalBtn" title="Draw Freehand Canvas Sketch (Paint)">
+          <i class="fas fa-paintbrush" style="color:#06b6d4;"></i> Draw
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. LAYOUT RIBBON PANEL -->
+    <div class="ribbon-panel" id="ribbonPanelLayout" role="tabpanel">
+      <!-- Margins Dropdown (Expanded with Custom Margin - Bug 5) -->
+      <div class="ribbon-group">
+        <div class="bullet-dropdown-wrap" id="marginDropdownWrap">
+          <button class="fmt-btn with-text" id="marginDropdownBtn" title="Page Margins" aria-label="Page Margins">
+            <i class="fas fa-arrows-split-up-and-left"></i><span>Margins</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+          </button>
+          <div class="margin-popover" id="marginPopover" role="menu">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Page Margin Presets</div>
+            <div class="margin-opt-item active" data-margin="normal">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Normal</strong><span class="margin-desc">Top/Bottom 1", Left/Right 1" (72px)</span></div>
+            </div>
+            <div class="margin-opt-item" data-margin="narrow">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Narrow</strong><span class="margin-desc">Top/Bottom 0.5", Left/Right 0.5" (36px)</span></div>
+            </div>
+            <div class="margin-opt-item" data-margin="moderate">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Moderate</strong><span class="margin-desc">Top/Bottom 1", Left/Right 0.75" (54px)</span></div>
+            </div>
+            <div class="margin-opt-item" data-margin="wide">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Wide</strong><span class="margin-desc">Top/Bottom 1.5", Left/Right 1.5" (108px)</span></div>
+            </div>
+            <div class="margin-opt-item" data-margin="mirrored">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Mirrored</strong><span class="margin-desc">Inside 1.25", Outside 1", Top/Bottom 1"</span></div>
+            </div>
+            <div class="margin-opt-item" data-margin="office2003">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Office 2003 Default</strong><span class="margin-desc">Top/Bottom 1", Left/Right 1.25"</span></div>
+            </div>
+            <div class="margin-opt-item" data-margin="zero">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Zero / Full Width</strong><span class="margin-desc">0" (Marginless edge-to-edge)</span></div>
+            </div>
+            <div class="dropdown-sep" style="margin:4px 0;"></div>
+            <div class="margin-opt-item" id="marginCustomItem" data-margin="custom">
+              <i class="fas fa-sliders margin-check"></i>
+              <div><strong>Custom Margins...</strong><span class="margin-desc">Set specific dimensions</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page Size Dropdown (Expanded Sizes - Bug 5) -->
+      <div class="ribbon-group">
+        <div class="bullet-dropdown-wrap" id="pageSizeDropdownWrap">
+          <button class="fmt-btn with-text" id="pageSizeDropdownBtn" title="Document Paper Size">
+            <i class="fas fa-file-lines"></i><span>Size</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+          </button>
+          <div class="margin-popover" id="pageSizePopover" role="menu">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Paper Sizes</div>
+            <div class="margin-opt-item active" data-size="letter">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Letter</strong><span class="margin-desc">8.5" × 11" (215.9 × 279.4 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="a4">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>A4 Standard</strong><span class="margin-desc">8.27" × 11.69" (210 × 297 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="legal">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Legal</strong><span class="margin-desc">8.5" × 14" (215.9 × 355.6 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="executive">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Executive</strong><span class="margin-desc">7.25" × 10.5" (184.1 × 266.7 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="a3">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>A3 Large</strong><span class="margin-desc">11.69" × 16.54" (297 × 420 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="a5">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>A5 Compact</strong><span class="margin-desc">5.83" × 8.27" (148 × 210 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="b4">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>B4 (JIS)</strong><span class="margin-desc">9.84" × 13.90" (250 × 353 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="b5">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>B5 (JIS)</strong><span class="margin-desc">7.17" × 10.12" (182 × 257 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="tabloid">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Tabloid / Ledger</strong><span class="margin-desc">11" × 17" (279.4 × 431.8 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="statement">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Statement</strong><span class="margin-desc">5.5" × 8.5" (139.7 × 215.9 mm)</span></div>
+            </div>
+            <div class="margin-opt-item" data-size="envelope">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Envelope DL</strong><span class="margin-desc">4.33" × 8.66" (110 × 220 mm)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multi-Column Layout (Word style: no borders, sequential fill - Bug 5) -->
+      <div class="ribbon-group">
+        <div class="bullet-dropdown-wrap" id="columnsDropdownWrap">
+          <button class="fmt-btn with-text" id="columnsDropdownBtn" title="Multi-Column Layout">
+            <i class="fas fa-table-columns"></i><span>Columns</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+          </button>
+          <div class="margin-popover" id="columnsPopover" role="menu">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Columns</div>
+            <div class="margin-opt-item active" data-columns="1">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>One Column</strong><span class="margin-desc">Standard document layout</span></div>
+            </div>
+            <div class="margin-opt-item" data-columns="2">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Two Columns</strong><span class="margin-desc">MS Word style (no vertical line)</span></div>
+            </div>
+            <div class="margin-opt-item" data-columns="3">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>Three Columns</strong><span class="margin-desc">Brochure & newsletter layout</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Page Breaks & Column Breaks (Bug 5) -->
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="layoutPageBreakBtn" title="Insert Page Break"><i class="fas fa-file-invoice"></i> Page Break</button>
+        <button class="fmt-btn with-text" id="layoutColumnBreakBtn" title="Insert Column Break (Breaks text into next column)"><i class="fas fa-arrows-split-up-and-left"></i> Column Break</button>
+      </div>
+
+      <!-- Document Watermark Dropdown (With Custom Watermark - Bug 5) -->
+      <div class="ribbon-group">
+        <div class="bullet-dropdown-wrap" id="watermarkDropdownWrap">
+          <button class="fmt-btn with-text" id="watermarkDropdownBtn" title="Document Watermark">
+            <i class="fas fa-stamp"></i><span>Watermark</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+          </button>
+          <div class="margin-popover" id="watermarkPopover" role="menu">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Watermark Presets</div>
+            <div class="margin-opt-item active" data-watermark="none">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>None</strong><span class="margin-desc">Remove watermark</span></div>
+            </div>
+            <div class="margin-opt-item" data-watermark="CONFIDENTIAL">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>CONFIDENTIAL</strong><span class="margin-desc">Diagonal stamp</span></div>
+            </div>
+            <div class="margin-opt-item" data-watermark="DRAFT">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>DRAFT</strong><span class="margin-desc">Review watermark</span></div>
+            </div>
+            <div class="margin-opt-item" data-watermark="URGENT">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>URGENT</strong><span class="margin-desc">Priority document stamp</span></div>
+            </div>
+            <div class="margin-opt-item" data-watermark="DO NOT COPY">
+              <i class="fas fa-check margin-check"></i>
+              <div><strong>DO NOT COPY</strong><span class="margin-desc">Security stamp</span></div>
+            </div>
+            <div class="dropdown-sep" style="margin:4px 0;"></div>
+            <div class="margin-opt-item" id="watermarkCustomOption" data-watermark="custom">
+              <i class="fas fa-pen-nib margin-check"></i>
+              <div><strong>Custom Watermark...</strong><span class="margin-desc">Type your custom text</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. VIEW RIBBON PANEL (Find & Replace removed per Bug 3) -->
+    <div class="ribbon-panel" id="ribbonPanelView" role="tabpanel">
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonOutlineBtn"><i class="fas fa-list-ul"></i> Outline</button>
+        <button class="fmt-btn with-text" id="readingModeBtn" title="Toggle Distraction-free Reading Mode"><i class="fas fa-book-open"></i> Read Mode</button>
+        <button class="fmt-btn with-text" id="rulerToggleBtn" title="Toggle Document Ruler & Guidelines"><i class="fas fa-ruler-combined"></i> Ruler</button>
+      </div>
+      <div class="ribbon-group">
+        <button class="fmt-btn with-text" id="ribbonFullscreenBtn"><i class="fas fa-expand"></i> Fullscreen</button>
+        <button class="fmt-btn with-text" id="ribbonThemeBtn"><i class="fas fa-circle-half-stroke"></i> Dark/Light</button>
+      </div>
+      <div class="ribbon-group">
+        <button class="fmt-btn" id="editorZoomOutBtn" title="Zoom Out"><i class="fas fa-magnifying-glass-minus"></i></button>
+        <span id="editorZoomLabel" style="font-size:11px;font-weight:600;color:var(--text-primary);min-width:42px;text-align:center;">100%</span>
+        <button class="fmt-btn" id="editorZoomInBtn" title="Zoom In"><i class="fas fa-magnifying-glass-plus"></i></button>
+        <button class="fmt-btn with-text" id="editorZoomResetBtn">Reset</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Document Tabs Bar -->
+  <nav class="tab-bar" id="tabBar" aria-label="Document Tabs">
+    <div class="tab-list" id="tabList" role="tablist"></div>
+    <button class="tab-add" id="tabAdd" title="Create New Document Tab" aria-label="New Document Tab"><i class="fas fa-plus"></i></button>
+  </nav>
+
+  <!-- Main Workspace Area -->
+  <main class="main-content" id="mainContent">
+
+    <!-- Empty State / Welcome Dropzone -->
+    <section class="empty-state" id="emptyState" aria-label="Welcome screen">
+      <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Drag and drop or browse files to open">
+        <div class="drop-icon"><i class="fas fa-file-arrow-up"></i></div>
+        <h2 class="drop-title">Drop your document here</h2>
+        <p class="drop-subtitle">or click to browse from your device</p>
+        <div class="drop-formats">
+          <span class="format-tag"><i class="fas fa-file-word"></i><span>DOCX</span></span>
+          <span class="format-tag"><i class="fas fa-file-pdf"></i><span>PDF</span></span>
+          <span class="format-tag"><i class="fas fa-file-lines"></i><span>TXT</span></span>
+          <span class="format-tag"><i class="fas fa-file-code"></i><span>HTML</span></span>
+          <span class="format-tag"><i class="fas fa-file-csv"></i><span>CSV</span></span>
+          <span class="format-tag"><i class="fab fa-markdown"></i><span>MD</span></span>
+          <span class="format-tag"><i class="fas fa-file-excel"></i><span>XLSX</span></span>
+          <span class="format-tag"><i class="fas fa-file-powerpoint" style="color:#f97316;"></i><span>PPTX</span></span>
+        </div>
+        <!-- <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;">
+          <button class="modal-btn primary" id="emptyNewBtn" type="button" style="padding:7px 18px;font-size:12.5px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><i class="fas fa-file-circle-plus"></i> Create New Document</button>
+        </div> -->
+      </div>
+
+      <!-- Recent Documents Section on Home Page -->
+      <div class="recent-files-container" id="recentFilesContainer">
+        <div class="recent-files-header">
+          <div class="recent-files-title">
+            <i class="fas fa-clock-rotate-left"></i>
+            <span>Recent Documents</span>
+          </div>
+          <button class="recent-clear-btn" id="clearRecentBtn" title="Clear all recent documents" aria-label="Clear all recent files">
+            <i class="fas fa-trash-can"></i> <span>Clear All</span>
+          </button>
+        </div>
+        <div class="recent-files-list" id="recentFilesList">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Document Outline Drawer -->
+    <aside class="outline-panel" id="outlinePanel" aria-label="Document Headings Outline">
+      <div class="outline-header">
+        <span>Document Outline</span>
+        <button class="outline-close" id="outlineClose" aria-label="Close outline drawer"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="outline-list" id="outlineList">
+        <div class="outline-empty">No headings found</div>
+      </div>
+    </aside>
+
+    <!-- Find & Replace in Document Floating Bar -->
+    <div class="find-bar" id="findBar" role="search" aria-label="Find and Replace in Document">
+      <div class="find-bar-row">
+        <i class="fas fa-magnifying-glass" style="color:var(--text-muted);font-size:11px;flex-shrink:0;"></i>
+        <input type="text" id="findInput" placeholder="Find in document..." aria-label="Search text">
+        <span class="find-count" id="findCount">0 results</span>
+        <button id="findPrev" title="Previous match (Shift+F3)" aria-label="Previous match"><i class="fas fa-chevron-up"></i></button>
+        <button id="findNext" title="Next match (F3)" aria-label="Next match"><i class="fas fa-chevron-down"></i></button>
+        <button id="findToggleReplace" title="Toggle Replace Row (Ctrl+H)" aria-label="Toggle Replace"><i class="fas fa-arrow-right-arrow-left"></i></button>
+        <button id="findClose" title="Close search (Esc)" aria-label="Close search"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="replace-bar-row" id="replaceBarRow" style="display:none;">
+        <i class="fas fa-arrow-right" style="color:var(--text-muted);font-size:11px;flex-shrink:0;"></i>
+        <input type="text" id="replaceInput" placeholder="Replace with..." aria-label="Replace text">
+        <button class="find-action-btn" id="replaceBtn" title="Replace current match">Replace</button>
+        <button class="find-action-btn" id="replaceAllBtn" title="Replace all occurrences">Replace All</button>
+      </div>
+    </div>
+
+    <!-- PDF Viewer Mode -->
+    <section class="pdf-wrap" id="pdfWrap" aria-label="PDF Document Viewer">
+      <div class="pdf-controls" id="pdfControls">
+        <button id="pdfPrev" title="Previous Page" aria-label="Previous page"><i class="fas fa-chevron-left"></i></button>
+        <span class="page-info" id="pdfPageInfo">Page 1 / 1</span>
+        <button id="pdfNext" title="Next Page" aria-label="Next page"><i class="fas fa-chevron-right"></i></button>
+        <div class="tool-sep" style="height:18px;"></div>
+        <button id="pdfZoomOut" title="Zoom Out" aria-label="Zoom out"><i class="fas fa-minus"></i></button>
+        <span class="zoom-info" id="pdfZoomInfo">100%</span>
+        <button id="pdfZoomIn" title="Zoom In" aria-label="Zoom in"><i class="fas fa-plus"></i></button>
+        <button class="pdf-extract-btn" id="pdfExtractBtn" title="Extract text into an editable document"><i class="fas fa-pen-to-square"></i> Extract Text</button>
+      </div>
+      <div class="pdf-pages" id="pdfPages">
+        <div class="pdf-loading"><i class="fas fa-spinner"></i> Loading PDF document...</div>
+      </div>
+    </section>
+
+    <!-- Rich Text Editor Mode -->
+    <section class="editor-wrap" id="editorWrap" aria-label="Document Editor">
+      <div class="editor-page" id="editor" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Document page content"></div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Application Statusbar (Bug 1: Centered credit on desktop and mobile) -->
+  <footer class="statusbar" id="statusbar" title="Click or Double click for detailed Document Statistics">
+    <div class="status-left">
+      <div class="status-item"><i class="fas fa-font" style="font-size:9px;"></i><span id="wordCount">0 words</span></div>
+      <div class="status-item" id="charCountItem"><i class="fas fa-text-width" style="font-size:9px;"></i><span id="charCount">0 chars</span></div>
+      <div class="status-item" id="lineInfoWrap"><i class="fas fa-location-dot" style="font-size:9px;"></i><span id="lineCount">Ln 1, Col 1</span></div>
+    </div>
+    <div class="status-center">
+      <div class="status-item status-credit" id="statusCredit">
+        <span class="credit-desktop">all right reserved made with <i class="fa fa-heart text-danger" style="color:#ef4444;"></i> sachin</span>
+        <span class="credit-mobile">made with <i class="fa fa-heart text-danger" style="color:#ef4444;"></i> sachin</span>
+      </div>
+    </div>
+    <div class="status-right">
+      <div class="status-item"><i class="fas fa-file" style="font-size:9px;"></i><span id="fileTypeInfo" class="status-accent">No file</span></div>
+      <div class="status-item" id="modeInfo">Ready</div>
+    </div>
+  </footer>
+
+  <!-- ======================================================================
+       Modals and Dialog Overlays
+       ====================================================================== -->
+
+  <!-- New Document Template Selector Modal with Extension Format Choice -->
+  <div class="modal-overlay" id="newDocModal">
+    <div class="modal" style="width:580px;max-width:92vw;" role="dialog" aria-modal="true" aria-label="Create New Document">
+      <h3>Create New Document</h3>
+      
+      <!-- Document Title Input -->
+      <div style="margin-bottom:14px;">
+        <label for="newDocTitleInput" style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-secondary);">Document Name</label>
+        <input type="text" id="newDocTitleInput" value="Untitled" placeholder="Enter document name..." style="width:100%;height:36px;padding:0 12px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;outline:none;">
+      </div>
+
+      <!-- Format / Extension Selector -->
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-secondary);">Choose Extension Format</label>
+        <div class="format-pill-group" id="formatPillGroup">
+          <button type="button" class="format-pill active" data-ext="docx"><i class="fas fa-file-word" style="color:#2563eb;"></i> Word (.docx)</button>
+          <button type="button" class="format-pill" data-ext="pdf"><i class="fas fa-file-pdf" style="color:#dc2626;"></i> PDF (.pdf)</button>
+          <button type="button" class="format-pill" data-ext="xlsx"><i class="fas fa-file-excel" style="color:#16a34a;"></i> Excel (.xlsx)</button>
+          <button type="button" class="format-pill" data-ext="pptx"><i class="fas fa-file-powerpoint" style="color:#f97316;"></i> PowerPoint (.pptx)</button>
+          <button type="button" class="format-pill" data-ext="html"><i class="fas fa-file-code" style="color:#e34c26;"></i> HTML (.html)</button>
+          <button type="button" class="format-pill" data-ext="txt"><i class="fas fa-file-lines" style="color:#64748b;"></i> Text (.txt)</button>
+          <button type="button" class="format-pill" data-ext="md"><i class="fab fa-markdown" style="color:#38bdf8;"></i> Markdown (.md)</button>
+        </div>
+      </div>
+
+      <!-- Templates Grid -->
+      <div style="margin-bottom:8px;">
+        <label style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;color:var(--text-secondary);">Choose Template</label>
+        <div class="template-grid" id="templateGrid"></div>
+      </div>
+
+      <div class="modal-actions" style="margin-top:16px;">
+        <button class="modal-btn" id="newDocCancel">Cancel</button>
+        <button class="modal-btn primary" id="newDocCreateBtn">Create Document</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insert Hyperlink Modal -->
+  <div class="modal-overlay" id="linkModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Insert Hyperlink">
+      <h3>Insert Link</h3>
+      <label for="linkText">Display Text</label>
+      <input type="text" id="linkText" placeholder="Link display text">
+      <label for="linkUrl">Web Address (URL)</label>
+      <input type="url" id="linkUrl" placeholder="https://example.com">
+      <div class="modal-actions">
+        <button class="modal-btn" id="linkCancel">Cancel</button>
+        <button class="modal-btn primary" id="linkInsert">Insert Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insert Image Modal (URL + Device Upload) -->
+  <div class="modal-overlay" id="imageModal">
+    <div class="modal" style="width:460px;" role="dialog" aria-modal="true" aria-label="Insert Image">
+      <h3>Insert Image</h3>
+      <div class="img-mode-tabs">
+        <button class="img-mode-tab active" id="imgTabUrl">From Web (URL)</button>
+        <button class="img-mode-tab" id="imgTabDevice">From Device (Upload)</button>
+      </div>
+
+      <!-- URL Mode Section -->
+      <div id="imgUrlSection">
+        <label for="imageUrl">Image URL</label>
+        <input type="url" id="imageUrl" placeholder="https://images.unsplash.com/... or image link">
+        <label for="imageAlt">Description (Alt Text)</label>
+        <input type="text" id="imageAlt" placeholder="Image description">
+        <div class="modal-actions">
+          <button class="modal-btn" id="imgUrlCancel">Cancel</button>
+          <button class="modal-btn primary" id="imgUrlInsert">Insert Image</button>
+        </div>
+      </div>
+
+      <!-- Device Upload Section -->
+      <div id="imgDeviceSection" style="display:none;">
+        <div class="device-drop" id="deviceImageDrop" role="button" tabindex="0">
+          <i class="fas fa-images"></i>
+          <p>Click or drag image files here</p>
+          <p class="sub">Supports JPG, PNG, GIF, WebP, SVG, AVIF, BMP</p>
+        </div>
+        <div class="img-preview-list" id="imgPreviewList"></div>
+        <div class="modal-actions">
+          <button class="modal-btn" id="imgDevCancel">Cancel</button>
+          <button class="modal-btn primary" id="imgDevInsert" disabled>Insert All</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insert Table Modal -->
+  <div class="modal-overlay" id="tableModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Insert Table">
+      <h3>Insert Table</h3>
+      <label for="tableRows">Number of Rows</label>
+      <input type="number" id="tableRows" value="3" min="1" max="25">
+      <label for="tableCols">Number of Columns</label>
+      <input type="number" id="tableCols" value="3" min="1" max="12">
+      <div class="modal-actions">
+        <button class="modal-btn" id="tableCancel">Cancel</button>
+        <button class="modal-btn primary" id="tableInsert">Insert Table</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clear Formatting Confirmation Modal (Bug 3) -->
+  <div class="modal-overlay" id="clearFormatModal">
+    <div class="modal" style="width:420px;" role="dialog" aria-modal="true" aria-label="Clear All Formatting">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <i class="fas fa-triangle-exclamation" style="color:var(--warning);font-size:22px;"></i>
+        <h3 style="margin:0;">Clear All Formatting?</h3>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin:10px 0 16px;line-height:1.5;">
+        This will remove all custom fonts, colors, highlights, bold/italic styles, and block formatting from your selected text (or the entire document if nothing is selected), returning to clean normal paragraph text.
+      </p>
+      <div class="modal-actions">
+        <button class="modal-btn" id="clearFormatCancel">Cancel</button>
+        <button class="modal-btn danger" id="clearFormatConfirm"><i class="fas fa-eraser"></i> Clear Formatting</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Watermark Modal (Bug 5) -->
+  <div class="modal-overlay" id="customWatermarkModal">
+    <div class="modal" style="width:440px;" role="dialog" aria-modal="true" aria-label="Custom Watermark">
+      <h3>Custom Watermark</h3>
+      <label for="customWatermarkText">Watermark Text</label>
+      <input type="text" id="customWatermarkText" value="CONFIDENTIAL" placeholder="Enter watermark text (e.g. DRAFT, DO NOT COPY, COMPANY)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">
+        <div>
+          <label for="customWatermarkAngle">Orientation</label>
+          <select id="customWatermarkAngle" class="fmt-select" style="width:100%;">
+            <option value="-35">Diagonal (-35°)</option>
+            <option value="0">Horizontal (0°)</option>
+          </select>
+        </div>
+        <div>
+          <label for="customWatermarkColor">Color Tone</label>
+          <select id="customWatermarkColor" class="fmt-select" style="width:100%;">
+            <option value="rgba(148, 163, 184, 0.18)">Subtle Gray</option>
+            <option value="rgba(239, 68, 68, 0.18)">Soft Red</option>
+            <option value="rgba(37, 99, 235, 0.18)">Soft Blue</option>
+            <option value="rgba(234, 88, 12, 0.18)">Soft Orange</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="customWatermarkCancel">Cancel</button>
+        <button class="modal-btn primary" id="customWatermarkApply">Apply Watermark</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Margins Modal (Bug 5) -->
+  <div class="modal-overlay" id="customMarginModal">
+    <div class="modal" style="width:400px;" role="dialog" aria-modal="true" aria-label="Custom Margins">
+      <h3>Custom Margins</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <label for="customMarginTop">Top (px)</label>
+          <input type="number" id="customMarginTop" value="72" min="0" max="250">
+        </div>
+        <div>
+          <label for="customMarginBottom">Bottom (px)</label>
+          <input type="number" id="customMarginBottom" value="72" min="0" max="250">
+        </div>
+        <div>
+          <label for="customMarginLeft">Left (px)</label>
+          <input type="number" id="customMarginLeft" value="72" min="0" max="250">
+        </div>
+        <div>
+          <label for="customMarginRight">Right (px)</label>
+          <input type="number" id="customMarginRight" value="72" min="0" max="250">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="customMarginCancel">Cancel</button>
+        <button class="modal-btn primary" id="customMarginApply">Apply Margins</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Freehand Drawing Canvas Modal (MS Paint Integration - Bug 8) -->
+  <div class="modal-overlay" id="paintModal">
+    <div class="modal" style="width:580px;max-width:94vw;" role="dialog" aria-modal="true" aria-label="Draw Freehand Sketch">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <h3 style="margin:0;"><i class="fas fa-paintbrush" style="color:var(--accent);margin-right:6px;"></i>Paint & Draw</h3>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="color" id="paintColor" value="#000000" title="Pen Color" style="width:28px;height:28px;padding:0;border:none;border-radius:4px;cursor:pointer;">
+          <input type="range" id="paintBrushSize" min="1" max="24" value="3" title="Brush Size" style="width:70px;">
+          <button class="modal-btn" id="paintEraserBtn" type="button" title="Eraser"><i class="fas fa-eraser"></i></button>
+          <button class="modal-btn" id="paintClearBtn" type="button" title="Clear Canvas"><i class="fas fa-trash-can"></i></button>
+        </div>
+      </div>
+      <div style="border:1px solid var(--border);border-radius:8px;background:#ffffff;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">
+        <canvas id="paintCanvas" width="540" height="300" style="display:block;cursor:crosshair;touch-action:none;width:100%;height:300px;background:#ffffff;"></canvas>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="paintCancel">Cancel</button>
+        <button class="modal-btn primary" id="paintInsertBtn"><i class="fas fa-arrow-down-to-bracket"></i> Insert into Document</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Special Symbols Modal (Comprehensive Categorized - Bug 4) -->
+  <div class="modal-overlay" id="symbolModal">
+    <div class="modal" style="width:560px;max-width:94vw;" role="dialog" aria-modal="true" aria-label="Insert Special Character">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <h3 style="margin:0;">Insert Symbol</h3>
+        <input type="text" id="symbolSearchInput" placeholder="Search symbols..." style="width:160px;height:30px;font-size:12px;padding:0 8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);outline:none;">
+      </div>
+      <div class="symbol-category-tabs" id="symbolCategoryTabs" style="display:flex;gap:4px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scrollbar-width:none;">
+        <button class="symbol-cat-tab active" data-cat="all">All</button>
+        <button class="symbol-cat-tab" data-cat="currency">Currency</button>
+        <button class="symbol-cat-tab" data-cat="math">Math</button>
+        <button class="symbol-cat-tab" data-cat="arrows">Arrows</button>
+        <button class="symbol-cat-tab" data-cat="typography">Punctuation</button>
+        <button class="symbol-cat-tab" data-cat="greek">Greek</button>
+        <button class="symbol-cat-tab" data-cat="shapes">Shapes & Icons</button>
+      </div>
+      <div id="symbolsGrid" style="display:grid;grid-template-columns:repeat(10, 1fr);gap:6px;font-size:18px;max-height:260px;overflow-y:auto;padding:6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);">
+        <!-- Filled dynamically -->
+      </div>
+      <div class="modal-actions" style="margin-top:12px;">
+        <button class="modal-btn" id="symbolCancel">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF Merge Modal -->
+  <div class="modal-overlay" id="pdfMergeModal">
+    <div class="modal" style="width:500px;" role="dialog" aria-modal="true" aria-label="Merge PDF Files">
+      <h3>Merge Multiple PDFs</h3>
+      <div class="device-drop" id="mergePdfDrop" role="button" tabindex="0">
+        <i class="fas fa-file-pdf"></i>
+        <p>Click or drop PDF documents here</p>
+        <p class="sub">Combine multiple PDF files into one clean document (max 10)</p>
+      </div>
+      <div class="merge-file-list" id="mergeFileList"></div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="mergeCancel">Cancel</button>
+        <button class="modal-btn" id="mergeClear" style="margin-right:auto;">Clear All</button>
+        <button class="modal-btn primary" id="mergeBtn" disabled>Merge PDFs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Statistics Modal -->
+  <div class="modal-overlay" id="statsModal">
+    <div class="modal" style="width:480px;" role="dialog" aria-modal="true" aria-label="Document Statistics">
+      <h3>Document Statistics</h3>
+      <div id="statsContent"></div>
+      <div style="margin-top:16px;text-align:right;">
+        <button class="modal-btn primary" id="statsCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <!-- Hidden Native File Inputs -->
+  <input type="file" id="fileInput" accept=".docx,.pdf,.txt,.html,.htm,.csv,.md,.markdown,.xlsx,.xls,.pptx,.ppt" multiple hidden>
+  <input type="file" id="imageFileInput" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.avif,.ico" multiple hidden>
+  <input type="file" id="mergeFileInput" accept=".pdf" multiple hidden>
+
+  <!-- External CDN Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+  <!-- Local Modular Scripts -->
+  <script src="js/ui.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/image-manager.js"></script>
+  <script src="js/pdf-viewer.js"></script>
+  <script src="js/find-outline.js"></script>
+  <script src="js/file-io.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
