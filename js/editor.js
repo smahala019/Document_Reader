@@ -396,25 +396,41 @@
       });
     }
 
-    if (bgBtn && bgInput) {
-      bgBtn.addEventListener('click', () => {
-        saveSelection();
-        if (typeof bgInput.showPicker === 'function') {
-          bgInput.showPicker();
-        } else {
-          bgInput.click();
-        }
-      });
-
-      bgInput.addEventListener('input', function () {
-        if (bgBar) bgBar.style.background = this.value;
-      });
-
-      bgInput.addEventListener('change', function () {
+    const defaultColorBtn = $('#defaultColorBtn');
+    if (defaultColorBtn) {
+      defaultColorBtn.addEventListener('click', () => {
         if (window.DocFlow.currentMode !== 'edit') return;
-        restoreSelection();
-        document.execCommand('hiliteColor', false, this.value);
-        notifyChange();
+        focusEditor();
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+
+        const range = sel.getRangeAt(0);
+
+        if (range.collapsed) {
+          // Caret is collapsed: user wants subsequent typing in default color without highlighter
+          const span = document.createElement('span');
+          span.style.color = 'inherit';
+          span.style.backgroundColor = 'transparent';
+          span.innerHTML = '&#8203;';
+          insertNodeAtCursor(span);
+
+          const newRange = document.createRange();
+          newRange.setStart(span.firstChild, 1);
+          newRange.setEnd(span.firstChild, 1);
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+          savedSelection = newRange.cloneRange();
+          showToast('Typing in default text color (no highlight)', 'info');
+        } else {
+          // Selection exists: reset text color and highlight for selection
+          try {
+            document.execCommand('styleWithCSS', false, true);
+            document.execCommand('foreColor', false, 'inherit');
+            document.execCommand('hiliteColor', false, 'transparent');
+          } catch (e) { }
+          notifyChange();
+          showToast('Reset to default text color on selection', 'info');
+        }
         updateToolbarState();
       });
     }
@@ -717,13 +733,19 @@
   // Change Case (Sentence, lower, UPPER, Title)
   function changeTextCase(mode) {
     if (window.DocFlow.currentMode !== 'edit' || !editor) return;
-    const sel = window.getSelection();
+    restoreSelection();
+    let sel = window.getSelection();
     if (!sel || !sel.rangeCount || sel.isCollapsed) {
       showToast('Select text first to change case', 'info');
       return;
     }
 
     const text = sel.toString();
+    if (!text || !text.trim()) {
+      showToast('Select text first to change case', 'info');
+      return;
+    }
+
     let transformed = text;
     if (mode === 'upper') {
       transformed = text.toUpperCase();
@@ -805,30 +827,37 @@
     }, 120);
   }
 
-  // Word Wrap Toggle (Notepad style)
+  // Word Wrap Toggle (Notepad style — expands editor page width when unwrapped)
   function toggleWordWrap() {
     if (!editor) return;
     const btn = $('#wordWrapBtn');
-    const isNowrap = editor.style.whiteSpace === 'nowrap';
+    const isNowrap = editor.classList.contains('no-wrap-mode') || editor.style.whiteSpace === 'nowrap';
     if (isNowrap) {
+      editor.classList.remove('no-wrap-mode');
       editor.style.whiteSpace = 'normal';
       editor.style.wordBreak = 'break-word';
       btn?.classList.remove('active');
       showToast('Word Wrap: ON', 'info');
     } else {
-      editor.style.whiteSpace = 'nowrap';
+      editor.classList.add('no-wrap-mode');
+      editor.style.whiteSpace = 'pre';
       editor.style.wordBreak = 'normal';
       btn?.classList.add('active');
-      showToast('Word Wrap: OFF (Scroll horizontally)', 'info');
+      showToast('Word Wrap: OFF (Page auto-expands & scrolls horizontally)', 'info');
     }
+    notifyChange();
   }
 
-  // Column Break insertion (Bug 5)
+  // Column Break insertion (Custom visual separator line in editor, break in print)
   function insertColumnBreak() {
-    if (window.DocFlow.currentMode !== 'edit') return;
-    insertHtmlAtCursor('<div class="column-break"></div><p><br></p>');
+    if (window.DocFlow.currentMode !== 'edit' || !editor) {
+      showToast('Open a document in edit mode first', 'info');
+      return;
+    }
+    const html = '<div class="doc-column-break" contenteditable="false"><i class="fas fa-arrows-split-up-and-left" style="margin-right:6px;"></i>Column Break</div><p><br></p>';
+    insertHtmlAtCursor(html);
     notifyChange();
-    showToast('Column break inserted', 'info');
+    showToast('Column break inserted (content flows to next column)', 'info');
   }
 
   // Floating Link Bubble
@@ -909,18 +938,32 @@
       executeClearFormatting();
     });
 
-    // Change Case Popover
+    // Change Case Popover (Positioned above editor, persists text selection)
     const changeCaseBtn = $('#changeCaseBtn');
     const casePopover = $('#casePopover');
     if (changeCaseBtn && casePopover) {
+      changeCaseBtn.addEventListener('mousedown', () => saveSelection());
       changeCaseBtn.addEventListener('click', e => {
         e.stopPropagation();
         saveSelection();
-        casePopover.classList.toggle('show');
+        const wasOpen = casePopover.classList.contains('show');
+        if (window.DocFlow?.UI?.closeAllPopovers) window.DocFlow.UI.closeAllPopovers();
+        if (!wasOpen) {
+          if (window.DocFlow?.UI?.positionPopover) {
+            window.DocFlow.UI.positionPopover(changeCaseBtn, casePopover);
+          } else {
+            casePopover.classList.add('show');
+          }
+        } else {
+          casePopover.classList.remove('show');
+        }
       });
       $$('#casePopover .spacing-opt-item').forEach(item => {
-        item.addEventListener('click', () => {
+        item.addEventListener('mousedown', e => e.preventDefault());
+        item.addEventListener('click', e => {
+          e.stopPropagation();
           changeTextCase(item.dataset.case);
+          casePopover.classList.remove('show');
         });
       });
     }

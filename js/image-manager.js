@@ -567,6 +567,10 @@
         <option value="auto" ${(!currentWidth || currentWidth === 'auto') ? 'selected' : ''}>Original Size</option>
       </select>
       <div class="df-img-sep"></div>
+      <button class="df-img-btn ${currentWrap === 'left' ? 'active' : ''}" data-action="align-left" title="Align Left"><i class="fas fa-align-left"></i></button>
+      <button class="df-img-btn ${currentWrap === 'center' ? 'active' : ''}" data-action="align-center" title="Align Center"><i class="fas fa-align-center"></i></button>
+      <button class="df-img-btn ${currentWrap === 'right' ? 'active' : ''}" data-action="align-right" title="Align Right"><i class="fas fa-align-right"></i></button>
+      <div class="df-img-sep"></div>
       <select class="df-img-select" id="dfImgWrapSelect" title="Text Wrapping">
         <option value="inline" ${currentWrap === 'inline' ? 'selected' : ''}>In Line</option>
         <option value="left" ${currentWrap === 'left' ? 'selected' : ''}>Wrap Left</option>
@@ -616,7 +620,22 @@
       e.stopPropagation();
 
       const action = btn.dataset.action;
-      if (action === 'crop') {
+      if (action === 'align-left') {
+        setImageWrapMode(img, 'left');
+        showImageToolbar(img);
+        if (activeResizeHandle) positionResizeHandle(img, activeResizeHandle);
+        showToast('Image aligned left', 'info');
+      } else if (action === 'align-center') {
+        setImageWrapMode(img, 'center');
+        showImageToolbar(img);
+        if (activeResizeHandle) positionResizeHandle(img, activeResizeHandle);
+        showToast('Image centered', 'info');
+      } else if (action === 'align-right') {
+        setImageWrapMode(img, 'right');
+        showImageToolbar(img);
+        if (activeResizeHandle) positionResizeHandle(img, activeResizeHandle);
+        showToast('Image aligned right', 'info');
+      } else if (action === 'crop') {
         openImageCropper(img);
       } else if (action === 'alt') {
         const currentAlt = img.alt || '';
@@ -698,7 +717,7 @@
       canvas.height = rawImg.naturalHeight;
       cropRect = { x: 0, y: 0, w: canvas.width, h: canvas.height };
       drawCropView();
-      cropModal.classList.add('active');
+      cropModal.classList.add('show');
     };
     rawImg.src = img.src;
 
@@ -726,8 +745,8 @@
 
     const getCanvasPos = e => {
       const rect = canvas.getBoundingClientRect();
-      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       return {
@@ -736,7 +755,7 @@
       };
     };
 
-    canvas.onmousedown = e => {
+    const onStartDrag = e => {
       isDragging = true;
       const pos = getCanvasPos(e);
       startX = pos.x;
@@ -744,7 +763,7 @@
       cropRect = { x: startX, y: startY, w: 0, h: 0 };
     };
 
-    window.onmousemove = e => {
+    const onMoveDrag = e => {
       if (!isDragging) return;
       const pos = getCanvasPos(e);
       let w = pos.x - startX;
@@ -767,13 +786,22 @@
       drawCropView();
     };
 
-    window.onmouseup = () => {
+    const onEndDrag = () => {
       isDragging = false;
       if (cropRect.w < 20 || cropRect.h < 20) {
         cropRect = { x: 0, y: 0, w: canvas.width, h: canvas.height };
         drawCropView();
       }
     };
+
+    canvas.onmousedown = onStartDrag;
+    canvas.ontouchstart = e => { e.preventDefault(); onStartDrag(e); };
+
+    window.addEventListener('mousemove', onMoveDrag);
+    window.addEventListener('touchmove', onMoveDrag, { passive: false });
+
+    window.addEventListener('mouseup', onEndDrag);
+    window.addEventListener('touchend', onEndDrag);
 
     // Ratio presets
     cropModal.querySelectorAll('.crop-ratio-btn').forEach(btn => {
@@ -800,11 +828,11 @@
     });
 
     cropModal.querySelector('#dfCropCancel').onclick = () => {
-      cropModal.classList.remove('active');
+      cropModal.classList.remove('show');
     };
 
     cropModal.querySelector('#dfCropApply').onclick = () => {
-      cropModal.classList.remove('active');
+      cropModal.classList.remove('show');
       const croppedCanvas = document.createElement('canvas');
       croppedCanvas.width = Math.max(1, cropRect.w);
       croppedCanvas.height = Math.max(1, cropRect.h);

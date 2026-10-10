@@ -182,6 +182,12 @@
         item.timestamp = Date.now();
         this.saveAll(list);
         this.render();
+      } else {
+        this.add({
+          name: name,
+          content: newContent,
+          mode: 'edit'
+        });
       }
     },
 
@@ -342,13 +348,24 @@
   }
 
   function setFileTabDot(status) {
-    const dot = $('#fileTabDot');
-    if (!dot) return;
-    if (!autoSaveEnabled && status !== 'off') {
-      dot.className = 'file-tab-dot off';
-      return;
+    const modifiedDot = $('#modifiedDot');
+    const dot = $('#fileTabDot') || modifiedDot;
+    if (modifiedDot) {
+      if (!autoSaveEnabled && status !== 'off') {
+        modifiedDot.className = 'modified-dot';
+      } else if (status === 'green' || status === 'saved') {
+        modifiedDot.className = 'modified-dot saved';
+        modifiedDot.title = 'Saved (Auto-saved)';
+      } else if (status === 'red' || status === 'unsaved') {
+        modifiedDot.className = 'modified-dot unsaved';
+        modifiedDot.title = 'Unsaved changes';
+      } else {
+        modifiedDot.className = 'modified-dot';
+      }
     }
-    dot.className = `file-tab-dot ${status}`;
+    if (dot && dot !== modifiedDot) {
+      dot.className = `file-tab-dot ${status}`;
+    }
   }
 
   function performAutoSave() {
@@ -395,11 +412,25 @@
     if (editorWrap) editorWrap.classList.toggle('visible', mode === 'edit');
     if (ribbonContainer) ribbonContainer.classList.toggle('visible', mode === 'edit');
 
+    const wordCountItem = $('#wordCountItem');
+    const charCountItem = $('#charCountItem');
     const lineInfoWrap = $('#lineInfoWrap');
-    if (lineInfoWrap) lineInfoWrap.style.display = (mode === 'edit' || mode === 'view') ? 'flex' : 'none';
+    const modifiedDot = $('#modifiedDot');
 
-    if (modeInfo) {
-      modeInfo.textContent = mode === 'edit' ? 'Editing' : mode === 'view' ? 'Viewing' : 'Ready';
+    if (mode === 'empty') {
+      if (wordCountItem) wordCountItem.style.display = 'none';
+      if (charCountItem) charCountItem.style.display = 'none';
+      if (lineInfoWrap) lineInfoWrap.style.display = 'none';
+      if (modifiedDot) modifiedDot.style.display = 'none';
+      if (fileNameDisplay) fileNameDisplay.textContent = 'DocFlow';
+      if (fileTypeInfo) fileTypeInfo.textContent = 'No file';
+      if (modeInfo) modeInfo.textContent = 'Ready';
+    } else {
+      if (wordCountItem) wordCountItem.style.display = 'inline-flex';
+      if (charCountItem) charCountItem.style.display = 'inline-flex';
+      if (lineInfoWrap) lineInfoWrap.style.display = 'inline-flex';
+      if (modifiedDot) modifiedDot.style.display = 'inline-block';
+      if (modeInfo) modeInfo.textContent = mode === 'edit' ? 'Editing' : 'Viewing';
     }
 
     if (window.DocFlow.Find) {
@@ -408,7 +439,10 @@
     }
 
     updateBtnStates();
-    window.DocFlow.Editor?.updateCursorPos();
+    if (mode === 'edit') {
+      window.DocFlow.Editor?.updateCounts();
+      window.DocFlow.Editor?.updateCursorPos();
+    }
   }
 
   function updateBtnStates() {
@@ -618,7 +652,7 @@
             break;
           case 'p':
             e.preventDefault();
-            $('#printBtn')?.click();
+            triggerPrint();
             break;
           case 'f':
             e.preventDefault();
@@ -647,6 +681,33 @@
     });
   }
 
+  // Standalone Print Handler (File Menu & Ctrl+P)
+  function triggerPrint() {
+    if (window.DocFlow.currentMode === 'closed' || !window.DocFlow.UI.Tabs.activeId) {
+      showToast('Open a document first to print', 'info');
+      return;
+    }
+    window.print();
+  }
+
+  // Multi-Page Print Watermark Replicator (Repeats across every printed page via CSS Paged Media fixed viewport)
+  window.addEventListener('beforeprint', () => {
+    const existing = document.getElementById('dfPrintFixedWatermark');
+    if (existing) existing.remove();
+    if (window.DocFlow.activeWatermark && window.DocFlow.activeWatermark.text && window.DocFlow.activeWatermark.text !== 'none') {
+      const wm = document.createElement('div');
+      wm.id = 'dfPrintFixedWatermark';
+      wm.className = 'print-watermark-page';
+      wm.innerHTML = buildWatermarkHtml(window.DocFlow.activeWatermark);
+      document.body.appendChild(wm);
+    }
+  });
+
+  window.addEventListener('afterprint', () => {
+    const wm = document.getElementById('dfPrintFixedWatermark');
+    if (wm) wm.remove();
+  });
+
   // Ribbon Tab Switching & Control Coordination
   function switchRibbonTab(tabName) {
     $$('.ribbon-tab-btn').forEach(btn => {
@@ -667,6 +728,9 @@
     const target = $(panelMap[tabName]);
     if (target) {
       target.classList.add('active');
+      if (window.DocFlow?.UI?.balanceRibbonPanel) {
+        window.DocFlow.UI.balanceRibbonPanel(target);
+      }
     }
   }
 
@@ -853,28 +917,139 @@
     $('#statsCloseBtn')?.addEventListener('click', () => closeModal('#statsModal'));
   }
 
-  // MS Paint Freehand Canvas Sketch Modal (Bug 8)
+  // Whiteboard & Excalidraw Canvas Studio (Insert Tab -> Draw Tool)
   function initPaintModal() {
-    const paintBtn = $('#openPaintModalBtn');
+    const paintBtn = $('#openPaintModalBtn') || $('#ribbonInsertPaintBtn');
     const canvas = $('#paintCanvas');
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     const colorInput = $('#paintColor');
+    const fillInput = $('#paintFillColor');
+    const transFillCheckbox = $('#paintTransparentFill');
     const brushInput = $('#paintBrushSize');
-    const eraserBtn = $('#paintEraserBtn');
+    const undoBtn = $('#paintUndoBtn');
     const clearBtn = $('#paintClearBtn');
     const cancelBtn = $('#paintCancel');
+    const footerCancelBtn = $('#paintFooterCancel');
     const insertBtn = $('#paintInsertBtn');
 
+    const tabExcalidraw = $('#tabExcalidrawStudio');
+    const tabCanvas = $('#tabQuickCanvas');
+    const excalidrawWrapper = $('#excalidrawWrapper');
+    const quickCanvasWrapper = $('#quickCanvasWrapper');
+
+    let excalidrawMounted = false;
+    let excalidrawAPI = null;
+
+    function mountExcalidraw() {
+      const container = document.getElementById('excalidrawContainer');
+      if (!container) return;
+      if (window.ExcalidrawLib && window.React && window.ReactDOM) {
+        if (!excalidrawMounted) {
+          excalidrawMounted = true;
+          const loadingEl = document.getElementById('excalidrawLoading');
+          if (loadingEl) loadingEl.style.display = 'none';
+
+          try {
+            const root = window.ReactDOM.createRoot(container);
+            root.render(
+              window.React.createElement(window.ExcalidrawLib.Excalidraw, {
+                excalidrawAPI: (api) => {
+                  excalidrawAPI = api;
+                  window.currentExcalidrawAPI = api;
+                },
+                initialData: {
+                  appState: { viewBackgroundColor: '#ffffff' }
+                }
+              })
+            );
+          } catch (err) {
+            console.warn('Excalidraw mount fallback:', err);
+            if (loadingEl) loadingEl.textContent = 'Excalidraw loaded in Quick Canvas mode';
+          }
+        }
+      } else {
+        const loadingEl = document.getElementById('excalidrawLoading');
+        if (loadingEl) {
+          loadingEl.innerHTML = '<span style="color:var(--text-secondary);"><i class="fas fa-info-circle"></i> Excalidraw online engine connecting. Switch to Quick Canvas to sketch immediately.</span>';
+        }
+      }
+    }
+
+    tabExcalidraw?.addEventListener('click', () => {
+      tabExcalidraw.classList.add('active');
+      tabCanvas?.classList.remove('active');
+      if (excalidrawWrapper) excalidrawWrapper.style.display = 'block';
+      if (quickCanvasWrapper) quickCanvasWrapper.style.display = 'none';
+      mountExcalidraw();
+    });
+
+    tabCanvas?.addEventListener('click', () => {
+      tabCanvas.classList.add('active');
+      tabExcalidraw?.classList.remove('active');
+      if (excalidrawWrapper) excalidrawWrapper.style.display = 'none';
+      if (quickCanvasWrapper) quickCanvasWrapper.style.display = 'flex';
+    });
+
+    paintBtn?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode first', 'info');
+        return;
+      }
+      openModal('#paintModal');
+      setTimeout(mountExcalidraw, 100);
+    });
+
+    cancelBtn?.addEventListener('click', () => closeModal('#paintModal'));
+    footerCancelBtn?.addEventListener('click', () => closeModal('#paintModal'));
+
+    let activeTool = 'pen';
     let isDrawing = false;
-    let isEraser = false;
+    let startX = 0, startY = 0;
+    let snapshot = null;
+    let undoStack = [];
+
+    const saveUndo = () => {
+      if (undoStack.length > 25) undoStack.shift();
+      undoStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    };
 
     const resetCanvas = () => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      undoStack = [];
+      saveUndo();
     };
     resetCanvas();
+
+    // Tool switcher buttons
+    $$('#paintModal .draw-tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('#paintModal .draw-tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeTool = btn.dataset.tool || 'pen';
+        showToast(`Tool: ${activeTool.toUpperCase()}`, 'info');
+      });
+    });
+
+    undoBtn?.addEventListener('click', () => {
+      if (undoStack.length > 1) {
+        undoStack.pop(); // Remove current state
+        const prev = undoStack[undoStack.length - 1];
+        ctx.putImageData(prev, 0, 0);
+        showToast('Undo performed', 'info');
+      } else {
+        showToast('Nothing to undo', 'info');
+      }
+    });
+
+    clearBtn?.addEventListener('click', () => {
+      resetCanvas();
+      showToast('Canvas cleared', 'info');
+    });
+
+    cancelBtn?.addEventListener('click', () => closeModal('#paintModal'));
 
     paintBtn?.addEventListener('click', () => {
       if (window.DocFlow.currentMode !== 'edit') {
@@ -884,25 +1059,10 @@
       openModal('#paintModal');
     });
 
-    eraserBtn?.addEventListener('click', () => {
-      isEraser = !isEraser;
-      eraserBtn.classList.toggle('active', isEraser);
-      showToast(isEraser ? 'Eraser tool selected' : 'Pen tool selected', 'info');
-    });
-
-    clearBtn?.addEventListener('click', () => {
-      resetCanvas();
-      showToast('Canvas cleared', 'info');
-    });
-
-    cancelBtn?.addEventListener('click', () => {
-      closeModal('#paintModal');
-    });
-
     const getPos = e => {
       const rect = canvas.getBoundingClientRect();
-      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0].clientX);
-      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0].clientY);
+      const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+      const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
       const scaleX = canvas.width / rect.width;
       const scaleY = canvas.height / rect.height;
       return {
@@ -911,27 +1071,135 @@
       };
     };
 
+    const drawArrow = (fromX, fromY, toX, toY, width, color) => {
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.stroke();
+
+      const angle = Math.atan2(toY - fromY, toX - fromX);
+      const headLen = Math.max(12, width * 3);
+      ctx.beginPath();
+      ctx.moveTo(toX, toY);
+      ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(toX - headLen * Math.cos(angle + Math.PI / 6), toY - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+    };
+
     const startDraw = e => {
       isDrawing = true;
-      const { x, y } = getPos(e);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
+      const pos = getPos(e);
+      startX = pos.x;
+      startY = pos.y;
+      snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      if (activeTool === 'pen' || activeTool === 'eraser') {
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+      }
     };
 
     const draw = e => {
       if (!isDrawing) return;
-      const { x, y } = getPos(e);
-      ctx.lineWidth = parseInt(brushInput?.value, 10) || 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = isEraser ? '#ffffff' : (colorInput?.value || '#000000');
-      ctx.lineTo(x, y);
-      ctx.stroke();
+      const pos = getPos(e);
+      const strokeColor = colorInput ? colorInput.value : '#1e293b';
+      const fillColor = fillInput ? fillInput.value : '#fef08a';
+      const isTransparent = transFillCheckbox ? transFillCheckbox.checked : true;
+      const width = parseInt(brushInput?.value, 10) || 3;
+
+      if (activeTool === 'pen') {
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+      } else if (activeTool === 'eraser') {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = width * 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+      } else {
+        // Shapes preview: restore canvas before drawing live preview
+        ctx.putImageData(snapshot, 0, 0);
+        ctx.strokeStyle = strokeColor;
+        ctx.fillStyle = fillColor;
+        ctx.lineWidth = width;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        if (activeTool === 'line') {
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+        } else if (activeTool === 'arrow') {
+          drawArrow(startX, startY, pos.x, pos.y, width, strokeColor);
+        } else if (activeTool === 'rect') {
+          const w = pos.x - startX;
+          const h = pos.y - startY;
+          if (!isTransparent) ctx.fillRect(startX, startY, w, h);
+          ctx.strokeRect(startX, startY, w, h);
+        } else if (activeTool === 'diamond') {
+          const midX = (startX + pos.x) / 2;
+          const midY = (startY + pos.y) / 2;
+          ctx.beginPath();
+          ctx.moveTo(midX, startY);
+          ctx.lineTo(pos.x, midY);
+          ctx.lineTo(midX, pos.y);
+          ctx.lineTo(startX, midY);
+          ctx.closePath();
+          if (!isTransparent) ctx.fill();
+          ctx.stroke();
+        } else if (activeTool === 'ellipse') {
+          const rx = Math.abs(pos.x - startX) / 2;
+          const ry = Math.abs(pos.y - startY) / 2;
+          const cx = (startX + pos.x) / 2;
+          const cy = (startY + pos.y) / 2;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, Math.max(1, rx), Math.max(1, ry), 0, 0, Math.PI * 2);
+          if (!isTransparent) ctx.fill();
+          ctx.stroke();
+        }
+      }
     };
 
     const stopDraw = () => {
+      if (!isDrawing) return;
       isDrawing = false;
-      ctx.closePath();
+      const strokeColor = colorInput ? colorInput.value : '#1e293b';
+
+      if (activeTool === 'text') {
+        const text = prompt('Enter text for label:');
+        if (text && text.trim()) {
+          ctx.font = 'bold 16px Inter, sans-serif';
+          ctx.fillStyle = strokeColor;
+          ctx.fillText(text.trim(), startX, startY);
+        }
+      } else if (activeTool === 'note') {
+        const note = prompt('Enter sticky note text:');
+        if (note && note.trim()) {
+          const nw = 140, nh = 90;
+          ctx.fillStyle = '#fef08a';
+          ctx.strokeStyle = '#eab308';
+          ctx.lineWidth = 1.5;
+          ctx.fillRect(startX, startY, nw, nh);
+          ctx.strokeRect(startX, startY, nw, nh);
+          ctx.font = '13px Inter, sans-serif';
+          ctx.fillStyle = '#1c1917';
+          ctx.fillText(note.trim().slice(0, 30), startX + 10, startY + 28);
+          if (note.trim().length > 30) {
+            ctx.fillText(note.trim().slice(30, 60), startX + 10, startY + 48);
+          }
+        }
+      }
+      saveUndo();
     };
 
     canvas.addEventListener('mousedown', startDraw);
@@ -942,13 +1210,300 @@
     canvas.addEventListener('touchmove', e => { e.preventDefault(); draw(e); }, { passive: false });
     window.addEventListener('touchend', stopDraw);
 
-    insertBtn?.addEventListener('click', () => {
+    insertBtn?.addEventListener('click', async () => {
+      // If Excalidraw Studio tab is active, export from official Excalidraw API
+      if (tabExcalidraw?.classList.contains('active') && excalidrawAPI && window.ExcalidrawLib) {
+        try {
+          const elements = excalidrawAPI.getSceneElements();
+          const files = excalidrawAPI.getFiles();
+          if (elements && elements.length > 0) {
+            const canvasEl = await window.ExcalidrawLib.exportToCanvas({
+              elements,
+              files,
+              appState: { exportWithDarkMode: false, exportBackground: true }
+            });
+            const dataUrl = canvasEl.toDataURL('image/png');
+            closeModal('#paintModal');
+            if (window.DocFlow.ImageManager?.insertImageIntoDocument) {
+              window.DocFlow.ImageManager.insertImageIntoDocument(dataUrl, 'Excalidraw Whiteboard');
+            } else {
+              window.DocFlow.Editor?.insertHtmlAtCursor(`<img src="${dataUrl}" alt="Excalidraw Whiteboard" data-wrap="inline" style="max-width:100%;height:auto;"><p><br></p>`);
+            }
+            showToast('Excalidraw whiteboard diagram inserted into document', 'success');
+            return;
+          }
+        } catch (err) {
+          console.warn('Excalidraw export fallback to canvas:', err);
+        }
+      }
+
+      // Quick Canvas export
       closeModal('#paintModal');
       const dataUrl = canvas.toDataURL('image/png');
-      const imgHtml = `<img src="${dataUrl}" alt="Freehand drawing" style="max-width:100%;height:auto;display:inline-block;margin:8px 0;border-radius:4px;" draggable="true" data-wrap="inline"><p><br></p>`;
-      window.DocFlow.Editor?.insertHtmlAtCursor(imgHtml);
-      showToast('Drawing inserted into document', 'success');
+      if (window.DocFlow.ImageManager?.insertImageIntoDocument) {
+        window.DocFlow.ImageManager.insertImageIntoDocument(dataUrl, 'Excalidraw Diagram');
+      } else {
+        window.DocFlow.Editor?.insertHtmlAtCursor(`<img src="${dataUrl}" alt="Excalidraw Diagram" data-wrap="inline" style="max-width:100%;height:auto;"><p><br></p>`);
+      }
+      showToast('Whiteboard diagram inserted into document', 'success');
     });
+  }
+
+  // Animated GIF Search and Insertion Modal (Enhanced Responsive Search & Direct URL)
+  function initGifModal() {
+    const gifBtn = $('#ribbonInsertGifBtn');
+    const gifModal = $('#gifModal');
+    const searchInput = $('#gifSearchInput');
+    const clearSearchBtn = $('#gifClearSearchBtn');
+    const searchBtn = $('#gifSearchBtn');
+    const gifGrid = $('#gifGrid');
+    const closeBtn = $('#gifModalClose');
+    const cancelBtn = $('#gifCancel');
+
+    const tabBrowse = $('#gifTabBrowse');
+    const tabUrl = $('#gifTabUrl');
+    const searchBarSection = $('#gifSearchBarSection');
+    const tagChipsSection = $('#gifTagChips');
+    const urlSection = $('#gifUrlSection');
+    const directUrlInput = $('#gifDirectUrlInput');
+    const directUrlPreview = $('#gifUrlPreview');
+    const insertDirectBtn = $('#gifInsertDirectBtn');
+
+    if (!gifModal || !gifGrid) return;
+
+    // Comprehensive Curated Library of animated GIFs
+    const CURATED_GIFS = [
+      // Trending
+      { url: 'https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif', title: 'Thumbs Up', tags: ['trending', 'thumbs up', 'good', 'yes', 'ok'] },
+      { url: 'https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif', title: 'Clapping Hands', tags: ['trending', 'congratulations', 'clap', 'applause', 'bravo'] },
+      { url: 'https://media.giphy.com/media/111ebonMs90YLu/giphy.gif', title: 'Great Job', tags: ['trending', 'thumbs up', 'approve', 'congrats'] },
+      { url: 'https://media.giphy.com/media/d20PG6M63A3dVd2U/giphy.gif', title: 'Excited Yay', tags: ['trending', 'celebration', 'happy', 'yay', 'excited'] },
+      { url: 'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif', title: 'Confetti Party', tags: ['trending', 'celebration', 'party', 'confetti'] },
+      { url: 'https://media.giphy.com/media/3o7TKMt1VVNkHV2PaE/giphy.gif', title: 'Thinking Pose', tags: ['trending', 'thinking', 'hmm', 'smart', 'idea'] },
+
+      // Cats
+      { url: 'https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif', title: 'Cat Typing Fast', tags: ['cat', 'cats', 'work', 'typing', 'coding', 'computer'] },
+      { url: 'https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif', title: 'Cute Cat Wave', tags: ['cat', 'cats', 'welcome', 'cute', 'hello', 'wave'] },
+      { url: 'https://media.giphy.com/media/BzyTuYCmvSORqs1ABM/giphy.gif', title: 'Cat High Five', tags: ['cat', 'cats', 'thumbs up', 'high five', 'cool', 'yes'] },
+      { url: 'https://media.giphy.com/media/mlvseq9yvZhba/giphy.gif', title: 'Cat Party', tags: ['cat', 'cats', 'celebration', 'dance', 'party'] },
+      { url: 'https://media.giphy.com/media/vFKqnCdLPNOKc/giphy.gif', title: 'Sleepy Cat', tags: ['cat', 'cats', 'tired', 'sleep', 'rest'] },
+
+      // Dogs
+      { url: 'https://media.giphy.com/media/mCRJDo24UvJMA/giphy.gif', title: 'Happy Dog Tail', tags: ['dog', 'dogs', 'happy', 'cute', 'excited'] },
+      { url: 'https://media.giphy.com/media/bbshzgyFQDqPHXBo4c/giphy.gif', title: 'Dog Typing', tags: ['dog', 'dogs', 'work', 'typing', 'computer'] },
+      { url: 'https://media.giphy.com/media/4Zo41lhzKt6iZ8xff9/giphy.gif', title: 'Dog Smiling', tags: ['dog', 'dogs', 'happy', 'smile', 'thumbs up'] },
+
+      // Celebration & Congrats
+      { url: 'https://media.giphy.com/media/Is1O1TWV0LEJi/giphy.gif', title: 'Celebration Dance', tags: ['celebration', 'party', 'dance', 'fun', 'happy'] },
+      { url: 'https://media.giphy.com/media/g9582DNuQppxC/giphy.gif', title: 'Cheers Toast', tags: ['celebration', 'congratulations', 'cheers', 'drink'] },
+      { url: 'https://media.giphy.com/media/3oz8xAFtqoOUUrsh7W/giphy.gif', title: 'Standing Ovation', tags: ['congratulations', 'applause', 'clap', 'bravo'] },
+      { url: 'https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif', title: 'Super Excited', tags: ['celebration', 'excited', 'yay', 'happy'] },
+
+      // Thumbs Up & Yes
+      { url: 'https://media.giphy.com/media/10UeedrT5MIfPG/giphy.gif', title: 'Nodding Yes', tags: ['thumbs up', 'yes', 'agree', 'nod'] },
+      { url: 'https://media.giphy.com/media/NEvPzZ8bdvtxG/giphy.gif', title: 'Approval Nod', tags: ['thumbs up', 'yes', 'approve', 'agree'] },
+      { url: 'https://media.giphy.com/media/diUKszNTUghVe/giphy.gif', title: 'Double Thumbs Up', tags: ['thumbs up', 'yes', 'great', 'awesome'] },
+
+      // Work & Coffee
+      { url: 'https://media.giphy.com/media/unQ3IJU2RG7DO/giphy.gif', title: 'Typing Hard', tags: ['work', 'typing', 'busy', 'computer', 'coding'] },
+      { url: 'https://media.giphy.com/media/o0vwzuFwCGAFO/giphy.gif', title: 'Coffee Sip', tags: ['coffee', 'work', 'morning', 'drink'] },
+      { url: 'https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif', title: 'Need Coffee', tags: ['coffee', 'morning', 'energy', 'work'] },
+
+      // Dance & Fun
+      { url: 'https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif', title: 'Happy Dance', tags: ['dance', 'fun', 'happy', 'music'] },
+      { url: 'https://media.giphy.com/media/DhstvI3zZ598A/giphy.gif', title: 'Groovy Moves', tags: ['dance', 'party', 'music', 'fun'] },
+      { url: 'https://media.giphy.com/media/3ohzdIuqJoo8QdKlnW/giphy.gif', title: 'Dancing Celebration', tags: ['dance', 'party', 'fun'] },
+
+      // Thinking & Smart
+      { url: 'https://media.giphy.com/media/d3mlE7uhX8KFgEmY/giphy.gif', title: 'Smart Thinking', tags: ['thinking', 'smart', 'idea', 'brain'] },
+      { url: 'https://media.giphy.com/media/a5viI92PAF89q/giphy.gif', title: 'Pondering Idea', tags: ['thinking', 'hmm', 'question', 'idea'] },
+
+      // Welcome & Thank You
+      { url: 'https://media.giphy.com/media/dzaUX7CAG0Ihi/giphy.gif', title: 'Welcome Wave', tags: ['welcome', 'hello', 'hi', 'wave'] },
+      { url: 'https://media.giphy.com/media/ASd0Ukj0y3qMM/giphy.gif', title: 'Friendly Wave', tags: ['welcome', 'hello', 'wave'] },
+      { url: 'https://media.giphy.com/media/osAcIGJnYE0VU76L63/giphy.gif', title: 'Thank You Bow', tags: ['thank you', 'thanks', 'gratitude'] },
+      { url: 'https://media.giphy.com/media/3oz8xIsloV7zOmt81G/giphy.gif', title: 'Many Thanks', tags: ['thank you', 'thanks', 'grateful'] },
+
+      // Loading
+      { url: 'https://media.giphy.com/media/3oEjI6SIIHBdRxXI40/giphy.gif', title: 'Loading Spinner', tags: ['loading', 'wait', 'spinner', 'progress'] }
+    ];
+
+    function renderGifs(list) {
+      gifGrid.innerHTML = '';
+      if (!list || !list.length) {
+        gifGrid.innerHTML = `
+          <div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:var(--text-muted);font-size:12.5px;">
+            <i class="fas fa-magnifying-glass" style="font-size:24px;margin-bottom:8px;opacity:0.5;display:block;"></i>
+            No animated GIFs found. Try searching keywords like <strong>cat, thumbs up, celebration, work, dance</strong>, or paste a GIF URL above.
+          </div>`;
+        return;
+      }
+      list.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'gif-card';
+        card.style.cssText = 'cursor:pointer;border-radius:6px;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;height:105px;border:1px solid var(--border);transition:transform 0.15s ease, box-shadow 0.15s ease;position:relative;';
+        card.title = item.title || 'Click to insert';
+        card.innerHTML = `<img src="${item.url}" alt="${escHtml(item.title || 'GIF')}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`;
+
+        card.addEventListener('mouseenter', () => {
+          card.style.transform = 'scale(1.03)';
+          card.style.boxShadow = '0 6px 12px rgba(0,0,0,0.3)';
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.transform = 'scale(1)';
+          card.style.boxShadow = 'none';
+        });
+
+        card.addEventListener('click', () => {
+          closeModal('#gifModal');
+          if (window.DocFlow.ImageManager?.insertImageIntoDocument) {
+            window.DocFlow.ImageManager.insertImageIntoDocument(item.url, item.title || 'Animated GIF');
+          } else {
+            window.DocFlow.Editor?.insertHtmlAtCursor(`<img src="${item.url}" alt="${escHtml(item.title)}" data-wrap="inline" style="max-width:100%;"><p><br></p>`);
+          }
+          showToast('Animated GIF inserted into document', 'success');
+        });
+        gifGrid.appendChild(card);
+      });
+    }
+
+    function searchCuratedGifs(query) {
+      const q = query.toLowerCase().trim();
+      if (!q || q === 'trending') return CURATED_GIFS;
+
+      return CURATED_GIFS.filter(item => {
+        if (item.title.toLowerCase().includes(q)) return true;
+        return item.tags.some(t => t.includes(q) || q.includes(t));
+      });
+    }
+
+    async function searchNetworkGifs(query) {
+      const q = query.trim();
+      gifGrid.innerHTML = `
+        <div style="grid-column:1/-1;text-align:center;padding:28px 16px;color:var(--text-muted);font-size:12.5px;">
+          <i class="fas fa-spinner fa-spin" style="margin-right:6px;color:var(--accent);"></i> Searching GIFs for "${escHtml(q)}"...
+        </div>`;
+
+      const curatedMatches = searchCuratedGifs(q);
+
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(q)}&limit=16`, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.data && data.data.length) {
+            const results = data.data.map(g => ({
+              url: g.images.fixed_height.url || g.images.original.url,
+              title: g.title || q
+            }));
+            renderGifs(results);
+            return;
+          }
+        }
+      } catch (e) { }
+
+      renderGifs(curatedMatches.length ? curatedMatches : CURATED_GIFS.slice(0, 8));
+    }
+
+    tabBrowse?.addEventListener('click', () => {
+      tabBrowse.classList.add('active');
+      tabUrl?.classList.remove('active');
+      if (searchBarSection) searchBarSection.style.display = 'flex';
+      if (tagChipsSection) tagChipsSection.style.display = 'flex';
+      if (urlSection) urlSection.style.display = 'none';
+      if (gifGrid) gifGrid.style.display = 'grid';
+    });
+
+    tabUrl?.addEventListener('click', () => {
+      tabUrl.classList.add('active');
+      tabBrowse?.classList.remove('active');
+      if (searchBarSection) searchBarSection.style.display = 'none';
+      if (tagChipsSection) tagChipsSection.style.display = 'none';
+      if (urlSection) urlSection.style.display = 'flex';
+      if (gifGrid) gifGrid.style.display = 'none';
+    });
+
+    directUrlInput?.addEventListener('input', () => {
+      const url = directUrlInput.value.trim();
+      if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+        if (directUrlPreview) {
+          directUrlPreview.style.display = 'flex';
+          directUrlPreview.innerHTML = `<img src="${url}" alt="GIF Preview" style="max-height:140px;max-width:100%;object-fit:contain;" onerror="this.parentElement.style.display='none';">`;
+        }
+      } else {
+        if (directUrlPreview) directUrlPreview.style.display = 'none';
+      }
+    });
+
+    insertDirectBtn?.addEventListener('click', () => {
+      const url = directUrlInput?.value.trim();
+      if (!url) {
+        showToast('Please enter a GIF image URL', 'warning');
+        return;
+      }
+      closeModal('#gifModal');
+      if (window.DocFlow.ImageManager?.insertImageIntoDocument) {
+        window.DocFlow.ImageManager.insertImageIntoDocument(url, 'Animated GIF');
+      } else {
+        window.DocFlow.Editor?.insertHtmlAtCursor(`<img src="${url}" alt="Animated GIF" data-wrap="inline" style="max-width:100%;"><p><br></p>`);
+      }
+      showToast('Animated GIF inserted from URL', 'success');
+      if (directUrlInput) directUrlInput.value = '';
+      if (directUrlPreview) directUrlPreview.style.display = 'none';
+    });
+
+    gifBtn?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode first', 'info');
+        return;
+      }
+      openModal('#gifModal');
+      tabBrowse?.click();
+      renderGifs(CURATED_GIFS);
+    });
+
+    searchBtn?.addEventListener('click', () => {
+      const q = searchInput?.value.trim();
+      if (q) searchNetworkGifs(q);
+      else renderGifs(CURATED_GIFS);
+    });
+
+    searchInput?.addEventListener('input', () => {
+      if (clearSearchBtn) {
+        clearSearchBtn.style.display = searchInput.value ? 'block' : 'none';
+      }
+    });
+
+    clearSearchBtn?.addEventListener('click', () => {
+      if (searchInput) searchInput.value = '';
+      if (clearSearchBtn) clearSearchBtn.style.display = 'none';
+      renderGifs(CURATED_GIFS);
+    });
+
+    searchInput?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchBtn?.click();
+      }
+    });
+
+    $$('#gifModal .gif-tag-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        $$('#gifModal .gif-tag-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const tag = chip.dataset.tag || 'trending';
+        if (searchInput) {
+          searchInput.value = tag === 'trending' ? '' : tag;
+          if (clearSearchBtn) clearSearchBtn.style.display = searchInput.value ? 'block' : 'none';
+        }
+        searchNetworkGifs(tag);
+      });
+    });
+
+    closeBtn?.addEventListener('click', () => closeModal('#gifModal'));
+    cancelBtn?.addEventListener('click', () => closeModal('#gifModal'));
   }
 
   // Direct Document Creator for Ribbon Office Formats (Word, Excel, PPT, PDF - Bug 2)
@@ -979,6 +1534,159 @@
     showToast(`Created new document "${fullName}"`, 'success');
   }
 
+  // Office Integration Helpers (Excel table styling, PPT slide card, Excel grid)
+  function applyExcelTableStyle() {
+    if (window.DocFlow.currentMode !== 'edit') {
+      showToast('Open a document in edit mode first', 'info');
+      return;
+    }
+    const sel = window.getSelection();
+    let table = null;
+    if (sel && sel.rangeCount) {
+      let node = sel.getRangeAt(0).commonAncestorContainer;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+      table = node.closest('table');
+    }
+
+    if (table) {
+      table.classList.add('excel-styled-table');
+      table.style.borderCollapse = 'collapse';
+      table.style.width = '100%';
+      table.style.margin = '16px 0';
+      table.querySelectorAll('th').forEach(th => {
+        th.style.backgroundColor = '#16a34a';
+        th.style.color = '#ffffff';
+        th.style.fontWeight = '700';
+        th.style.padding = '8px 12px';
+        th.style.border = '1px solid #15803d';
+      });
+      table.querySelectorAll('td').forEach(td => {
+        td.style.padding = '8px 12px';
+        td.style.border = '1px solid #cbd5e1';
+      });
+      table.querySelectorAll('tbody tr:nth-child(even)').forEach(tr => {
+        tr.style.backgroundColor = '#f8fafc';
+      });
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Applied Excel table styling', 'success');
+    } else {
+      const tableHtml = `
+        <table class="excel-styled-table" style="border-collapse:collapse;width:100%;margin:16px 0;font-size:13px;border:1px solid #15803d;">
+          <thead>
+            <tr style="background-color:#16a34a;color:#ffffff;">
+              <th style="padding:8px 12px;border:1px solid #15803d;text-align:left;">Item</th>
+              <th style="padding:8px 12px;border:1px solid #15803d;text-align:left;">Category</th>
+              <th style="padding:8px 12px;border:1px solid #15803d;text-align:right;">Amount ($)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background-color:#ffffff;">
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Quarterly Revenue</td>
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Finance</td>
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;text-align:right;">125,000</td>
+            </tr>
+            <tr style="background-color:#f8fafc;">
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Operating Expenses</td>
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Operations</td>
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;text-align:right;">45,000</td>
+            </tr>
+            <tr style="background-color:#ffffff;font-weight:700;">
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Net Margin</td>
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Summary</td>
+              <td style="padding:8px 12px;border:1px solid #cbd5e1;text-align:right;color:#16a34a;">80,000</td>
+            </tr>
+          </tbody>
+        </table><p><br></p>`;
+      window.DocFlow.Editor?.insertHtmlAtCursor(tableHtml);
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Inserted Excel-formatted table', 'success');
+    }
+  }
+
+  function insertPptSlideCard() {
+    if (window.DocFlow.currentMode !== 'edit') {
+      showToast('Open a document in edit mode first', 'info');
+      return;
+    }
+    const slideHtml = `
+      <div class="pptx-slide-card" contenteditable="false" style="margin:16px 0;border:1px solid #cbd5e1;border-radius:8px;padding:24px;background:#ffffff;box-shadow:0 4px 6px -1px rgba(0,0,0,0.07);aspect-ratio:16/9;max-width:800px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid #f1f5f9;padding-bottom:8px;">
+          <span style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-file-powerpoint" style="margin-right:4px;"></i>PowerPoint Presentation Slide</span>
+        </div>
+        <h2 contenteditable="true" style="margin:0 0 10px;font-size:20px;font-weight:700;color:#1e293b;">Executive Summary & Key Takeaways</h2>
+        <div contenteditable="true" style="color:#475569;font-size:14px;line-height:1.6;">
+          <ul>
+            <li>Strategic milestone deliveries achieved ahead of quarterly target</li>
+            <li>Collaborative multi-device editing workflow active across teams</li>
+            <li>Next review meeting scheduled with stakeholders</li>
+          </ul>
+        </div>
+      </div><p><br></p>`;
+    window.DocFlow.Editor?.insertHtmlAtCursor(slideHtml);
+    window.DocFlow.Editor?.notifyChange();
+    showToast('PowerPoint slide card inserted', 'success');
+  }
+
+  function insertExcelSpreadsheetGrid() {
+    if (window.DocFlow.currentMode !== 'edit') {
+      showToast('Open a document in edit mode first', 'info');
+      return;
+    }
+    const cols = ['A', 'B', 'C', 'D', 'E'];
+    let theadHtml = '<th style="background:#e2e8f0;padding:6px 10px;border:1px solid #cbd5e1;width:40px;text-align:center;font-size:11px;font-weight:700;color:#64748b;">#</th>';
+    cols.forEach(c => {
+      theadHtml += `<th style="background:#f1f5f9;padding:6px 10px;border:1px solid #cbd5e1;min-width:90px;text-align:center;font-size:11px;font-weight:700;color:#334155;">${c}</th>`;
+    });
+    let rowsHtml = '';
+    for (let r = 1; r <= 5; r++) {
+      rowsHtml += `<tr><td style="background:#f8fafc;padding:6px 10px;border:1px solid #cbd5e1;text-align:center;font-size:11px;font-weight:700;color:#64748b;">${r}</td>`;
+      for (let c = 0; c < 5; c++) {
+        rowsHtml += `<td contenteditable="true" style="padding:6px 10px;border:1px solid #cbd5e1;background:#ffffff;outline:none;font-size:12px;min-width:90px;"><br></td>`;
+      }
+      rowsHtml += '</tr>';
+    }
+    const gridHtml = `
+      <div class="excel-embedded-grid" contenteditable="false" style="margin:16px 0;overflow-x:auto;border:1px solid #16a34a;border-radius:6px;background:#ffffff;">
+        <div style="background:#16a34a;color:#ffffff;padding:6px 12px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
+          <i class="fas fa-file-excel"></i> Excel Spreadsheet Grid (Editable Cells)
+        </div>
+        <table style="border-collapse:collapse;width:100%;table-layout:fixed;">
+          <thead><tr>${theadHtml}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div><p><br></p>`;
+    window.DocFlow.Editor?.insertHtmlAtCursor(gridHtml);
+    window.DocFlow.Editor?.notifyChange();
+    showToast('Excel spreadsheet grid inserted', 'success');
+  }
+
+  // Watermark Inner HTML Generator
+  function buildWatermarkHtml(activeWm) {
+    if (!activeWm || !activeWm.text || activeWm.text === 'none') return '';
+    const text = activeWm.text;
+    const angle = activeWm.angle !== undefined ? activeWm.angle : -35;
+    const color = activeWm.color || 'rgba(148, 163, 184, 0.18)';
+    const pos = activeWm.pos || 'center';
+    const count = activeWm.count || '1';
+
+    let alignStyle = 'align-items: center; justify-content: center;';
+    if (pos === 'top') alignStyle = 'align-items: flex-start; justify-content: center; padding-top: 80px;';
+    if (pos === 'bottom') alignStyle = 'align-items: flex-end; justify-content: center; padding-bottom: 80px;';
+
+    const singleSpan = `<span style="font-size: 64px; font-weight: 800; color: ${color}; transform: rotate(${angle}deg); letter-spacing: 10px; text-transform: uppercase; margin: 20px; display: inline-block;">${escHtml(text)}</span>`;
+
+    let inner = singleSpan;
+    if (count === '2') {
+      inner = `<div style="display:flex; flex-direction:column; justify-content:space-around; height:100%; width:100%; align-items:center;">${singleSpan}${singleSpan}</div>`;
+    } else if (count === '4') {
+      inner = `<div style="display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; height:100%; width:100%; place-items:center;">${singleSpan}${singleSpan}${singleSpan}${singleSpan}</div>`;
+    } else if (count === 'repeat') {
+      inner = `<div style="display:flex; flex-wrap:wrap; justify-content:space-around; align-content:space-around; height:100%; width:100%; opacity:0.85;">${singleSpan.repeat(8)}</div>`;
+    }
+
+    return inner;
+  }
+
   // Ribbon Action Handlers
   function initRibbon() {
     // 1. Tab buttons
@@ -991,6 +1699,7 @@
     // 2. File Panel
     $('#ribbonNewBtn')?.addEventListener('click', () => openModal('#newDocModal'));
     $('#ribbonOpenBtn')?.addEventListener('click', () => $('#openBtn')?.click());
+    $('#ribbonFilePrintBtn')?.addEventListener('click', triggerPrint);
 
     // File Panel Office Buttons (Word, Excel, PPT, PDF - Bug 2)
     $('#ribbonNewWordBtn')?.addEventListener('click', () => createNewDocDirect('docx', 'Untitled Word Document'));
@@ -1038,7 +1747,7 @@
     });
     $('#ribbonPrintBtn')?.addEventListener('click', () => {
       ribbonSaveDropdown?.classList.remove('show');
-      window.print();
+      triggerPrint();
     });
 
     // Auto-Save Toggle Button in File Panel
@@ -1050,6 +1759,14 @@
       updateAutoSaveUI();
       showToast(`Auto-Save is now ${autoSaveEnabled ? 'ON (5s timer)' : 'OFF'}`, autoSaveEnabled ? 'success' : 'info');
     });
+
+    // Home Panel Office Integration Buttons
+    $('#homeExcelFormatBtn')?.addEventListener('click', applyExcelTableStyle);
+    $('#homePptLayoutBtn')?.addEventListener('click', insertPptSlideCard);
+
+    // 3. Insert Panel (Date, Symbol, Checklist, Note, Paint, Office Embeds)
+    $('#ribbonInsertExcelGridBtn')?.addEventListener('click', insertExcelSpreadsheetGrid);
+    $('#ribbonInsertPptSlideBtn')?.addEventListener('click', insertPptSlideCard);
 
     // 3. Insert Panel (Date, Symbol, Checklist, Note, Paint)
     $('#ribbonInsertDateBtn')?.addEventListener('click', () => {
@@ -1086,8 +1803,9 @@
     const insertPageBreakAction = () => {
       if (window.DocFlow.currentMode !== 'edit') return;
       window.DocFlow.Editor?.insertHtmlAtCursor(
-        '<div class="doc-page-break" style="page-break-before: always; border-top: 2px dashed #94a3b8; margin: 24px 0 16px; padding-top: 4px; text-align: right; font-size: 11px; color: #94a3b8; user-select: none;">--- Page Break ---</div><p><br></p>'
+        '<div class="doc-page-break" contenteditable="false"><div class="doc-page-break-line"><span>Page Break</span></div></div><p><br></p>'
       );
+      window.DocFlow.Editor?.notifyChange();
       showToast('Page break inserted', 'info');
     };
     $('#layoutPageBreakBtn')?.addEventListener('click', insertPageBreakAction);
@@ -1229,6 +1947,15 @@
           page.style.minHeight = '1344px';
           showToast('Paper Size: Legal (8.5" × 14")', 'info');
           break;
+        case 'full':
+          page.style.maxWidth = '100%';
+          page.style.width = '100%';
+          page.style.minHeight = '100%';
+          showToast('Paper Size: Full Page (100% Bleed)', 'info');
+          break;
+        case 'custom':
+          openModal('#customPageSizeModal');
+          break;
         case 'executive':
           page.style.maxWidth = '696px';
           page.style.minHeight = '1008px';
@@ -1272,6 +1999,26 @@
       }
     }
 
+    // Custom Page Size Dialog
+    $('#pageSizeCustomItem')?.addEventListener('click', () => {
+      pageSizePopover?.classList.remove('show');
+      openModal('#customPageSizeModal');
+    });
+
+    $('#customPageSizeCancel')?.addEventListener('click', () => closeModal('#customPageSizeModal'));
+    $('#customPageSizeApply')?.addEventListener('click', () => {
+      const w = parseInt($('#customPageWidth')?.value, 10) || 816;
+      const h = parseInt($('#customPageHeight')?.value, 10) || 1056;
+      const page = $('.editor-page');
+      if (page) {
+        page.style.maxWidth = `${w}px`;
+        page.style.width = `${w}px`;
+        page.style.minHeight = `${h}px`;
+        showToast(`Custom Page Size applied: ${w}px × ${h}px`, 'success');
+      }
+      closeModal('#customPageSizeModal');
+    });
+
     // Columns Popover
     const columnsBtn = $('#columnsDropdownBtn');
     const columnsPopover = $('#columnsPopover');
@@ -1291,8 +2038,21 @@
 
       $$('.margin-opt-item[data-columns]').forEach(item => {
         item.addEventListener('click', () => {
-          const cols = parseInt(item.dataset.columns, 10) || 1;
-          applyColumns(cols);
+          const val = item.dataset.columns;
+          if (val === 'discrete-2') {
+            const discreteHtml = `
+              <div class="doc-column-grid" contenteditable="false">
+                <div class="doc-col-pane" contenteditable="true"><p>Column 1 content...</p></div>
+                <div class="doc-col-divider"></div>
+                <div class="doc-col-pane" contenteditable="true"><p>Column 2 content...</p></div>
+              </div><p><br></p>`;
+            window.DocFlow.Editor?.insertHtmlAtCursor(discreteHtml);
+            window.DocFlow.Editor?.notifyChange();
+            showToast('Inserted 2-column panes (click each column to write independently)', 'success');
+          } else {
+            const cols = parseInt(val, 10) || 1;
+            applyColumns(cols);
+          }
           $$('.margin-opt-item[data-columns]').forEach(el => el.classList.remove('active'));
           item.classList.add('active');
           columnsPopover.classList.remove('show');
@@ -1306,15 +2066,10 @@
       page.dataset.columns = cols;
       page.style.columnCount = cols;
       page.style.columnGap = cols > 1 ? '36px' : 'normal';
-      page.style.columnRule = 'none'; // Word style: no border
-      page.style.columnFill = 'auto'; // Word style: sequential fill
+      page.style.columnRule = cols > 1 ? '1px solid var(--border)' : 'none'; // Dividing line between columns
+      page.style.columnFill = 'auto';
       showToast(`Layout: ${cols} Column${cols > 1 ? 's' : ''}`, 'info');
     }
-
-    // Custom Column Break Button (Bug 5)
-    $('#layoutColumnBreakBtn')?.addEventListener('click', () => {
-      window.DocFlow.Editor?.insertColumnBreak();
-    });
 
     // Watermark Popover
     const watermarkBtn = $('#watermarkDropdownBtn');
@@ -1349,41 +2104,79 @@
       });
     }
 
-    // Custom Watermark Options (Bug 5)
+    // Custom Watermark Options (Angle, Opacity, Position, Count)
     $('#watermarkCustomOption')?.addEventListener('click', () => {
       watermarkPopover?.classList.remove('show');
       openModal('#customWatermarkModal');
+    });
+
+    $('#customWatermarkAngle')?.addEventListener('input', e => {
+      const l = $('#watermarkAngleVal');
+      if (l) l.textContent = `${e.target.value}°`;
+    });
+    $('#customWatermarkOpacity')?.addEventListener('input', e => {
+      const l = $('#watermarkOpacityVal');
+      if (l) l.textContent = `${e.target.value}%`;
     });
 
     $('#customWatermarkCancel')?.addEventListener('click', () => closeModal('#customWatermarkModal'));
     $('#customWatermarkApply')?.addEventListener('click', () => {
       const text = $('#customWatermarkText')?.value.trim() || 'CONFIDENTIAL';
       const angle = parseInt($('#customWatermarkAngle')?.value, 10) || -35;
-      const color = $('#customWatermarkColor')?.value || 'rgba(148, 163, 184, 0.18)';
-      applyWatermark(text, angle, color);
+      const opacityVal = (parseInt($('#customWatermarkOpacity')?.value, 10) || 18) / 100;
+      const pos = $('#customWatermarkPosition')?.value || 'center';
+      const count = $('#customWatermarkCount')?.value || '1';
+      const colorTone = $('#customWatermarkColor')?.value || '148, 163, 184';
+      const rgbaColor = `rgba(${colorTone}, ${opacityVal})`;
+
+      applyWatermark(text, angle, rgbaColor, pos, count);
       closeModal('#customWatermarkModal');
     });
 
-    function applyWatermark(text, angle = -35, color = 'rgba(148, 163, 184, 0.15)') {
+    function applyWatermark(text, angle = -35, color = 'rgba(148, 163, 184, 0.18)', pos = 'center', count = '1') {
       const page = $('.editor-page');
       if (!page) return;
       let existingWm = page.querySelector('.doc-watermark-overlay');
       if (!existingWm) {
         existingWm = document.createElement('div');
         existingWm.className = 'doc-watermark-overlay';
-        existingWm.style.cssText = 'position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 0; user-select: none; overflow: hidden;';
         page.style.position = 'relative';
         page.prepend(existingWm);
       }
 
       if (!text || text === 'none') {
         existingWm.remove();
+        window.DocFlow.activeWatermark = null;
         showToast('Watermark removed', 'info');
-      } else {
-        existingWm.innerHTML = `<span style="font-size: 72px; font-weight: 800; color: ${color}; transform: rotate(${angle}deg); letter-spacing: 12px; text-transform: uppercase;">${escHtml(text)}</span>`;
-        showToast(`Watermark: ${text}`, 'info');
+        return;
       }
+
+      window.DocFlow.activeWatermark = { text, angle, color, pos, count };
+
+      let alignStyle = 'align-items: center; justify-content: center;';
+      if (pos === 'top') alignStyle = 'align-items: flex-start; justify-content: center; padding-top: 80px;';
+      if (pos === 'bottom') alignStyle = 'align-items: flex-end; justify-content: center; padding-bottom: 80px;';
+
+      existingWm.style.cssText = `position: absolute; inset: 0; display: flex; ${alignStyle} pointer-events: none; z-index: 0; user-select: none; overflow: hidden;`;
+      existingWm.innerHTML = buildWatermarkHtml(window.DocFlow.activeWatermark);
+      showToast(`Watermark applied (${text})`, 'info');
     }
+
+    // Layout Office Setup Buttons (Sheet Layout & Slide 16:9)
+    $('#layoutExcelFitBtn')?.addEventListener('click', () => {
+      const page = $('.editor-page');
+      if (!page) return;
+      const isWide = page.classList.toggle('wide-sheet-mode');
+      $('#layoutExcelFitBtn')?.classList.toggle('active', isWide);
+      showToast(isWide ? 'Excel Sheet Layout: 1200px Wide Mode ON' : 'Excel Sheet Layout: OFF (Normal Width)', 'info');
+    });
+    $('#layoutPptAspectBtn')?.addEventListener('click', () => {
+      const page = $('.editor-page');
+      if (!page) return;
+      const isAspect = page.classList.toggle('slide-aspect-mode');
+      $('#layoutPptAspectBtn')?.classList.toggle('active', isAspect);
+      showToast(isAspect ? 'PowerPoint 16:9 Aspect Ratio ON' : 'PowerPoint 16:9 Aspect Ratio OFF', 'info');
+    });
 
     // Dismiss Layout & Bullet Popovers on outside click
     document.addEventListener('click', e => {
@@ -1399,7 +2192,7 @@
       }
     });
 
-    // 5. View Panel & Home Panel Editing Actions (Bug 10: Find and Replace in View & Home)
+    // 5. View Panel & Home Panel Editing Actions
     $('#ribbonOutlineBtn')?.addEventListener('click', () => {
       window.DocFlow.Find?.toggleOutline();
     });
@@ -1416,24 +2209,38 @@
       window.DocFlow.Find?.openFindBar(true);
     });
 
-    // Reading Mode & Ruler Toggle (Bug 8)
+    // View Office View Mode Buttons (Slide Deck & Excel Gridlines)
+    $('#viewSlideDeckBtn')?.addEventListener('click', () => {
+      const isDeck = document.body.classList.toggle('slide-deck-mode');
+      $('#viewSlideDeckBtn')?.classList.toggle('active', isDeck);
+      showToast(isDeck ? 'Presentation Slide Deck View: ON' : 'Presentation Slide Deck View: OFF', 'info');
+    });
+    $('#viewExcelGridlinesBtn')?.addEventListener('click', () => {
+      const page = $('.editor-page');
+      if (!page) return;
+      const isGrid = page.classList.toggle('excel-gridlines-mode');
+      $('#viewExcelGridlinesBtn')?.classList.toggle('active', isGrid);
+      showToast(isGrid ? 'Excel Gridlines: ON' : 'Excel Gridlines: OFF', 'info');
+    });
+
+    // Reading Mode (with mobile exit button)
+    const exitReadingMode = () => {
+      document.body.classList.remove('reading-mode');
+      $('#readingModeBtn')?.classList.remove('active');
+      showToast('Reading Mode exited', 'info');
+    };
+
     $('#readingModeBtn')?.addEventListener('click', () => {
       const isReading = document.body.classList.toggle('reading-mode');
       $('#readingModeBtn')?.classList.toggle('active', isReading);
-      showToast(isReading ? 'Reading Mode: ON (Press Esc to exit)' : 'Reading Mode: OFF', 'info');
+      showToast(isReading ? 'Reading Mode: ON (Click Exit button or press Esc)' : 'Reading Mode: OFF', 'info');
     });
 
-    $('#rulerToggleBtn')?.addEventListener('click', () => {
-      const hasRuler = document.body.classList.toggle('show-ruler');
-      $('#rulerToggleBtn')?.classList.toggle('active', hasRuler);
-      showToast(hasRuler ? 'Document Ruler: ON' : 'Document Ruler: OFF', 'info');
-    });
+    $('#exitReadingModeBtn')?.addEventListener('click', exitReadingMode);
 
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && document.body.classList.contains('reading-mode')) {
-        document.body.classList.remove('reading-mode');
-        $('#readingModeBtn')?.classList.remove('active');
-        showToast('Reading Mode exited', 'info');
+        exitReadingMode();
       }
     });
 
@@ -1474,6 +2281,7 @@
     initRibbon();
     initSymbolsModal();
     initPaintModal();
+    initGifModal();
     updateAutoSaveUI();
 
     // 5. Wire Global Action Buttons

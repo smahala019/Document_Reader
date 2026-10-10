@@ -534,7 +534,99 @@
     }
   });
 
-  window.addEventListener('resize', closeAllPopovers);
+  // Dynamic Responsive Toolbar / Ribbon Balancer (Max 2 Rows, Single-row fallback, Orphan Prevention)
+  function balanceRibbonPanel(panel) {
+    if (!panel || !panel.classList.contains('active')) return;
+    const container = document.getElementById('ribbonContainer');
+    if (!container || container.offsetParent === null) return;
+
+    const availableWidth = panel.clientWidth - 24;
+    if (availableWidth <= 0) return;
+
+    // Reset any previously moved orphan buttons first
+    panel.querySelectorAll('[data-moved-orphan="true"]').forEach(btn => {
+      const originalRow = btn._originalRow;
+      if (originalRow && originalRow.parentNode) {
+        originalRow.appendChild(btn);
+      }
+      delete btn._originalRow;
+      delete btn.dataset.movedOrphan;
+    });
+
+    // Test if all buttons fit in a single row
+    panel.classList.add('single-row');
+    const singleRowWidth = panel.scrollWidth;
+
+    if (singleRowWidth <= availableWidth) {
+      // Fits in 1 single row! Keep .single-row
+      return;
+    }
+
+    // Does not fit in 1 row -> switch to 2 rows
+    panel.classList.remove('single-row');
+
+    // In 2-row mode, check each group for orphan buttons on row 2
+    // If only 1 button remains on the second row and there is space to accommodate it on the first row,
+    // move it back to the first row to avoid leaving a single button alone on the second row.
+    panel.querySelectorAll('.ribbon-group').forEach(group => {
+      const rows = group.querySelectorAll('.ribbon-row');
+      if (rows.length === 2) {
+        const row1 = rows[0];
+        const row2 = rows[1];
+
+        if (row2.children.length === 1) {
+          const orphanBtn = row2.children[0];
+          const row1Width = Array.from(row1.children).reduce((acc, el) => acc + (el.offsetWidth || 30) + 4, 0);
+          const orphanWidth = orphanBtn.offsetWidth || 30;
+
+          if (row1Width + orphanWidth < 300) {
+            orphanBtn._originalRow = row2;
+            orphanBtn.dataset.movedOrphan = 'true';
+            row1.appendChild(orphanBtn);
+          }
+        }
+      }
+    });
+  }
+
+  function balanceAllRibbons() {
+    const activePanel = document.querySelector('.ribbon-panel.active');
+    if (activePanel) {
+      balanceRibbonPanel(activePanel);
+    }
+  }
+
+  let ribbonResizeTimer = null;
+  function handleRibbonResize() {
+    if (ribbonResizeTimer) cancelAnimationFrame(ribbonResizeTimer);
+    ribbonResizeTimer = requestAnimationFrame(() => {
+      balanceAllRibbons();
+    });
+  }
+
+  // Smooth mouse wheel horizontal scrolling for ribbon panel and ribbon menu bar
+  function initRibbonScroll() {
+    const scrollContainers = document.querySelectorAll('.ribbon-panel, .ribbon-menu-bar');
+    scrollContainers.forEach(container => {
+      container.addEventListener('wheel', e => {
+        if (e.deltaY !== 0 && container.scrollWidth > container.clientWidth) {
+          e.preventDefault();
+          container.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRibbonScroll);
+  } else {
+    initRibbonScroll();
+  }
+
+  window.addEventListener('resize', () => {
+    closeAllPopovers();
+    handleRibbonResize();
+  });
 
   // Export to namespace
   window.DocFlow = window.DocFlow || {};
@@ -552,6 +644,9 @@
     initFullscreen,
     positionPopover,
     closeAllPopovers,
+    balanceRibbonPanel,
+    balanceAllRibbons,
+    initRibbonScroll,
     Tabs
   };
 

@@ -619,12 +619,12 @@
   max-height: calc(100vh - 180px);
 }
 
-/* Multi-Column Layout (Bug 5: MS Word sequential fill, no border line) */
+/* Multi-Column Layout (With visible dividing line in between columns) */
 .editor-page[data-columns="2"],
 .editor-page.cols-2 {
   column-count: 2;
   column-gap: 36px;
-  column-rule: none !important;
+  column-rule: 1px solid var(--border) !important;
   column-fill: auto !important;
 }
 
@@ -632,17 +632,156 @@
 .editor-page.cols-3 {
   column-count: 3;
   column-gap: 28px;
-  column-rule: none !important;
+  column-rule: 1px solid var(--border) !important;
   column-fill: auto !important;
 }
 
-.column-break {
-  break-after: column;
-  page-break-after: always;
-  height: 0;
-  margin: 0;
-  display: block;
+/* Discrete Multi-Column Panes (Columns don't spill text into each other) */
+.doc-column-grid {
+  display: flex;
+  gap: 0;
+  margin: 16px 0;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-primary);
+}
+
+.doc-col-pane {
+  flex: 1;
+  padding: 10px 14px;
+  min-height: 100px;
+  outline: none;
+  background: var(--bg-primary);
+  min-width: 0;
+}
+
+.doc-col-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 4px 0;
+  flex-shrink: 0;
+}
+
+/* Word Wrap: No-wrap expanded mode */
+.editor-page.no-wrap-mode {
+  width: max-content !important;
+  min-width: 100% !important;
+  max-width: none !important;
+}
+
+/* Enhanced Page Break: Visual separation in editor, physical break on print */
+.doc-page-break {
+  break-after: page !important;
+  page-break-after: always !important;
+  display: block !important;
+  width: 100% !important;
+  margin: 22px 0 !important;
+  border-top: 1px dashed var(--accent, #6366f1) !important;
+  border-bottom: 1px dashed var(--accent, #6366f1) !important;
+  background: rgba(99, 102, 241, 0.05) !important;
+  padding: 6px 14px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  user-select: none;
+  border-radius: 4px;
   clear: both;
+}
+
+@media print {
+  .doc-page-break {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: transparent !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    break-after: page !important;
+    page-break-after: always !important;
+    visibility: hidden !important;
+    clear: both !important;
+  }
+}
+
+/* Custom Column Break: Flows content to next column with clear visual divider */
+.doc-column-break {
+  break-after: column !important;
+  page-break-after: column !important;
+  break-inside: avoid !important;
+  display: block !important;
+  width: 100% !important;
+  margin: 14px 0 !important;
+  padding: 5px 10px !important;
+  border-top: 1px dashed #0284c7 !important;
+  border-bottom: 1px dashed #0284c7 !important;
+  background: rgba(2, 132, 199, 0.08) !important;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #0284c7 !important;
+  user-select: none;
+  cursor: default;
+  clear: both;
+}
+
+@media print {
+  .doc-column-break {
+    display: block !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    color: transparent !important;
+    visibility: hidden !important;
+    break-after: column !important;
+    page-break-after: column !important;
+  }
+}
+
+/* Office Layout Setup & View Modes */
+.editor-page.wide-sheet-mode {
+  max-width: 1200px !important;
+  width: 1200px !important;
+}
+
+.editor-page.slide-aspect-mode {
+  max-width: 960px !important;
+  min-height: 540px !important;
+  aspect-ratio: 16 / 9;
+}
+
+.editor-page.excel-gridlines-mode table td,
+.editor-page.excel-gridlines-mode table th {
+  border: 1px solid #cbd5e1 !important;
+}
+
+.editor-page.excel-gridlines-mode {
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+body.slide-deck-mode .editor-wrap {
+  background: #0f172a !important;
+  padding: 40px 20px !important;
+}
+
+body.slide-deck-mode .editor-page {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+}
+
+body.slide-deck-mode .pptx-slide-card {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+  border-color: #64748b !important;
+  margin-bottom: 30px !important;
 }
 
 /* OneNote Interactive Checklist & Callout Sticky Note (Bug 8) */
@@ -788,6 +927,12 @@
   }
 }
 
+/* Screen hidden for print-only watermark replicated node */
+.print-watermark-page,
+#dfPrintFixedWatermark {
+  display: none !important;
+}
+
 /* ==========================================================================
    Clean Print Stylesheet — Only Editor Area Prints, Zero Headers/Footers
    ========================================================================== */
@@ -861,5 +1006,50 @@
     border-radius: 0 !important;
     color: #000000 !important;
     background: #ffffff !important;
+  }
+
+  /* Repeat Watermark on Every Printed Page (Paged Media Fixed Viewport) */
+  .doc-watermark-overlay,
+  .print-watermark-page,
+  #dfPrintFixedWatermark {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+    display: flex !important;
+    overflow: hidden !important;
+  }
+
+  /* Multi-Column Layout Preservation in Print */
+  .editor-page[data-columns="2"],
+  .editor-page.cols-2 {
+    column-count: 2 !important;
+    column-gap: 36px !important;
+    column-rule: 1px solid #cbd5e1 !important;
+  }
+
+  .editor-page[data-columns="3"],
+  .editor-page.cols-3 {
+    column-count: 3 !important;
+    column-gap: 28px !important;
+    column-rule: 1px solid #cbd5e1 !important;
+  }
+
+  .doc-column-grid {
+    display: flex !important;
+    border: none !important;
+  }
+
+  .doc-col-pane {
+    flex: 1 !important;
+  }
+
+  .doc-col-divider {
+    border-right: 1px solid #cbd5e1 !important;
   }
 }
