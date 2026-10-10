@@ -464,14 +464,49 @@
   }
 
   // ==========================================================================
-  // Inline Image Manipulation Toolbar & Resizing
+  // Inline Image Manipulation Toolbar, 4-Corner Resizing & Drag Move Handle
   // ==========================================================================
-  let activeResizeHandle = null;
+  let activeResizeHandles = [];
+  let activeMoveHandle = null;
 
   function setImageWrapMode(targetImg, mode) {
     if (!targetImg) return;
     targetImg.dataset.wrap = mode;
     targetImg.dataset.align = mode;
+    if (mode === 'center') {
+      targetImg.style.display = 'block';
+      targetImg.style.marginLeft = 'auto';
+      targetImg.style.marginRight = 'auto';
+      targetImg.style.float = 'none';
+      targetImg.style.clear = 'both';
+      if (targetImg.parentElement && (targetImg.parentElement.tagName === 'P' || targetImg.parentElement.tagName === 'DIV')) {
+        targetImg.parentElement.style.textAlign = 'center';
+      }
+    } else if (mode === 'left') {
+      targetImg.style.display = 'block';
+      targetImg.style.marginLeft = '0';
+      targetImg.style.marginRight = '16px';
+      targetImg.style.float = 'left';
+      targetImg.style.clear = 'none';
+      if (targetImg.parentElement && targetImg.parentElement.tagName === 'P') {
+        targetImg.parentElement.style.textAlign = '';
+      }
+    } else if (mode === 'right') {
+      targetImg.style.display = 'block';
+      targetImg.style.marginLeft = '16px';
+      targetImg.style.marginRight = '0';
+      targetImg.style.float = 'right';
+      targetImg.style.clear = 'none';
+      if (targetImg.parentElement && targetImg.parentElement.tagName === 'P') {
+        targetImg.parentElement.style.textAlign = '';
+      }
+    } else {
+      targetImg.style.display = 'inline-block';
+      targetImg.style.marginLeft = '';
+      targetImg.style.marginRight = '';
+      targetImg.style.float = 'none';
+      targetImg.style.clear = 'none';
+    }
     window.DocFlow.Editor?.notifyChange();
   }
 
@@ -479,18 +514,20 @@
     deselectImage();
     selectedImage = img;
     img.classList.add('df-selected-img');
-    createResizeHandle(img);
+    createHandles(img);
     showImageToolbar(img);
   }
 
   function deselectImage() {
     if (selectedImage) {
-      selectedImage.classList.remove('df-selected-img');
+      selectedImage.classList.remove('df-selected-img', 'selected');
       selectedImage = null;
     }
-    if (activeResizeHandle) {
-      activeResizeHandle.remove();
-      activeResizeHandle = null;
+    activeResizeHandles.forEach(h => h.remove());
+    activeResizeHandles = [];
+    if (activeMoveHandle) {
+      activeMoveHandle.remove();
+      activeMoveHandle = null;
     }
     if (activeImageToolbar) {
       activeImageToolbar.remove();
@@ -498,56 +535,240 @@
     }
   }
 
-  function createResizeHandle(img) {
-    if (activeResizeHandle) activeResizeHandle.remove();
-    const handle = document.createElement('div');
-    handle.className = 'df-resize-handle br';
-    document.body.appendChild(handle);
-    activeResizeHandle = handle;
-    positionResizeHandle(img, handle);
+  function createHandles(img) {
+    activeResizeHandles.forEach(h => h.remove());
+    activeResizeHandles = [];
+    if (activeMoveHandle) activeMoveHandle.remove();
 
-    let startX = 0, startWidth = 0;
-    const onMouseMove = e => {
+    // 1. Four Corner Handles (NW, NE, SW, SE)
+    const corners = ['nw', 'ne', 'sw', 'se'];
+    corners.forEach(corner => {
+      const handle = document.createElement('div');
+      handle.className = `df-resize-handle ${corner}`;
+      handle.title = `Resize image from ${corner.toUpperCase()} corner`;
+      document.body.appendChild(handle);
+      activeResizeHandles.push(handle);
+
+      let startX = 0, startY = 0, startWidth = 0, startHeight = 0;
+
+      const onMouseMove = e => {
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        if (!clientX) return;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        let newWidth = startWidth;
+        let newHeight = startHeight;
+
+        if (corner === 'se') {
+          newWidth = Math.max(30, startWidth + dx);
+          newHeight = Math.max(30, startHeight + dy);
+        } else if (corner === 'sw') {
+          newWidth = Math.max(30, startWidth - dx);
+          newHeight = Math.max(30, startHeight + dy);
+        } else if (corner === 'ne') {
+          newWidth = Math.max(30, startWidth + dx);
+          newHeight = Math.max(30, startHeight - dy);
+        } else if (corner === 'nw') {
+          newWidth = Math.max(30, startWidth - dx);
+          newHeight = Math.max(30, startHeight - dy);
+        }
+
+        img.style.width = newWidth + 'px';
+        img.style.maxWidth = '100%';
+        if (img.tagName === 'IMG') {
+          img.style.height = 'auto'; // Keep aspect ratio proportional
+        } else {
+          img.style.height = newHeight + 'px';
+          const svg = img.querySelector('svg');
+          if (svg) {
+            if (img.classList.contains('doc-chart-container')) {
+              const header = img.querySelector('.chart-header-title');
+              const headH = header ? header.offsetHeight + 18 : 36;
+              svg.setAttribute('width', '100%');
+              svg.setAttribute('height', Math.max(60, newHeight - headH));
+            } else {
+              svg.setAttribute('width', newWidth);
+              svg.setAttribute('height', newHeight);
+            }
+          }
+        }
+
+        positionAllHandles(img);
+        if (activeImageToolbar) positionImageToolbar(img, activeImageToolbar);
+      };
+
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('touchmove', onMouseMove);
+        document.removeEventListener('touchend', onMouseUp);
+        window.DocFlow.Editor?.notifyChange();
+      };
+
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = img.offsetWidth;
+        startHeight = img.offsetHeight;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      });
+
+      handle.addEventListener('touchstart', e => {
+        e.stopPropagation();
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        startWidth = img.offsetWidth;
+        startHeight = img.offsetHeight;
+        document.addEventListener('touchmove', onMouseMove, { passive: true });
+        document.addEventListener('touchend', onMouseUp);
+      });
+    });
+
+    // 2. Four-Way Move Handle (Drag to Reposition anywhere in document)
+    const moveHandle = document.createElement('div');
+    moveHandle.className = 'df-img-move-handle';
+    moveHandle.innerHTML = '<i class="fas fa-arrows-up-down-left-right"></i>';
+    moveHandle.title = 'Click and drag to move image to another position';
+    document.body.appendChild(moveHandle);
+    activeMoveHandle = moveHandle;
+
+    let isMoving = false;
+    let ghostIndicator = null;
+
+    const onDragMove = e => {
+      if (!isMoving) return;
       const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-      if (!clientX) return;
-      const dx = clientX - startX;
-      const newWidth = Math.max(40, startWidth + dx);
-      img.style.width = newWidth + 'px';
-      positionResizeHandle(img, handle);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      if (!clientX || !clientY) return;
+
+      moveHandle.style.left = (clientX - 13) + 'px';
+      moveHandle.style.top = (clientY - 13) + 'px';
+
+      const editor = $('#editor');
+      if (!editor) return;
+
+      let range = null;
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(clientX, clientY);
+      } else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(clientX, clientY);
+        if (pos) {
+          range = document.createRange();
+          range.setStart(pos.offsetNode, pos.offset);
+        }
+      }
+
+      if (!ghostIndicator) {
+        ghostIndicator = document.createElement('div');
+        ghostIndicator.id = 'dfImgMoveGhost';
+        ghostIndicator.style.cssText = 'height:3px;background:var(--accent);border-radius:2px;margin:4px 0;box-shadow:0 0 6px var(--accent);pointer-events:none;';
+      }
+
+      if (range && editor.contains(range.commonAncestorContainer)) {
+        try {
+          range.insertNode(ghostIndicator);
+        } catch (err) { }
+      } else {
+        const el = document.elementFromPoint(clientX, clientY);
+        const block = el ? (el.closest('#editor > *') || el.closest('#editor p, #editor div, #editor table, #editor section, #editor h1, #editor h2, #editor h3')) : null;
+        if (block && editor.contains(block) && block !== ghostIndicator && block !== img) {
+          const r = block.getBoundingClientRect();
+          if (clientY > r.top + r.height / 2) {
+            block.insertAdjacentElement('afterend', ghostIndicator);
+          } else {
+            block.insertAdjacentElement('beforebegin', ghostIndicator);
+          }
+        }
+      }
+    };
+
+    const onDragEnd = e => {
+      if (!isMoving) return;
+      isMoving = false;
+      moveHandle.style.pointerEvents = 'auto';
+      document.removeEventListener('mousemove', onDragMove);
+      document.removeEventListener('mouseup', onDragEnd);
+      document.removeEventListener('touchmove', onDragMove);
+      document.removeEventListener('touchend', onDragEnd);
+
+      const editor = $('#editor');
+      if (ghostIndicator && ghostIndicator.parentNode) {
+        ghostIndicator.parentNode.insertBefore(img, ghostIndicator);
+        ghostIndicator.remove();
+        ghostIndicator = null;
+        showToast(img.tagName === 'IMG' ? 'Image repositioned' : (img.classList.contains('doc-chart-container') ? 'Chart repositioned' : 'Element repositioned'), 'success');
+      } else {
+        const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+        const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+        if (clientX && clientY && editor) {
+          const el = document.elementFromPoint(clientX, clientY);
+          const block = el ? (el.closest('#editor > *') || el.closest('#editor p, #editor div, #editor table, #editor section, #editor h1, #editor h2, #editor h3')) : null;
+          if (block && editor.contains(block) && block !== img) {
+            block.insertAdjacentElement('afterend', img);
+            showToast(img.tagName === 'IMG' ? 'Image repositioned' : (img.classList.contains('doc-chart-container') ? 'Chart repositioned' : 'Element repositioned'), 'success');
+          }
+        }
+      }
+
+      positionAllHandles(img);
       if (activeImageToolbar) positionImageToolbar(img, activeImageToolbar);
+      window.DocFlow.Editor?.notifyChange();
     };
 
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-      document.removeEventListener('touchmove', onMouseMove);
-      document.removeEventListener('touchend', onMouseUp);
-      window.DocFlow.Editor.notifyChange();
-    };
-
-    handle.addEventListener('mousedown', e => {
+    moveHandle.addEventListener('mousedown', e => {
       e.preventDefault();
       e.stopPropagation();
-      startX = e.clientX;
-      startWidth = img.offsetWidth;
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
+      isMoving = true;
+      moveHandle.style.pointerEvents = 'none';
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragEnd);
     });
 
-    handle.addEventListener('touchstart', e => {
+    moveHandle.addEventListener('touchstart', e => {
       e.stopPropagation();
-      startX = e.touches[0].clientX;
-      startWidth = img.offsetWidth;
-      document.addEventListener('touchmove', onMouseMove, { passive: true });
-      document.addEventListener('touchend', onMouseUp);
+      isMoving = true;
+      moveHandle.style.pointerEvents = 'none';
+      document.addEventListener('touchmove', onDragMove, { passive: true });
+      document.addEventListener('touchend', onDragEnd);
     });
+
+    positionAllHandles(img);
+  }
+
+  function positionAllHandles(img) {
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    if (activeResizeHandles.length === 4) {
+      // nw: top-left
+      activeResizeHandles[0].style.left = (rect.left - 6) + 'px';
+      activeResizeHandles[0].style.top = (rect.top - 6) + 'px';
+      // ne: top-right
+      activeResizeHandles[1].style.left = (rect.right - 6) + 'px';
+      activeResizeHandles[1].style.top = (rect.top - 6) + 'px';
+      // sw: bottom-left
+      activeResizeHandles[2].style.left = (rect.left - 6) + 'px';
+      activeResizeHandles[2].style.top = (rect.bottom - 6) + 'px';
+      // se: bottom-right
+      activeResizeHandles[3].style.left = (rect.right - 6) + 'px';
+      activeResizeHandles[3].style.top = (rect.bottom - 6) + 'px';
+    }
+
+    if (activeMoveHandle) {
+      activeMoveHandle.style.left = (rect.left + (rect.width / 2) - 13) + 'px';
+      activeMoveHandle.style.top = (rect.top - 36) + 'px';
+    }
   }
 
   function positionResizeHandle(img, handle) {
-    if (!img || !handle) return;
-    const rect = img.getBoundingClientRect();
-    handle.style.left = (rect.right - 5) + 'px';
-    handle.style.top = (rect.bottom - 5) + 'px';
+    positionAllHandles(img);
   }
 
   function showImageToolbar(img) {
@@ -588,6 +809,10 @@
     document.body.appendChild(toolbar);
     activeImageToolbar = toolbar;
     positionImageToolbar(img, toolbar);
+
+    if (img.tagName !== 'IMG') {
+      toolbar.querySelectorAll('[data-action="crop"], [data-action="alt"]').forEach(el => el.style.display = 'none');
+    }
 
     // Size Select
     const sizeSelect = toolbar.querySelector('#dfImgSizeSelect');
@@ -909,15 +1134,34 @@
           if (node.nodeType === Node.ELEMENT_NODE) {
             if (node.tagName === 'IMG') attachImageListeners(node);
             else node.querySelectorAll?.('img').forEach(attachImageListeners);
+
+            if (node.tagName === 'HR' || node.classList?.contains('doc-custom-line')) {
+              attachLineListeners(node);
+            } else {
+              node.querySelectorAll?.('hr, .doc-custom-line').forEach(attachLineListeners);
+            }
+
+            if (node.classList?.contains('doc-shape-container') || node.classList?.contains('doc-chart-container')) {
+              attachShapeListeners(node);
+            } else {
+              node.querySelectorAll?.('.doc-shape-container, .doc-chart-container').forEach(attachShapeListeners);
+            }
           }
         });
       });
     });
     observer.observe(editor, { childList: true, subtree: true });
 
+    // Initial attach for shapes, charts, and lines
+    editor.querySelectorAll('.doc-shape-container, .doc-chart-container').forEach(attachShapeListeners);
+    editor.querySelectorAll('hr, .doc-custom-line').forEach(attachLineListeners);
+
     document.addEventListener('click', e => {
-      if (selectedImage && !e.target.closest('.df-img-toolbar') && !e.target.closest('.df-resize-handle') && e.target !== selectedImage) {
+      if (selectedImage && !e.target.closest('.df-img-toolbar') && !e.target.closest('.df-resize-handle') && !e.target.closest('.df-img-move-handle') && e.target !== selectedImage && !selectedImage.contains(e.target)) {
         deselectImage();
+      }
+      if (selectedLine && !e.target.closest('.df-line-move-handle') && !e.target.closest('.df-line-resize-handle') && !e.target.closest('.df-line-plus-btn') && !e.target.closest('.df-line-popover') && e.target !== selectedLine) {
+        deselectLine();
       }
     });
 
@@ -926,8 +1170,14 @@
         e.preventDefault();
         selectedImage.remove();
         deselectImage();
-        window.DocFlow.Editor.notifyChange();
-        showToast('Image deleted', 'info');
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Element deleted', 'info');
+      } else if (selectedLine && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        selectedLine.remove();
+        deselectLine();
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Line deleted', 'info');
       }
     });
 
@@ -935,8 +1185,11 @@
       if (selectedImage && activeImageToolbar) {
         positionImageToolbar(selectedImage, activeImageToolbar);
       }
-      if (selectedImage && activeResizeHandle) {
-        positionResizeHandle(selectedImage, activeResizeHandle);
+      if (selectedImage) {
+        positionAllHandles(selectedImage);
+      }
+      if (selectedLine) {
+        positionLineHandles(selectedLine);
       }
     });
 
@@ -944,10 +1197,610 @@
       if (selectedImage && activeImageToolbar) {
         positionImageToolbar(selectedImage, activeImageToolbar);
       }
-      if (selectedImage && activeResizeHandle) {
-        positionResizeHandle(selectedImage, activeResizeHandle);
+      if (selectedImage) {
+        positionAllHandles(selectedImage);
+      }
+      if (selectedLine) {
+        positionLineHandles(selectedLine);
       }
     });
+  }
+
+  // ==========================================================================
+  // Interactive Line Management (Issue 6: Move cursor, Corner resize, '+' customize button, drag without spacing restriction)
+  // ==========================================================================
+  let selectedLine = null;
+  let activeLineMoveHandle = null;
+  let activeLineResizeHandles = [];
+  let activeLinePlusBtn = null;
+  let activeLinePopover = null;
+
+  function attachLineListeners(line) {
+    line.style.cursor = 'pointer';
+    line.addEventListener('click', e => {
+      e.stopPropagation();
+      selectLine(line);
+    });
+  }
+
+  function selectLine(line) {
+    deselectLine();
+    deselectImage();
+    selectedLine = line;
+    line.classList.add('df-selected-line');
+    createLineHandles(line);
+  }
+
+  function deselectLine() {
+    if (selectedLine) {
+      selectedLine.classList.remove('df-selected-line');
+      selectedLine = null;
+    }
+    if (activeLineMoveHandle) {
+      activeLineMoveHandle.remove();
+      activeLineMoveHandle = null;
+    }
+    activeLineResizeHandles.forEach(h => h.remove());
+    activeLineResizeHandles = [];
+    if (activeLinePlusBtn) {
+      activeLinePlusBtn.remove();
+      activeLinePlusBtn = null;
+    }
+    if (activeLinePopover) {
+      activeLinePopover.remove();
+      activeLinePopover = null;
+    }
+  }
+
+  function createLineHandles(line) {
+    // 1. Move Handle in center of line
+    const moveHandle = document.createElement('div');
+    moveHandle.className = 'df-line-move-handle';
+    moveHandle.innerHTML = '<i class="fas fa-arrows-up-down-left-right"></i>';
+    moveHandle.title = 'Click and drag to reposition line anywhere with no spacing restrictions';
+    document.body.appendChild(moveHandle);
+    activeLineMoveHandle = moveHandle;
+
+    let isMoving = false;
+    let ghostIndicator = null;
+
+    const onLineMove = e => {
+      if (!isMoving) return;
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      if (!clientX || !clientY) return;
+
+      moveHandle.style.left = (clientX - 14) + 'px';
+      moveHandle.style.top = (clientY - 14) + 'px';
+
+      const editor = $('#editor');
+      if (!editor) return;
+
+      let range = null;
+      if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(clientX, clientY);
+      else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(clientX, clientY);
+        if (pos) {
+          range = document.createRange();
+          range.setStart(pos.offsetNode, pos.offset);
+        }
+      }
+
+      if (!ghostIndicator) {
+        ghostIndicator = document.createElement('div');
+        ghostIndicator.id = 'dfLineGhost';
+        ghostIndicator.style.cssText = 'height:2px;background:var(--accent);border-radius:1px;margin:8px 0;box-shadow:0 0 6px var(--accent);pointer-events:none;';
+      }
+
+      if (range && editor.contains(range.commonAncestorContainer)) {
+        try { range.insertNode(ghostIndicator); } catch (err) { }
+      } else {
+        const el = document.elementFromPoint(clientX, clientY);
+        const block = el ? (el.closest('#editor > *') || el.closest('#editor p, #editor div, #editor table, #editor section, #editor h1, #editor h2, #editor h3')) : null;
+        if (block && editor.contains(block) && block !== ghostIndicator && block !== line) {
+          const r = block.getBoundingClientRect();
+          if (clientY > r.top + r.height / 2) {
+            block.insertAdjacentElement('afterend', ghostIndicator);
+          } else {
+            block.insertAdjacentElement('beforebegin', ghostIndicator);
+          }
+        }
+      }
+    };
+
+    const onLineMoveEnd = e => {
+      if (!isMoving) return;
+      isMoving = false;
+      moveHandle.style.pointerEvents = 'auto';
+      document.removeEventListener('mousemove', onLineMove);
+      document.removeEventListener('mouseup', onLineMoveEnd);
+      document.removeEventListener('touchmove', onLineMove);
+      document.removeEventListener('touchend', onLineMoveEnd);
+
+      const editor = $('#editor');
+      if (ghostIndicator && ghostIndicator.parentNode) {
+        ghostIndicator.parentNode.insertBefore(line, ghostIndicator);
+        ghostIndicator.remove();
+        ghostIndicator = null;
+        showToast('Line repositioned', 'success');
+      } else {
+        const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+        const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+        if (clientX && clientY && editor) {
+          const el = document.elementFromPoint(clientX, clientY);
+          const block = el ? (el.closest('#editor > *') || el.closest('#editor p, #editor div, #editor table, #editor section, #editor h1, #editor h2, #editor h3')) : null;
+          if (block && editor.contains(block) && block !== line) {
+            block.insertAdjacentElement('afterend', line);
+            showToast('Line repositioned', 'success');
+          }
+        }
+      }
+
+      positionLineHandles(line);
+      window.DocFlow.Editor?.notifyChange();
+    };
+
+    moveHandle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      isMoving = true;
+      moveHandle.style.pointerEvents = 'none';
+      document.addEventListener('mousemove', onLineMove);
+      document.addEventListener('mouseup', onLineMoveEnd);
+    });
+
+    moveHandle.addEventListener('touchstart', e => {
+      e.stopPropagation();
+      isMoving = true;
+      moveHandle.style.pointerEvents = 'none';
+      document.addEventListener('touchmove', onLineMove, { passive: true });
+      document.addEventListener('touchend', onLineMoveEnd);
+    });
+
+    // 2. Corner/End Resize Handles (left and right)
+    ['left', 'right'].forEach(side => {
+      const handle = document.createElement('div');
+      handle.className = `df-line-resize-handle ${side}`;
+      handle.title = `Drag to adjust line width and thickness`;
+      document.body.appendChild(handle);
+      activeLineResizeHandles.push(handle);
+
+      let startX = 0, startY = 0, startW = 0, startH = 0;
+
+      const onResize = e => {
+        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+        if (!clientX) return;
+
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+
+        let newW = side === 'right' ? Math.max(40, startW + dx) : Math.max(40, startW - dx);
+        line.style.width = newW + 'px';
+
+        let newH = Math.max(1, Math.min(24, Math.round(startH + Math.abs(dy) / 4)));
+        line.style.height = newH + 'px';
+        line.style.borderTopWidth = newH + 'px';
+
+        positionLineHandles(line);
+      };
+
+      const onResizeEnd = () => {
+        document.removeEventListener('mousemove', onResize);
+        document.removeEventListener('mouseup', onResizeEnd);
+        window.DocFlow.Editor?.notifyChange();
+      };
+
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        startX = e.clientX;
+        startY = e.clientY;
+        startW = line.offsetWidth;
+        startH = parseInt(line.style.borderTopWidth || line.style.height || '2', 10);
+        document.addEventListener('mousemove', onResize);
+        document.addEventListener('mouseup', onResizeEnd);
+      });
+    });
+
+    // 3. "+" Button for Line Customization
+    const plusBtn = document.createElement('button');
+    plusBtn.className = 'df-line-plus-btn';
+    plusBtn.innerHTML = '<i class="fas fa-plus"></i>';
+    plusBtn.title = 'Customize line color, width, thickness, and style';
+    document.body.appendChild(plusBtn);
+    activeLinePlusBtn = plusBtn;
+
+    plusBtn.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleLinePopover(line);
+    });
+
+    positionLineHandles(line);
+  }
+
+  function positionLineHandles(line) {
+    if (!line) return;
+    const rect = line.getBoundingClientRect();
+    if (rect.width === 0 && rect.height === 0) return;
+
+    if (activeLineMoveHandle) {
+      activeLineMoveHandle.style.left = (rect.left + (rect.width / 2) - 14) + 'px';
+      activeLineMoveHandle.style.top = (rect.top - 32) + 'px';
+    }
+
+    if (activeLineResizeHandles.length === 2) {
+      // left handle
+      activeLineResizeHandles[0].style.left = (rect.left - 6) + 'px';
+      activeLineResizeHandles[0].style.top = (rect.top + (rect.height / 2) - 6) + 'px';
+      // right handle
+      activeLineResizeHandles[1].style.left = (rect.right - 6) + 'px';
+      activeLineResizeHandles[1].style.top = (rect.top + (rect.height / 2) - 6) + 'px';
+    }
+
+    if (activeLinePlusBtn) {
+      activeLinePlusBtn.style.left = (rect.right + 12) + 'px';
+      activeLinePlusBtn.style.top = (rect.top - 12) + 'px';
+    }
+
+    if (activeLinePopover) {
+      activeLinePopover.style.left = Math.min(window.innerWidth - 300, rect.right - 40) + 'px';
+      activeLinePopover.style.top = (rect.top + 20) + 'px';
+    }
+  }
+
+  function toggleLinePopover(line) {
+    if (activeLinePopover) {
+      activeLinePopover.remove();
+      activeLinePopover = null;
+      return;
+    }
+
+    const popover = document.createElement('div');
+    popover.className = 'df-line-popover';
+    popover.innerHTML = `
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+        <span>Format Line</span>
+        <button type="button" class="df-line-pop-close" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:12px;"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Line Color:</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="color" id="dfLinePopColor" value="#2563eb" style="width:34px;height:26px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+            <div style="display:flex;gap:4px;">
+              <span class="df-line-color-swatch" data-color="#e2e8f0" style="width:18px;height:18px;background:#e2e8f0;border-radius:3px;cursor:pointer;border:1px solid rgba(0,0,0,0.15);"></span>
+              <span class="df-line-color-swatch" data-color="#2563eb" style="width:18px;height:18px;background:#2563eb;border-radius:3px;cursor:pointer;"></span>
+              <span class="df-line-color-swatch" data-color="#16a34a" style="width:18px;height:18px;background:#16a34a;border-radius:3px;cursor:pointer;"></span>
+              <span class="df-line-color-swatch" data-color="#ea580c" style="width:18px;height:18px;background:#ea580c;border-radius:3px;cursor:pointer;"></span>
+              <span class="df-line-color-swatch" data-color="#8b5cf6" style="width:18px;height:18px;background:#8b5cf6;border-radius:3px;cursor:pointer;"></span>
+              <span class="df-line-color-swatch" data-color="#0f172a" style="width:18px;height:18px;background:#0f172a;border-radius:3px;cursor:pointer;"></span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Width & Thickness:</label>
+          <div style="display:flex;gap:6px;">
+            <select id="dfLinePopWidth" style="flex:1;height:28px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);padding:0 6px;">
+              <option value="100%">100% Full</option>
+              <option value="80%">80% Width</option>
+              <option value="60%">60% Width</option>
+              <option value="40%">40% Width</option>
+              <option value="200px">200px</option>
+              <option value="400px">400px</option>
+            </select>
+            <select id="dfLinePopHeight" style="flex:1;height:28px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);padding:0 6px;">
+              <option value="1px">1px Thin</option>
+              <option value="2px">2px Standard</option>
+              <option value="3px">3px Medium</option>
+              <option value="4px">4px Thick</option>
+              <option value="6px">6px Heavy</option>
+              <option value="8px">8px Block</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Style & Alignment:</label>
+          <div style="display:flex;gap:6px;">
+            <select id="dfLinePopStyle" style="flex:1;height:28px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);padding:0 6px;">
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
+              <option value="double">Double</option>
+              <option value="groove">Groove</option>
+            </select>
+            <select id="dfLinePopAlign" style="flex:1;height:28px;font-size:12px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);padding:0 6px;">
+              <option value="center">Center</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button type="button" id="dfLinePopDelete" style="flex:1;height:28px;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.25);border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;">
+            <i class="fas fa-trash-can"></i> Delete
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(popover);
+    activeLinePopover = popover;
+    positionLineHandles(line);
+
+    popover.querySelector('.df-line-pop-close')?.addEventListener('click', () => {
+      popover.remove();
+      activeLinePopover = null;
+    });
+
+    const applyStyle = () => {
+      const color = popover.querySelector('#dfLinePopColor').value;
+      const width = popover.querySelector('#dfLinePopWidth').value;
+      const height = popover.querySelector('#dfLinePopHeight').value;
+      const style = popover.querySelector('#dfLinePopStyle').value;
+      const align = popover.querySelector('#dfLinePopAlign').value;
+
+      line.style.width = width;
+      line.style.height = height;
+      line.style.border = 'none';
+      line.style.borderTop = `${height} ${style} ${color}`;
+      line.style.backgroundColor = style === 'solid' ? color : 'transparent';
+      line.style.margin = align === 'left' ? '18px auto 18px 0' : (align === 'right' ? '18px 0 18px auto' : '18px auto');
+
+      positionLineHandles(line);
+      window.DocFlow.Editor?.notifyChange();
+    };
+
+    popover.querySelectorAll('select, input').forEach(input => {
+      input.addEventListener('input', applyStyle);
+      input.addEventListener('change', applyStyle);
+    });
+
+    popover.querySelectorAll('.df-line-color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        const c = swatch.dataset.color;
+        const colorInput = popover.querySelector('#dfLinePopColor');
+        if (colorInput) colorInput.value = c;
+        applyStyle();
+      });
+    });
+
+    popover.querySelector('#dfLinePopDelete')?.addEventListener('click', () => {
+      line.remove();
+      deselectLine();
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Line deleted', 'info');
+    });
+  }
+
+  function attachShapeListeners(shape) {
+    shape.setAttribute('draggable', 'true');
+    shape.addEventListener('click', e => {
+      e.stopPropagation();
+      selectImage(shape);
+    });
+  }
+
+  // ==========================================================================
+  // Vector Shape Insertion & Parametric Geometries (Issue 2)
+  // ==========================================================================
+  function updateShapePreview() {
+    const previewContainer = $('#shapeLivePreview');
+    if (!previewContainer) return;
+
+    const activeBtn = $('#shapesGrid .shape-opt-btn.active');
+    const shapeType = activeBtn ? activeBtn.dataset.shape : 'rectangle';
+    const fill = $('#shapeFillColor')?.value || '#e85d04';
+    const stroke = $('#shapeStrokeColor')?.value || '#d45500';
+    const strokeWidth = parseInt($('#shapeStrokeWidth')?.value || '2', 10);
+    const size = parseInt($('#shapeSizeSelect')?.value || '120', 10);
+
+    const customParams = shapeType === 'parametric' ? {
+      paramType: $('#shapeParamType')?.value || 'polygon',
+      sides: parseInt($('#shapeParamSides')?.value || '5', 10),
+      radius: parseInt($('#shapeParamRadius')?.value || '4', 10),
+      width: parseInt($('#shapeParamWidth')?.value || '120', 10),
+      height: parseInt($('#shapeParamHeight')?.value || '100', 10),
+      path: $('#shapeParamPath')?.value.trim() || ''
+    } : null;
+
+    const svg = getShapeSvg(shapeType, fill, stroke, strokeWidth, size, customParams);
+    previewContainer.innerHTML = svg;
+  }
+
+  function setupShapesModal() {
+    $('#ribbonInsertShapeBtn')?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode first', 'info');
+        return;
+      }
+      openModal('#shapeModal');
+      setTimeout(updateShapePreview, 50);
+    });
+
+    $$('#shapesGrid .shape-opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('#shapesGrid .shape-opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const paramsBox = $('#customShapeParamsBox');
+        if (paramsBox) {
+          paramsBox.style.display = btn.dataset.shape === 'parametric' ? 'block' : 'none';
+        }
+        updateShapePreview();
+      });
+    });
+
+    $('#shapeParamType')?.addEventListener('change', e => {
+      const isPath = e.target.value === 'path';
+      const pathWrap = $('#shapePathWrap');
+      if (pathWrap) pathWrap.style.display = isPath ? 'block' : 'block';
+      updateShapePreview();
+    });
+
+    $$('.shape-path-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const pInput = $('#shapeParamPath');
+        if (pInput) pInput.value = btn.dataset.path || '';
+        const pType = $('#shapeParamType');
+        if (pType) pType.value = 'path';
+        updateShapePreview();
+      });
+    });
+
+    ['#shapeParamSides', '#shapeParamWidth', '#shapeParamHeight', '#shapeParamRadius', '#shapeParamPath', '#shapeSizeSelect', '#shapeStrokeWidth'].forEach(sel => {
+      const el = $(sel);
+      el?.addEventListener('input', updateShapePreview);
+      el?.addEventListener('change', updateShapePreview);
+    });
+
+    $('#shapeFillColor')?.addEventListener('input', e => {
+      const hex = $('#shapeFillHex');
+      if (hex) hex.value = e.target.value;
+      updateShapePreview();
+    });
+
+    $('#shapeFillHex')?.addEventListener('input', e => {
+      const color = $('#shapeFillColor');
+      if (color) color.value = e.target.value;
+      updateShapePreview();
+    });
+
+    $('#shapeStrokeColor')?.addEventListener('input', updateShapePreview);
+
+    $('#shapeCancelBtn')?.addEventListener('click', () => {
+      closeModal('#shapeModal');
+    });
+
+    $('#shapeInsertBtn')?.addEventListener('click', () => {
+      const activeBtn = $('#shapesGrid .shape-opt-btn.active');
+      const shapeType = activeBtn ? activeBtn.dataset.shape : 'rectangle';
+      const fill = $('#shapeFillColor')?.value || '#e85d04';
+      const stroke = $('#shapeStrokeColor')?.value || '#d45500';
+      const strokeWidth = parseInt($('#shapeStrokeWidth')?.value || '2', 10);
+      const size = parseInt($('#shapeSizeSelect')?.value || '120', 10);
+
+      const customParams = shapeType === 'parametric' ? {
+        paramType: $('#shapeParamType')?.value || 'polygon',
+        sides: parseInt($('#shapeParamSides')?.value || '5', 10),
+        radius: parseInt($('#shapeParamRadius')?.value || '4', 10),
+        width: parseInt($('#shapeParamWidth')?.value || '120', 10),
+        height: parseInt($('#shapeParamHeight')?.value || '100', 10),
+        path: $('#shapeParamPath')?.value.trim() || ''
+      } : null;
+
+      insertShapeIntoDocument(shapeType, fill, stroke, strokeWidth, size, customParams);
+      closeModal('#shapeModal');
+      showToast('Shape inserted into document', 'success');
+    });
+  }
+
+  function getShapeSvg(shapeType, fill, stroke, strokeWidth, size, customParams = null) {
+    const sw = strokeWidth;
+    const pad = Math.max(4, sw);
+    const w = (customParams && customParams.width) ? customParams.width : size;
+    const h = (customParams && customParams.height) ? customParams.height : ((shapeType === 'rectangle' || shapeType === 'rounded-rect' || shapeType === 'callout') ? Math.round(w * 0.65) : w);
+
+    let inner = '';
+    if (shapeType === 'parametric' && customParams) {
+      if (customParams.paramType === 'path' || customParams.path) {
+        const pathD = customParams.path || 'M50 0 L61 35 L98 35 L68 57 L79 91 L50 70 L21 91 L32 57 L2 35 L39 35 Z';
+        return `<svg class="doc-shape-svg" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style="display:block;overflow:visible;"><path d="${pathD}" fill="${fill}" stroke="${stroke}" stroke-width="${Math.max(1, sw)}" vector-effect="non-scaling-stroke"/></svg>`;
+      } else if (customParams.paramType === 'polygon') {
+        const sides = Math.max(3, customParams.sides || 5);
+        const cx = w / 2, cy = h / 2, rx = (w - pad * 2) / 2, ry = (h - pad * 2) / 2;
+        let pts = [];
+        for (let i = 0; i < sides; i++) {
+          const angle = (i * 2 * Math.PI / sides) - (Math.PI / 2);
+          pts.push(`${cx + rx * Math.cos(angle)},${cy + ry * Math.sin(angle)}`);
+        }
+        inner = `<polygon points="${pts.join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      } else if (customParams.paramType === 'star') {
+        const points = Math.max(3, customParams.sides || 5);
+        const cx = w / 2, cy = h / 2, rxOuter = (w - pad * 2) / 2, ryOuter = (h - pad * 2) / 2;
+        const rxInner = rxOuter * 0.45, ryInner = ryOuter * 0.45;
+        let pts = [];
+        for (let i = 0; i < points * 2; i++) {
+          const rx = i % 2 === 0 ? rxOuter : rxInner;
+          const ry = i % 2 === 0 ? ryOuter : ryInner;
+          const angle = (i * Math.PI / points) - (Math.PI / 2);
+          pts.push(`${cx + rx * Math.cos(angle)},${cy + ry * Math.sin(angle)}`);
+        }
+        inner = `<polygon points="${pts.join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      } else if (customParams.paramType === 'pill') {
+        inner = `<rect x="${pad}" y="${pad}" width="${w - pad * 2}" height="${h - pad * 2}" rx="${Math.round(Math.min(w, h) / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      } else if (customParams.paramType === 'parallelogram') {
+        const pts = `${w * 0.25},${pad} ${w - pad},${pad} ${w * 0.75},${h - pad} ${pad},${h - pad}`;
+        inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      } else if (customParams.paramType === 'trapezoid') {
+        const pts = `${w * 0.22},${pad} ${w * 0.78},${pad} ${w - pad},${h - pad} ${pad},${h - pad}`;
+        inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      } else if (customParams.paramType === 'cross') {
+        const c1x = w * 0.35, c2x = w * 0.65;
+        const c1y = h * 0.35, c2y = h * 0.65;
+        const pts = `${c1x},${pad} ${c2x},${pad} ${c2x},${c1y} ${w-pad},${c1y} ${w-pad},${c2y} ${c2x},${c2y} ${c2x},${h-pad} ${c1x},${h-pad} ${c1x},${c2y} ${pad},${c2y} ${pad},${c1y} ${c1x},${c1y}`;
+        inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      } else {
+        inner = `<rect x="${pad}" y="${pad}" width="${w - pad * 2}" height="${h - pad * 2}" rx="${customParams.radius || 4}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+      }
+    } else if (shapeType === 'rectangle') {
+      inner = `<rect x="${pad}" y="${pad}" width="${w - pad * 2}" height="${h - pad * 2}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'rounded-rect') {
+      inner = `<rect x="${pad}" y="${pad}" width="${w - pad * 2}" height="${h - pad * 2}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'circle') {
+      const rx = (w - pad * 2) / 2, ry = (h - pad * 2) / 2;
+      inner = `<ellipse cx="${w / 2}" cy="${h / 2}" rx="${rx}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'triangle') {
+      inner = `<polygon points="${w / 2},${pad} ${w - pad},${h - pad} ${pad},${h - pad}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'star') {
+      const cx = w / 2, cy = h / 2, rxOuter = (w - pad * 2) / 2, ryOuter = (h - pad * 2) / 2;
+      const rxInner = rxOuter * 0.45, ryInner = ryOuter * 0.45;
+      let pts = [];
+      for (let i = 0; i < 10; i++) {
+        const rx = i % 2 === 0 ? rxOuter : rxInner;
+        const ry = i % 2 === 0 ? ryOuter : ryInner;
+        const angle = (i * Math.PI / 5) - (Math.PI / 2);
+        pts.push(`${cx + rx * Math.cos(angle)},${cy + ry * Math.sin(angle)}`);
+      }
+      inner = `<polygon points="${pts.join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'arrow-right') {
+      const pts = `${pad},${h * 0.35} ${w * 0.6},${h * 0.35} ${w * 0.6},${pad} ${w - pad},${h / 2} ${w * 0.6},${h - pad} ${w * 0.6},${h * 0.65} ${pad},${h * 0.65}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'callout') {
+      const bw = w - pad * 2, bh = h * 0.75;
+      inner = `<rect x="${pad}" y="${pad}" width="${bw}" height="${bh}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+               <polygon points="${w * 0.25},${pad + bh} ${w * 0.4},${pad + bh} ${w * 0.2},${h - pad}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'diamond') {
+      inner = `<polygon points="${w / 2},${pad} ${w - pad},${h / 2} ${w / 2},${h - pad} ${pad},${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'heart') {
+      inner = `<path d="M${w/2} ${h*0.8} C${w*0.1} ${h*0.5} ${w*0.1} ${h*0.15} ${w/2} ${h*0.35} C${w*0.9} ${h*0.15} ${w*0.9} ${h*0.5} ${w/2} ${h*0.8} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else {
+      const pts = `${w*0.25},${pad} ${w*0.75},${pad} ${w-pad},${h/2} ${w*0.75},${h-pad} ${w*0.25},${h-pad} ${pad},${h/2}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    }
+
+    return `<svg class="doc-shape-svg" width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block;overflow:visible;">${inner}</svg>`;
+  }
+
+  function insertShapeIntoDocument(shapeType, fill, stroke, strokeWidth, size, customParams = null) {
+    const w = (customParams && customParams.width) ? customParams.width : size;
+    const h = (customParams && customParams.height) ? customParams.height : ((shapeType === 'rectangle' || shapeType === 'rounded-rect' || shapeType === 'callout') ? Math.round(w * 0.65) : w);
+    const svgHtml = getShapeSvg(shapeType, fill, stroke, strokeWidth, size, customParams);
+    const shapeId = 'shape_' + Date.now();
+    const shapeHtml = `
+      <div class="doc-shape-container" id="${shapeId}" data-shape="${shapeType}" data-fill="${fill}" data-stroke="${stroke}" data-stroke-width="${strokeWidth}" contenteditable="false" style="width:${w}px;height:${h}px;display:inline-block;cursor:pointer;position:relative;margin:8px 4px;vertical-align:middle;">
+        ${svgHtml}
+      </div>&nbsp;`;
+    window.DocFlow.Editor?.insertHtmlAtCursor(shapeHtml);
+    window.DocFlow.Editor?.notifyChange();
+
+    setTimeout(() => {
+      const el = document.getElementById(shapeId);
+      if (el) {
+        attachShapeListeners(el);
+        selectImage(el);
+      }
+    }, 50);
   }
 
   function initImageManager() {
@@ -955,6 +1808,7 @@
     setupEditorDropZone();
     setupClipboardPaste();
     setupDocumentImageListeners();
+    setupShapesModal();
   }
 
   // Export module
@@ -962,6 +1816,11 @@
   window.DocFlow.ImageManager = {
     initImageManager,
     insertImageIntoDocument,
+    insertShapeIntoDocument,
+    getShapeSvg,
+    attachShapeListeners,
+    selectImage,
+    deselectImage,
     setImageWrapMode,
     optimizeImage,
     isImageFile

@@ -79,13 +79,16 @@
        ====================================================================== -->
   <div class="ribbon-container" id="ribbonContainer" aria-label="Microsoft Word Style Ribbon">
     
-    <!-- Ribbon Menu Bar (Tabs: File, Home, Insert, Layout, View) -->
+    <!-- Ribbon Menu Bar (Tabs: File, Home, Insert, Layout, View, PPT, Excel) -->
     <nav class="ribbon-menu-bar" role="tablist">
       <button class="ribbon-tab-btn" data-ribbon="file" role="tab" aria-selected="false">File</button>
       <button class="ribbon-tab-btn active" data-ribbon="home" role="tab" aria-selected="true">Home</button>
       <button class="ribbon-tab-btn" data-ribbon="insert" role="tab" aria-selected="false">Insert</button>
       <button class="ribbon-tab-btn" data-ribbon="layout" role="tab" aria-selected="false">Layout</button>
       <button class="ribbon-tab-btn" data-ribbon="view" role="tab" aria-selected="false">View</button>
+      <button class="ribbon-tab-btn" data-ribbon="ppt" role="tab" aria-selected="false"><i class="fas fa-file-powerpoint" style="color:#ea580c;margin-right:4px;"></i>PPT</button>
+      <button class="ribbon-tab-btn" data-ribbon="excel" role="tab" aria-selected="false"><i class="fas fa-file-excel" style="color:#16a34a;margin-right:4px;"></i>Excel</button>
+      <button class="ribbon-tab-btn" data-ribbon="pdf" role="tab" aria-selected="false"><i class="fas fa-file-pdf" style="color:#ef4444;margin-right:4px;"></i>PDF</button>
     </nav>
 
     <!-- 1. FILE RIBBON PANEL -->
@@ -336,13 +339,25 @@
         </select>
       </div>
 
-      <!-- Office Styles (Excel Table Style & PPT Slide Card) -->
+      <!-- Office Styles (Sort A-Z & Text Shadow) -->
       <div class="ribbon-group">
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="homeExcelFormatBtn" title="Apply Excel Table Style (Striped Headers & Borders)"><i class="fas fa-file-excel" style="color:#16a34a;"></i> Table Style</button>
+          <div class="bullet-dropdown-wrap" id="sortDropdownWrap">
+            <button class="fmt-btn with-text" id="homeExcelSortBtn" title="Sort Lines or Table Rows">
+              <i class="fas fa-arrow-down-a-z" style="color:#16a34a;"></i> <span>Sort</span> <i class="fas fa-chevron-down" style="font-size:8px;margin-left:3px;"></i>
+            </button>
+            <div class="spacing-popover" id="sortPopover" role="menu">
+              <div class="spacing-opt-item" id="sortAscBtn" data-sort="asc">
+                <i class="fas fa-arrow-down-a-z" style="margin-right:8px;color:#16a34a;"></i> Ascending (A to Z)
+              </div>
+              <div class="spacing-opt-item" id="sortDescBtn" data-sort="desc">
+                <i class="fas fa-arrow-up-z-a" style="margin-right:8px;color:#ea580c;"></i> Descending (Z to A)
+              </div>
+            </div>
+          </div>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="homePptLayoutBtn" title="Format as PowerPoint Slide Callout Card"><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Slide Card</button>
+          <button class="fmt-btn with-text" id="homePptShadowBtn" title="Toggle PowerPoint Style Text Drop Shadow"><i class="fas fa-font" style="color:#ea580c;text-shadow:2px 2px 3px rgba(0,0,0,0.4);"></i> Shadow</button>
         </div>
       </div>
 
@@ -408,13 +423,22 @@
         </div>
       </div>
 
-      <!-- Office Embeds (Excel Grid & PPT Slide) -->
+      <!-- Visual Embeds (Shapes, Chart & PPT Slides) -->
       <div class="ribbon-group">
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="ribbonInsertExcelGridBtn" title="Insert Interactive Excel Spreadsheet Grid"><i class="fas fa-file-excel" style="color:#16a34a;"></i> Excel Grid</button>
+          <button class="fmt-btn with-text" id="ribbonInsertShapeBtn" title="Insert Vector Shape (Rectangle, Circle, Star, Arrow, etc.)"><i class="fas fa-shapes" style="color:#8b5cf6;"></i> Shape</button>
+          <button class="fmt-btn with-text" id="ribbonInsertChartBtn" title="Insert Visual Data Chart (Bar, Column, Line, Pie)"><i class="fas fa-chart-column" style="color:#0284c7;"></i> Chart</button>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="ribbonInsertPptSlideBtn" title="Insert Presentation Slide Card"><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> PPT Slide</button>
+          <div class="bullet-dropdown-wrap" id="pptSlideDropdownWrap">
+            <button class="fmt-btn with-text" id="ribbonInsertPptSlideBtn" title="Insert Presentation Slide (Next Slide or Nested Card)">
+              <i class="fas fa-file-powerpoint" style="color:#ea580c;"></i><span>PPT Slide</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptSlidePopover" role="menu">
+              <div class="spacing-opt-item" id="pptInsertNextSlideBtn"><i class="fas fa-plus" style="margin-right:6px;color:#ea580c;"></i> Add Slide (Next / Outside)</div>
+              <div class="spacing-opt-item" id="pptInsertNestedSlideBtn"><i class="fas fa-layer-group" style="margin-right:6px;color:#8b5cf6;"></i> Add Nested Card (Inside)</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -525,20 +549,73 @@
                 <div><strong>Three Columns</strong><span class="margin-desc">With dividing lines</span></div>
               </div>
               <div class="dropdown-sep" style="margin:4px 0;"></div>
-              <div class="margin-opt-item" data-columns="discrete-2">
-                <i class="fas fa-grip-lines-vertical margin-check"></i>
-                <div><strong>Insert 2 Column Panes</strong><span class="margin-desc">Click to write in each column</span></div>
+              <div class="margin-opt-item" id="popoverColumnBreakItem">
+                <i class="fas fa-arrows-split-up-and-left margin-check"></i>
+                <div><strong>Insert Column Break</strong><span class="margin-desc">Flow text into the next column</span></div>
               </div>
             </div>
           </div>
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="layoutPageBreakBtn" title="Insert Page Break"><i class="fas fa-file-invoice"></i> Page Break</button>
-          <button class="fmt-btn with-text" id="layoutColumnBreakBtn" title="Insert Column Break (Flow text to next column)"><i class="fas fa-arrows-split-up-and-left"></i> Column Break</button>
         </div>
       </div>
 
-      <!-- Watermark (2 rows) -->
+      <!-- Page Color, Paragraph Spacing & Page Padding (Issue 3: New Word Layout Tools) -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div style="position:relative;display:inline-block;">
+            <button class="fmt-btn with-text" id="layoutPageBgBtn" title="Page Background Color">
+              <i class="fas fa-palette" style="color:#f59e0b;"></i><span>Page Color</span>
+            </button>
+            <input type="color" id="layoutPageBgInput" value="#ffffff" style="opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer;" aria-label="Page Background Color">
+          </div>
+          <div class="bullet-dropdown-wrap" id="paraSpacingDropdownWrap">
+            <button class="fmt-btn with-text" id="layoutParaSpacingBtn" title="Paragraph Spacing Before/After">
+              <i class="fas fa-arrows-up-down-left-right" style="color:#0284c7;"></i><span>Spacing</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+            </button>
+            <div class="margin-popover" id="paraSpacingPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Paragraph Spacing</div>
+              <div class="margin-opt-item active" data-spacing="normal"><i class="fas fa-check margin-check"></i><div><strong>Standard (8pt)</strong><span class="margin-desc">Default paragraph gap</span></div></div>
+              <div class="margin-opt-item" data-spacing="tight"><i class="fas fa-check margin-check"></i><div><strong>Compact (2pt)</strong><span class="margin-desc">Minimal paragraph spacing</span></div></div>
+              <div class="margin-opt-item" data-spacing="relaxed"><i class="fas fa-check margin-check"></i><div><strong>Relaxed (14pt)</strong><span class="margin-desc">Generous reading gap</span></div></div>
+              <div class="margin-opt-item" data-spacing="double"><i class="fas fa-check margin-check"></i><div><strong>Double (20pt)</strong><span class="margin-desc">Double spacing between paragraphs</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="pagePaddingDropdownWrap">
+            <button class="fmt-btn with-text" id="layoutPagePaddingBtn" title="Page Padding & Bleed">
+              <i class="fas fa-table-cells" style="color:#8b5cf6;"></i><span>Padding</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+            </button>
+            <div class="margin-popover" id="pagePaddingPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Page Canvas Padding</div>
+              <div class="margin-opt-item active" data-padding="normal"><i class="fas fa-check margin-check"></i><div><strong>Standard (72px)</strong><span class="margin-desc">Default Word 1-inch padding</span></div></div>
+              <div class="margin-opt-item" data-padding="compact"><i class="fas fa-check margin-check"></i><div><strong>Compact (36px)</strong><span class="margin-desc">0.5-inch compact padding</span></div></div>
+              <div class="margin-opt-item" data-padding="spacious"><i class="fas fa-check margin-check"></i><div><strong>Spacious (96px)</strong><span class="margin-desc">1.25-inch spacious padding</span></div></div>
+              <div class="margin-opt-item" data-padding="edge"><i class="fas fa-check margin-check"></i><div><strong>Zero Edge (12px)</strong><span class="margin-desc">Full bleed canvas</span></div></div>
+            </div>
+          </div>
+          <div class="bullet-dropdown-wrap" id="hyphenDropdownWrap">
+            <button class="fmt-btn with-text" id="layoutHyphenBtn" title="Hyphenation (None / Automatic)">
+              <i class="fas fa-minus"></i><span>Hyphenation</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+            </button>
+            <div class="margin-popover" id="hyphenPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Hyphenation</div>
+              <div class="margin-opt-item active" data-hyphen="none">
+                <i class="fas fa-check margin-check"></i>
+                <div><strong>None</strong><span class="margin-desc">No line break hyphens</span></div>
+              </div>
+              <div class="margin-opt-item" data-hyphen="auto">
+                <i class="fas fa-check margin-check"></i>
+                <div><strong>Automatic</strong><span class="margin-desc">Word wrap hyphenation</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Watermark -->
       <div class="ribbon-group">
         <div class="ribbon-row">
           <div class="bullet-dropdown-wrap" id="watermarkDropdownWrap">
@@ -573,52 +650,273 @@
         </div>
       </div>
 
-      <!-- Office Layout Setup (Sheet Layout & Slide Aspect) -->
+      <!-- Page Borders & Text Direction (Issue 3) -->
       <div class="ribbon-group">
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="layoutExcelFitBtn" title="Toggle Excel Wide Sheet Layout"><i class="fas fa-file-excel" style="color:#16a34a;"></i> Sheet Layout</button>
+          <div class="bullet-dropdown-wrap" id="pageBorderDropdownWrap">
+            <button class="fmt-btn with-text" id="layoutPageBorderBtn" title="Document Page Border">
+              <i class="fas fa-border-all"></i><span>Page Border</span><i class="fas fa-chevron-down" style="font-size:9px;"></i>
+            </button>
+            <div class="margin-popover" id="pageBorderPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Page Border Style</div>
+              <div class="margin-opt-item active" data-border="none"><i class="fas fa-check margin-check"></i><div><strong>None</strong><span class="margin-desc">Clean borderless page</span></div></div>
+              <div class="margin-opt-item" data-border="box"><i class="fas fa-check margin-check"></i><div><strong>Box Border</strong><span class="margin-desc">Solid outline</span></div></div>
+              <div class="margin-opt-item" data-border="shadow"><i class="fas fa-check margin-check"></i><div><strong>Shadow Border</strong><span class="margin-desc">Drop shadow frame</span></div></div>
+              <div class="margin-opt-item" data-border="double"><i class="fas fa-check margin-check"></i><div><strong>Double Line</strong><span class="margin-desc">Formal decorative</span></div></div>
+              <div class="margin-opt-item" data-border="custom" id="customPageBorderOpt"><i class="fas fa-sliders margin-check" style="color:var(--accent);"></i><div><strong>Custom Border...</strong><span class="margin-desc">Custom style, color, width & radius</span></div></div>
+            </div>
+          </div>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="layoutPptAspectBtn" title="Toggle PowerPoint 16:9 Slide Dimensions"><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Slide 16:9</button>
+          <button class="fmt-btn with-text" id="layoutTextDirBtn" title="Toggle Text Direction (LTR / RTL)"><i class="fas fa-arrow-right-arrow-left"></i> Direction</button>
         </div>
       </div>
     </div>
 
-    <!-- 5. VIEW RIBBON PANEL (2 rows, ruler removed per bug.txt) -->
+    <!-- 5. VIEW RIBBON PANEL (Cleaned up: Removed Web View, Show ¶, Zoom Dropdown; Added Status Bar toggle & True Split Window) -->
     <div class="ribbon-panel" id="ribbonPanelView" role="tabpanel">
+      <!-- Document Views & Outline -->
       <div class="ribbon-group">
         <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="readingModeBtn" title="Toggle Distraction-free Reading Mode"><i class="fas fa-book-open" style="color:#0284c7;"></i> Read Mode</button>
           <button class="fmt-btn with-text" id="ribbonOutlineBtn"><i class="fas fa-list-ul"></i> Outline</button>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="readingModeBtn" title="Toggle Distraction-free Reading Mode"><i class="fas fa-book-open"></i> Read Mode</button>
+          <button class="fmt-btn with-text" id="viewToggleStatusbarBtn" title="Show or Hide Status Bar in Editor"><i class="fas fa-window-maximize" style="color:#6366f1;"></i> Status Bar</button>
         </div>
       </div>
-      <div class="ribbon-group">
-        <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="ribbonFullscreenBtn"><i class="fas fa-expand"></i> Fullscreen</button>
-        </div>
-        <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="ribbonThemeBtn"><i class="fas fa-circle-half-stroke"></i> Dark/Light</button>
-        </div>
-      </div>
+
+      <!-- Zoom & Magnification Controls -->
       <div class="ribbon-group">
         <div class="ribbon-row">
           <button class="fmt-btn" id="editorZoomOutBtn" title="Zoom Out"><i class="fas fa-magnifying-glass-minus"></i></button>
-          <span id="editorZoomLabel" style="font-size:11px;font-weight:600;color:var(--text-primary);min-width:38px;text-align:center;">100%</span>
+          <span id="editorZoomLabel" style="font-size:11px;font-weight:600;color:var(--text-primary);min-width:36px;text-align:center;">100%</span>
           <button class="fmt-btn" id="editorZoomInBtn" title="Zoom In"><i class="fas fa-magnifying-glass-plus"></i></button>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="editorZoomResetBtn" style="width:100%;justify-content:center;">Reset Zoom</button>
+          <button class="fmt-btn with-text" id="editorZoomResetBtn" title="Reset Zoom to 100%"><i class="fas fa-rotate"></i> 100%</button>
         </div>
       </div>
-      <!-- Office View Modes (Slide Deck View & Excel Gridlines) -->
+
+      <!-- Accessibility & Split Windowing -->
       <div class="ribbon-group">
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="viewSlideDeckBtn" title="View as Presentation Slide Deck"><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Slide Deck</button>
+          <button class="fmt-btn with-text" id="viewHighContrastBtn" title="High Contrast & Invert Reading Filter"><i class="fas fa-circle-half-stroke" style="color:#eab308;"></i> High Contrast</button>
+          <button class="fmt-btn with-text" id="viewSplitWindowBtn" title="Split Editor Window (Reference top & bottom)"><i class="fas fa-table-rows" style="color:#06b6d4;"></i> Split Window</button>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="viewExcelGridlinesBtn" title="Toggle Excel Gridlines"><i class="fas fa-file-excel" style="color:#16a34a;"></i> Gridlines</button>
+          <button class="fmt-btn with-text" id="ribbonFullscreenBtn"><i class="fas fa-expand"></i> Fullscreen</button>
+          <button class="fmt-btn with-text" id="ribbonThemeBtn"><i class="fas fa-circle-half-stroke"></i> Dark/Light</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. PPT RIBBON PANEL (Dedicated PowerPoint operations toolbar) -->
+    <div class="ribbon-panel" id="ribbonPanelPpt" role="tabpanel">
+      <!-- Slides & Layouts -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="pptNewSlideDropdownWrap">
+            <button class="fmt-btn with-text" id="pptNewSlideMenuBtn" title="New Slide with Layout">
+              <i class="fas fa-square-plus" style="color:#ea580c;"></i><span>New Slide</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptNewSlidePopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Slide Layouts</div>
+              <div class="spacing-opt-item" data-ppt-layout="title"><i class="fas fa-heading" style="margin-right:6px;color:#2563eb;"></i> Title Slide</div>
+              <div class="spacing-opt-item" data-ppt-layout="title-box"><i class="fas fa-table-cells-large" style="margin-right:6px;color:#ea580c;"></i> Title & Box (Title & Content)</div>
+              <div class="spacing-opt-item" data-ppt-layout="split"><i class="fas fa-columns" style="margin-right:6px;color:#f59e0b;"></i> Two Content Columns</div>
+              <div class="spacing-opt-item" data-ppt-layout="cards"><i class="fas fa-layer-group" style="margin-right:6px;color:#06b6d4;"></i> 3 Card Blocks</div>
+              <div class="spacing-opt-item" data-ppt-layout="blank"><i class="fas fa-square" style="margin-right:6px;color:#94a3b8;"></i> Blank Slide</div>
+            </div>
+          </div>
+          <button class="fmt-btn with-text" id="pptDeleteSlideBtn" title="Delete Selected Slide"><i class="fas fa-trash-can" style="color:#ef4444;"></i> Delete</button>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pptDuplicateSlideBtn" title="Duplicate Current Slide"><i class="fas fa-clone" style="color:#8b5cf6;"></i> Duplicate</button>
+          <div class="bullet-dropdown-wrap" id="pptThemeDropdownWrap">
+            <button class="fmt-btn with-text" id="pptSlideThemeBtn" title="Slide Presentation Themes & Palettes">
+              <i class="fas fa-palette" style="color:#0284c7;"></i><span>Slide Theme</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptSlideThemePopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Slide Presentation Themes</div>
+              <div class="spacing-opt-item" data-ppt-theme="ocean"><i class="fas fa-water" style="margin-right:6px;color:#0284c7;"></i> Ocean Navy</div>
+              <div class="spacing-opt-item" data-ppt-theme="emerald"><i class="fas fa-leaf" style="margin-right:6px;color:#10b981;"></i> Emerald Forest</div>
+              <div class="spacing-opt-item" data-ppt-theme="sunset"><i class="fas fa-fire" style="margin-right:6px;color:#ea580c;"></i> Sunset Amber</div>
+              <div class="spacing-opt-item" data-ppt-theme="royal"><i class="fas fa-crown" style="margin-right:6px;color:#8b5cf6;"></i> Royal Purple</div>
+              <div class="spacing-opt-item" data-ppt-theme="obsidian"><i class="fas fa-moon" style="margin-right:6px;color:#64748b;"></i> Obsidian Dark</div>
+              <div class="spacing-opt-item" data-ppt-theme="monochrome"><i class="fas fa-circle-half-stroke" style="margin-right:6px;color:#94a3b8;"></i> Crisp Monochrome</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide Background & Images -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div style="position:relative;display:inline-block;">
+            <button class="fmt-btn with-text" id="pptBgColorBtn" title="Slide Background Color">
+              <i class="fas fa-fill-drip" style="color:#f59e0b;"></i><span>Color</span>
+            </button>
+            <input type="color" id="pptBgColorInput" value="#ffffff" style="opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer;">
+          </div>
+          <div class="bullet-dropdown-wrap" id="pptBgImageDropdownWrap">
+            <button class="fmt-btn with-text" id="pptBgImageBtn" title="Set Slide Background Image (Device or Online URL)">
+              <i class="fas fa-image" style="color:#10b981;"></i><span>BG Image</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptBgImagePopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Slide Background Image</div>
+              <div class="spacing-opt-item" id="pptBgUploadDeviceBtn"><i class="fas fa-upload" style="margin-right:6px;color:#2563eb;"></i> Upload From Device...</div>
+              <div class="spacing-opt-item" id="pptBgOnlineUrlBtn"><i class="fas fa-link" style="margin-right:6px;color:#10b981;"></i> Image From URL...</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div class="spacing-opt-item" id="pptBgRemoveBtn"><i class="fas fa-trash-can" style="margin-right:6px;color:#ef4444;"></i> Remove Background Image</div>
+            </div>
+          </div>
+          <input type="file" id="pptBgFileInput" accept="image/*" style="display:none;">
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pptNotesBtn" title="Toggle Presentation Speaker Notes"><i class="fas fa-comment-dots" style="color:#0284c7;"></i> Notes</button>
+        </div>
+      </div>
+
+      <!-- Slide Transitions -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="pptTransitionDropdownWrap">
+            <button class="fmt-btn with-text" id="pptTransitionBtn" title="Slide Transition Animations">
+              <i class="fas fa-wand-magic-sparkles" style="color:#a855f7;"></i><span>Transition</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptTransitionPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Slide Transitions</div>
+              <div class="spacing-opt-item active" data-transition="none"><i class="fas fa-check margin-check"></i> None</div>
+              <div class="spacing-opt-item" data-transition="fade"><i class="fas fa-circle-notch" style="margin-right:6px;color:#a855f7;"></i> Fade</div>
+              <div class="spacing-opt-item" data-transition="slide"><i class="fas fa-arrow-right" style="margin-right:6px;color:#0284c7;"></i> Slide Right</div>
+              <div class="spacing-opt-item" data-transition="push"><i class="fas fa-arrow-up" style="margin-right:6px;color:#10b981;"></i> Push Up</div>
+              <div class="spacing-opt-item" data-transition="zoom"><i class="fas fa-magnifying-glass-plus" style="margin-right:6px;color:#ea580c;"></i> Zoom</div>
+              <div class="spacing-opt-item" data-transition="flip"><i class="fas fa-rotate" style="margin-right:6px;color:#06b6d4;"></i> 3D Flip</div>
+              <div class="spacing-opt-item" data-transition="slide-up"><i class="fas fa-arrow-up-long" style="margin-right:6px;color:#22c55e;"></i> Slide Up</div>
+              <div class="spacing-opt-item" data-transition="bounce"><i class="fas fa-volleyball" style="margin-right:6px;color:#f97316;"></i> Bounce In</div>
+              <div class="spacing-opt-item" data-transition="rotate"><i class="fas fa-arrows-rotate" style="margin-right:6px;color:#ec4899;"></i> Spin & Scale</div>
+              <div class="spacing-opt-item" data-transition="wipe"><i class="fas fa-brush" style="margin-right:6px;color:#6366f1;"></i> Wipe Left</div>
+              <div class="spacing-opt-item" data-transition="blur"><i class="fas fa-eye-slash" style="margin-right:6px;color:#14b8a6;"></i> Blur In</div>
+              <div class="spacing-opt-item" data-transition="cube"><i class="fas fa-cube" style="margin-right:6px;color:#eab308;"></i> 3D Cube</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide Order & Slide Show -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pptMoveUpBtn" title="Move Slide Up"><i class="fas fa-arrow-up"></i> Move Up</button>
+          <button class="fmt-btn with-text" id="pptMoveDownBtn" title="Move Slide Down"><i class="fas fa-arrow-down"></i> Move Down</button>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pptStartSlideShowBtn" title="Start Fullscreen Presentation Slide Show"><i class="fas fa-play" style="color:#ea580c;"></i> Slide Show</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. EXCEL RIBBON PANEL (Dedicated Excel Spreadsheet operations toolbar) -->
+    <div class="ribbon-panel" id="ribbonPanelExcel" role="tabpanel">
+      <!-- Tables & Grid Management -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="excelMergeCellsBtn" title="Merge & Center Selected Cells (Select 2+ cells)"><i class="fas fa-arrows-to-circle" style="color:#2563eb;"></i> Merge</button>
+          <button class="fmt-btn with-text" id="excelUnmergeCellsBtn" title="Split / Unmerge Cells"><i class="fas fa-arrows-split-up-and-left" style="color:#64748b;"></i> Split</button>
+        </div>
+      </div>
+
+      <!-- Rows & Columns Management -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="excelAddRowAboveBtn" title="Insert Row Above"><i class="fas fa-circle-arrow-up" style="color:#16a34a;"></i> Row Above</button>
+          <button class="fmt-btn with-text" id="excelAddRowBelowBtn" title="Insert Row Below"><i class="fas fa-circle-arrow-down" style="color:#16a34a;"></i> Row Below</button>
+          <button class="fmt-btn with-text" id="excelDelRowBtn" title="Delete Current Row"><i class="fas fa-trash-can" style="color:#ef4444;"></i> Del Row</button>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="excelAddColLeftBtn" title="Insert Column Left"><i class="fas fa-circle-arrow-left" style="color:#0284c7;"></i> Col Left</button>
+          <button class="fmt-btn with-text" id="excelAddColRightBtn" title="Insert Column Right"><i class="fas fa-circle-arrow-right" style="color:#0284c7;"></i> Col Right</button>
+          <button class="fmt-btn with-text" id="excelDelColBtn" title="Delete Current Column"><i class="fas fa-trash-can" style="color:#ef4444;"></i> Del Col</button>
+        </div>
+      </div>
+
+      <!-- Formulas & Math Calculations -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="excelFormulaDropdownWrap">
+            <button class="fmt-btn with-text" id="excelFormulaBtn" title="Spreadsheet Formulas & AutoSum">
+              <strong style="color:#16a34a;font-size:13px;margin-right:2px;">&Sigma;</strong><span>AutoSum</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="excelFormulaPopover" role="menu">
+              <div class="spacing-opt-item" data-formula="SUM"><strong style="color:#16a34a;margin-right:6px;">&Sigma;</strong> SUM (Total)</div>
+              <div class="spacing-opt-item" data-formula="AVERAGE"><i class="fas fa-chart-line" style="color:#0284c7;margin-right:6px;"></i> AVERAGE (Mean)</div>
+              <div class="spacing-opt-item" data-formula="COUNT"><i class="fas fa-hashtag" style="color:#8b5cf6;margin-right:6px;"></i> COUNT (Numbers)</div>
+              <div class="spacing-opt-item" data-formula="MAX"><i class="fas fa-arrow-up" style="color:#ea580c;margin-right:6px;"></i> MAX (Maximum)</div>
+              <div class="spacing-opt-item" data-formula="MIN"><i class="fas fa-arrow-down" style="color:#06b6d4;margin-right:6px;"></i> MIN (Minimum)</div>
+              <div class="spacing-opt-item" data-formula="MEDIAN"><i class="fas fa-divide" style="color:#a855f7;margin-right:6px;"></i> MEDIAN (Middle Value)</div>
+              <div class="spacing-opt-item" data-formula="PRODUCT"><i class="fas fa-xmark" style="color:#f59e0b;margin-right:6px;"></i> PRODUCT (Multiply All)</div>
+              <div class="spacing-opt-item" data-formula="COUNTA"><i class="fas fa-list-check" style="color:#10b981;margin-right:6px;"></i> COUNTA (Non-Empty)</div>
+              <div class="spacing-opt-item" data-formula="STDEV"><i class="fas fa-square-root-variable" style="color:#ec4899;margin-right:6px;"></i> STDEV (Std Deviation)</div>
+              <div class="spacing-opt-item" data-formula="ROUND"><i class="fas fa-circle-notch" style="color:#06b6d4;margin-right:6px;"></i> ROUND (Round Decimals)</div>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn" id="excelFmtCurrencyBtn" title="Format Currency ($)" aria-label="Currency Format"><i class="fas fa-dollar-sign"></i></button>
+          <button class="fmt-btn" id="excelFmtPercentBtn" title="Format Percent (%)" aria-label="Percent Format"><i class="fas fa-percent"></i></button>
+          <button class="fmt-btn" id="excelFmtDecimalIncBtn" title="Increase Decimals (.00)" aria-label="Increase Decimals"><span style="font-size:10px;font-weight:700;">.00</span></button>
+          <button class="fmt-btn" id="excelFmtDecimalDecBtn" title="Decrease Decimals (.0)" aria-label="Decrease Decimals"><span style="font-size:10px;font-weight:700;">.0</span></button>
+        </div>
+      </div>
+
+      <!-- Cell Fill, Borders & Data Tools -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="excelBorderDropdownWrap">
+            <button class="fmt-btn with-text" id="excelBorderBtn" title="Cell Borders">
+              <i class="fas fa-border-all"></i><span>Borders</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="excelBorderPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Cell Borders</div>
+              <div class="spacing-opt-item" data-border="all"><i class="fas fa-border-all" style="margin-right:6px;color:#16a34a;"></i> All Borders</div>
+              <div class="spacing-opt-item" data-border="outside"><i class="fas fa-square" style="margin-right:6px;color:#2563eb;"></i> Outside Borders (Box)</div>
+              <div class="spacing-opt-item" data-border="thick-bottom"><i class="fas fa-border-bottom" style="margin-right:6px;color:#0f172a;"></i> Thick Bottom Border</div>
+              <div class="spacing-opt-item" data-border="top-bottom"><i class="fas fa-bars" style="margin-right:6px;color:#475569;"></i> Top & Bottom Border</div>
+              <div class="spacing-opt-item" data-border="left"><i class="fas fa-border-left" style="margin-right:6px;color:#64748b;"></i> Left Border</div>
+              <div class="spacing-opt-item" data-border="right"><i class="fas fa-border-right" style="margin-right:6px;color:#64748b;"></i> Right Border</div>
+              <div class="spacing-opt-item" data-border="top"><i class="fas fa-border-top" style="margin-right:6px;color:#64748b;"></i> Top Border</div>
+              <div class="spacing-opt-item" data-border="bottom"><i class="fas fa-border-bottom" style="margin-right:6px;color:#64748b;"></i> Bottom Border</div>
+              <div class="spacing-opt-item" data-border="none"><i class="fas fa-border-none" style="margin-right:6px;color:#ef4444;"></i> No Border</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div class="spacing-opt-item" data-border="custom" id="excelCustomBorderBtn"><i class="fas fa-sliders" style="margin-right:6px;color:var(--accent);"></i> <strong>Custom Border...</strong></div>
+            </div>
+          </div>
+          <div style="position:relative;display:inline-block;">
+            <button class="fmt-btn with-text" id="excelCellFillBtn" title="Cell Background Color">
+              <i class="fas fa-fill-drip" style="color:#f59e0b;"></i><span>Fill</span>
+            </button>
+            <input type="color" id="excelCellFillInput" value="#fef08a" style="opacity:0;position:absolute;inset:0;width:100%;height:100%;cursor:pointer;">
+          </div>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="excelSortAscBtn" title="Sort Table Rows A to Z"><i class="fas fa-arrow-down-a-z" style="color:#16a34a;"></i> Sort A-Z</button>
+          <button class="fmt-btn with-text" id="excelSortDescBtn" title="Sort Table Rows Z to A"><i class="fas fa-arrow-up-z-a" style="color:#ea580c;"></i> Sort Z-A</button>
+          <button class="fmt-btn with-text" id="excelExportCsvBtn" title="Export Spreadsheet Data as CSV"><i class="fas fa-file-csv" style="color:#16a34a;"></i> Export CSV</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. PDF RIBBON PANEL (PDF Tools & Document Operations) -->
+    <div class="ribbon-panel" id="ribbonPanelPdf" role="tabpanel">
+      <!-- PDF Document Creation & Rich Extraction Tools -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pdfCreateFromImagesBtn" title="Create PDF from Single or Multiple Images"><i class="fas fa-file-image" style="color:#ea580c;"></i> Create from Images</button>
+          <button class="fmt-btn with-text" id="pdfRibbonExtractAllBtn" title="Extract Text & Embedded Images with Layout"><i class="fas fa-file-export" style="color:#2563eb;"></i> Extract Rich (Text+Img)</button>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pdfRibbonExtractTextBtn" title="Extract text into an editable Word document"><i class="fas fa-file-lines" style="color:#0284c7;"></i> Extract Text</button>
+          <button class="fmt-btn with-text" id="pdfRibbonMergeModalBtn" title="Merge Multiple PDF Files Together"><i class="fas fa-object-group" style="color:#8b5cf6;"></i> Merge PDFs</button>
         </div>
       </div>
     </div>
@@ -650,9 +948,10 @@
           <span class="format-tag"><i class="fas fa-file-excel"></i><span>XLSX</span></span>
           <span class="format-tag"><i class="fas fa-file-powerpoint" style="color:#f97316;"></i><span>PPTX</span></span>
         </div>
-        <!-- <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;">
-          <button class="modal-btn primary" id="emptyNewBtn" type="button" style="padding:7px 18px;font-size:12.5px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><i class="fas fa-file-circle-plus"></i> Create New Document</button>
-        </div> -->
+        <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <!-- <button class="modal-btn primary" id="emptyNewBtn" type="button" style="padding:7px 18px;font-size:12px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;"><i class="fas fa-file-circle-plus"></i> Create New Document</button>
+          <button class="modal-btn" id="emptyCreatePdfImagesBtn" type="button" style="padding:7px 18px;font-size:12px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);"><i class="fas fa-file-image" style="color:#ea580c;"></i> Create PDF from Images</button> -->
+        </div>
       </div>
 
       <!-- Recent Documents Section on Home Page -->
@@ -709,19 +1008,51 @@
         <span class="page-info" id="pdfPageInfo">Page 1 / 1</span>
         <button id="pdfNext" title="Next Page" aria-label="Next page"><i class="fas fa-chevron-right"></i></button>
         <div class="tool-sep" style="height:18px;"></div>
-        <button id="pdfZoomOut" title="Zoom Out" aria-label="Zoom out"><i class="fas fa-minus"></i></button>
-        <span class="zoom-info" id="pdfZoomInfo">100%</span>
-        <button id="pdfZoomIn" title="Zoom In" aria-label="Zoom in"><i class="fas fa-plus"></i></button>
-        <button class="pdf-extract-btn" id="pdfExtractBtn" title="Extract text into an editable document"><i class="fas fa-pen-to-square"></i> Extract Text</button>
+        <button class="pdf-ctrl-btn" id="pdfQuickCreateImgBtn" title="Create PDF from Single or Multiple Images"><i class="fas fa-file-image" style="color:#ea580c;"></i> <span>Images to PDF</span></button>
+        <button class="pdf-ctrl-btn" id="pdfExtractBtn" title="Extract text into an editable document"><i class="fas fa-pen-to-square" style="color:var(--accent);"></i> <span>Extract Text</span></button>
+        <button class="pdf-ctrl-btn primary" id="pdfQuickExtractAllBtn" title="Extract Text & Embedded Images in Visual Layout"><i class="fas fa-file-export"></i> <span>Extract Rich</span></button>
       </div>
       <div class="pdf-pages" id="pdfPages">
         <div class="pdf-loading"><i class="fas fa-spinner"></i> Loading PDF document...</div>
       </div>
     </section>
 
+    <!-- PowerPoint Slide Sidebar (for .pptx documents only - Issue 5) -->
+    <aside class="pptx-slide-sidebar" id="pptxSlideSidebar" aria-label="PowerPoint Slides Navigation" style="display:none;">
+      <div class="pptx-sidebar-header">
+        <div class="pptx-sidebar-title"><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Slides (<span id="pptxSlideCount">0</span>)</div>
+        <div class="pptx-sidebar-add-wrap" style="position:relative;">
+          <button class="pptx-sidebar-add-btn" id="pptxSidebarAddBtn" title="Add New Slide"><i class="fas fa-plus"></i></button>
+          <div class="spacing-popover" id="pptxSidebarAddPopover" role="menu" style="position:absolute;right:0;top:100%;margin-top:4px;z-index:999;min-width:170px;">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Add Slide Layout</div>
+            <div class="spacing-opt-item" data-ppt-layout="title"><i class="fas fa-heading" style="margin-right:6px;color:#2563eb;"></i> Title Slide</div>
+            <div class="spacing-opt-item" data-ppt-layout="title-box"><i class="fas fa-table-cells-large" style="margin-right:6px;color:#ea580c;"></i> Title & Box</div>
+            <div class="spacing-opt-item" data-ppt-layout="split"><i class="fas fa-columns" style="margin-right:6px;color:#f59e0b;"></i> Two Columns</div>
+            <div class="spacing-opt-item" data-ppt-layout="cards"><i class="fas fa-layer-group" style="margin-right:6px;color:#06b6d4;"></i> 3 Card Blocks</div>
+            <div class="spacing-opt-item" data-ppt-layout="blank"><i class="fas fa-square" style="margin-right:6px;color:#94a3b8;"></i> Blank Slide</div>
+          </div>
+        </div>
+      </div>
+      <div class="pptx-sidebar-thumbnails" id="pptxSidebarThumbnails">
+        <!-- Rendered dynamically -->
+      </div>
+    </aside>
+
     <!-- Rich Text Editor Mode -->
     <section class="editor-wrap" id="editorWrap" aria-label="Document Editor">
+      <!-- Horizontal Ruler (View Menu - Issue 4) -->
+      <div class="editor-ruler" id="editorRuler" style="display:none;" aria-hidden="true">
+        <div class="ruler-scale">
+          <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
+        </div>
+      </div>
       <div class="editor-page" id="editor" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Document page content"></div>
+    </section>
+
+    <!-- Dual-Pane Split Mirror Window (View Menu -> Split Window) -->
+    <div class="split-divider-bar" id="splitDividerBar" title="Drag to adjust split window view"></div>
+    <section class="split-mirror-pane" id="splitMirrorPane" aria-label="Split Reference Document Window">
+      <div class="editor-page" id="editorSplitMirror" contenteditable="false" style="min-height:auto;margin:0 auto;box-shadow:none;pointer-events:auto;user-select:text;"></div>
     </section>
 
   </main>
@@ -738,8 +1069,8 @@
     </div>
     <div class="status-center">
       <div class="status-item status-credit" id="statusCredit">
-        <span class="credit-desktop">all right reserved made with <i class="fa fa-heart text-danger" style="color:#ef4444;"></i> sachin</span>
-        <span class="credit-mobile">made with <i class="fa fa-heart text-danger" style="color:#ef4444;"></i> sachin</span>
+        <span class="credit-desktop">© <span id="copyrightYearDesktop"></span> All Right Reserved Made With <i class="fa fa-heart text-danger" style="color:#ef4444;"></i> Sachin</span>
+        <span class="credit-mobile">© <span id="copyrightYearMobile"></span> Made With <i class="fa fa-heart text-danger" style="color:#ef4444;"></i> Sachin</span>
       </div>
     </div>
     <div class="status-right">
@@ -1165,6 +1496,479 @@
     </div>
   </div>
 
+  <!-- Line Customization Modal (Issue 4) -->
+  <div class="modal-overlay" id="lineModal">
+    <div class="modal" style="width:440px;" role="dialog" aria-modal="true" aria-label="Customize Horizontal Line">
+      <h3><i class="fas fa-minus" style="margin-right:8px;color:var(--accent);"></i>Customize Line</h3>
+      <div style="display:flex;flex-direction:column;gap:14px;margin:16px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="font-size:13px;font-weight:600;">Width (% of page):</label>
+          <select id="lineWidthSelect" class="fmt-select" style="width:140px;">
+            <option value="100%">100% (Full Width)</option>
+            <option value="75%">75% Width</option>
+            <option value="50%">50% Width</option>
+            <option value="25%">25% Width</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="font-size:13px;font-weight:600;">Thickness (Height):</label>
+          <select id="lineHeightSelect" class="fmt-select" style="width:140px;">
+            <option value="1px">1px (Thin)</option>
+            <option value="2px" selected>2px (Medium)</option>
+            <option value="3px">3px (Bold)</option>
+            <option value="5px">5px (Thick)</option>
+            <option value="8px">8px (Heavy)</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="font-size:13px;font-weight:600;">Style:</label>
+          <select id="lineStyleSelect" class="fmt-select" style="width:140px;">
+            <option value="solid" selected>Solid</option>
+            <option value="dashed">Dashed</option>
+            <option value="dotted">Dotted</option>
+            <option value="double">Double</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="font-size:13px;font-weight:600;">Alignment:</label>
+          <select id="lineAlignSelect" class="fmt-select" style="width:140px;">
+            <option value="center" selected>Center</option>
+            <option value="left">Left</option>
+            <option value="right">Right</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <label style="font-size:13px;font-weight:600;">Color:</label>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <input type="color" id="lineColorInput" value="#e2e8f0" style="width:36px;height:32px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+            <span id="lineColorHex" style="font-size:12px;color:var(--text-muted);font-family:monospace;">#e2e8f0</span>
+          </div>
+        </div>
+        <div style="margin-top:4px;">
+          <label style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;">Preview</label>
+          <div style="padding:20px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);margin-top:6px;min-height:50px;display:flex;align-items:center;">
+            <div id="linePreviewBox" style="width:100%;height:2px;background:#e2e8f0;margin:0 auto;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn" id="lineCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="lineInsertBtn">Insert Line</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shapes Picker Modal (Issue 4 & Issue 5) -->
+  <div class="modal-overlay" id="shapeModal">
+    <div class="modal" style="width:560px;" role="dialog" aria-modal="true" aria-label="Insert Vector Shape">
+      <h3><i class="fas fa-shapes" style="margin-right:8px;color:#8b5cf6;"></i>Insert Vector Shape</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:4px 0 12px;">Choose a standard shape or design a custom parametric shape with live real-time preview.</p>
+      
+      <!-- 12 Shapes in a clean 6x2 Grid -->
+      <div style="display:grid;grid-template-columns:repeat(6, 1fr);gap:8px;margin-bottom:14px;" id="shapesGrid">
+        <button class="shape-opt-btn active" data-shape="rectangle" title="Rectangle" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-square" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Rectangle</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="rounded-rect" title="Rounded Rectangle" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-square-full" style="font-size:20px;border-radius:4px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Rounded</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="circle" title="Circle" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-circle" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Circle</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="triangle" title="Triangle" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-play" style="font-size:18px;transform:rotate(-90deg);color:var(--accent);"></i>
+          <span style="font-size:10px;">Triangle</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="diamond" title="Diamond" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-diamond" style="font-size:18px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Diamond</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="star" title="Star" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-star" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Star</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="arrow-right" title="Arrow Right" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-arrow-right" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Arrow</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="hexagon" title="Hexagon" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-draw-polygon" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Hexagon</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="callout" title="Callout / Speech Bubble" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-comment" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Callout</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="heart" title="Heart" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-heart" style="font-size:18px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Heart</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="cross" title="Cross / Plus Sign" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-plus" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Cross</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="parametric" title="Custom Parametric Shape" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-sliders" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;font-weight:700;">Custom</span>
+        </button>
+      </div>
+
+      <!-- Live Shape Preview Box -->
+      <div id="shapePreviewBox" style="display:flex;align-items:center;justify-content:center;background:var(--bg-tertiary);border:1px dashed var(--border);border-radius:8px;height:120px;margin-bottom:14px;position:relative;overflow:hidden;">
+        <span style="position:absolute;top:6px;left:10px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Live Shape Preview</span>
+        <div id="shapeLivePreview" style="display:flex;align-items:center;justify-content:center;height:100px;width:100%;"></div>
+      </div>
+
+      <!-- Custom Shape Parameters Box (Issue 2) -->
+      <div id="customShapeParamsBox" style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:14px;display:none;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+          <span><i class="fas fa-sliders" style="color:var(--accent);margin-right:6px;"></i>Custom Shape Parameters</span>
+          <span style="font-size:10px;color:var(--text-muted);font-weight:normal;">Parametric geometry</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Geometry Type:</label>
+            <select id="shapeParamType" class="fmt-select" style="width:100%;height:30px;">
+              <option value="polygon" selected>Regular Polygon (N Sides)</option>
+              <option value="star">Multi-Point Star</option>
+              <option value="pill">Pill / Capsule</option>
+              <option value="parallelogram">Parallelogram</option>
+              <option value="trapezoid">Trapezoid</option>
+              <option value="cross">Cross / Plus Sign</option>
+              <option value="path">Custom SVG Path</option>
+            </select>
+          </div>
+          <div id="shapeSidesWrap">
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Sides / Points:</label>
+            <input type="number" id="shapeParamSides" min="3" max="20" value="5" style="width:100%;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Width (px):</label>
+            <input type="number" id="shapeParamWidth" min="40" max="400" value="130" style="width:100%;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Height (px):</label>
+            <input type="number" id="shapeParamHeight" min="40" max="400" value="130" style="width:100%;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Roundness / Ratio:</label>
+            <input type="number" id="shapeParamRadius" min="0" max="50" value="6" style="width:100%;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+          </div>
+        </div>
+        <div id="shapePathWrap" style="margin-top:4px;">
+          <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Custom SVG Path (or pick a preset):</label>
+          <div style="display:flex;gap:4px;margin-bottom:6px;">
+            <button type="button" class="btn-xs shape-path-preset" data-path="M50 0 L61 35 L98 35 L68 57 L79 91 L50 70 L21 91 L32 57 L2 35 L39 35 Z" style="padding:2px 8px;font-size:10px;border:1px solid var(--border);background:var(--bg-primary);border-radius:4px;cursor:pointer;color:var(--text-secondary);">Badge</button>
+            <button type="button" class="btn-xs shape-path-preset" data-path="M45 0 L15 55 L40 55 L30 100 L75 42 L48 42 Z" style="padding:2px 8px;font-size:10px;border:1px solid var(--border);background:var(--bg-primary);border-radius:4px;cursor:pointer;color:var(--text-secondary);">Lightning</button>
+            <button type="button" class="btn-xs shape-path-preset" data-path="M50 10 A40 40 0 1 0 90 70 A30 30 0 0 1 50 10 Z" style="padding:2px 8px;font-size:10px;border:1px solid var(--border);background:var(--bg-primary);border-radius:4px;cursor:pointer;color:var(--text-secondary);">Crescent</button>
+            <button type="button" class="btn-xs shape-path-preset" data-path="M10 10 L90 10 L80 50 L90 90 L10 90 L20 50 Z" style="padding:2px 8px;font-size:10px;border:1px solid var(--border);background:var(--bg-primary);border-radius:4px;cursor:pointer;color:var(--text-secondary);">Ribbon</button>
+          </div>
+          <input type="text" id="shapeParamPath" placeholder="e.g. M10 10 L90 10..." style="width:100%;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:16px;align-items:center;margin-bottom:14px;">
+        <div style="flex:1;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Fill Color:</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" id="shapeFillColor" value="#e85d04" style="width:34px;height:30px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+            <input type="text" id="shapeFillHex" value="#e85d04" style="width:75px;height:30px;padding:0 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg-tertiary);color:var(--text-primary);font-size:12px;font-family:monospace;">
+          </div>
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Border / Outline:</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" id="shapeStrokeColor" value="#d45500" style="width:34px;height:30px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+            <select id="shapeStrokeWidth" class="fmt-select" style="width:80px;height:30px;">
+              <option value="0">None</option>
+              <option value="1">1px</option>
+              <option value="2" selected>2px</option>
+              <option value="4">4px</option>
+            </select>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Initial Size:</label>
+          <select id="shapeSizeSelect" class="fmt-select" style="width:100%;height:30px;">
+            <option value="120">Medium (120px)</option>
+            <option value="80">Small (80px)</option>
+            <option value="180">Large (180px)</option>
+            <option value="260">X-Large (260px)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn" id="shapeCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="shapeInsertBtn">Insert Shape</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart Insert Modal (Issue 5: 9 Chart Types) -->
+  <div class="modal-overlay" id="chartModal">
+    <div class="modal" style="width:500px;" role="dialog" aria-modal="true" aria-label="Insert Visual Data Chart">
+      <h3><i class="fas fa-chart-column" style="margin-right:8px;color:#0284c7;"></i>Insert Visual Chart</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:4px 0 14px;">Embed an authentic Office data chart visualization.</p>
+      
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Chart Type:</label>
+          <select id="chartTypeSelect" class="fmt-select" style="width:100%;height:32px;">
+            <option value="column" selected>Column Chart (Vertical Bars)</option>
+            <option value="bar">Bar Chart (Horizontal Bars)</option>
+            <option value="pie">Pie Chart (Proportions)</option>
+            <option value="line">Line Trend Chart</option>
+            <option value="doughnut">Doughnut Chart (Ring with Summary)</option>
+            <option value="area">Area Chart (Filled Gradient Curve)</option>
+            <option value="radar">Radar / Spider Chart (Polar Multidimensional)</option>
+            <option value="scatter">Scatter Plot (Data Point Distribution)</option>
+            <option value="stacked">Stacked Bar Chart (Cumulative Series)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Chart Title:</label>
+          <input type="text" id="chartTitleInput" value="Quarterly Performance Analysis" style="width:100%;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Data Series (Comma-separated values):</label>
+          <input type="text" id="chartValuesInput" value="45, 82, 63, 95" style="width:100%;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;">
+          <span style="font-size:11px;color:var(--text-muted);margin-top:2px;display:block;">Labels: Q1, Q2, Q3, Q4</span>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn" id="chartCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="chartInsertBtn">Insert Chart</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Slide Show Presentation Overlay (Issue 6) -->
+  <div class="slideshow-overlay" id="slideshowOverlay" role="dialog" aria-modal="true" aria-label="Fullscreen Presentation Slide Show">
+    <div class="slideshow-content" id="slideshowContent">
+      <div id="slideshowCurrentSlideBody"></div>
+    </div>
+    <div class="slideshow-controls">
+      <button class="slideshow-btn" id="slideshowPrevBtn" title="Previous Slide (Left Arrow)"><i class="fas fa-chevron-left"></i></button>
+      <span id="slideshowCounter" style="font-size:13px;font-weight:600;min-width:60px;text-align:center;">1 / 1</span>
+      <button class="slideshow-btn" id="slideshowNextBtn" title="Next Slide (Right Arrow, Space)"><i class="fas fa-chevron-right"></i></button>
+      <div style="width:1px;height:18px;background:rgba(255,255,255,0.2);margin:0 4px;"></div>
+      <button class="slideshow-btn" id="slideshowExitBtn" title="Exit Slide Show (Esc)"><i class="fas fa-xmark"></i> Exit</button>
+    </div>
+  </div>
+
+  <!-- Custom Page Border Modal (Issue 2) -->
+  <div class="modal-overlay" id="customPageBorderModal" role="dialog" aria-modal="true" aria-label="Custom Page Border">
+    <div class="modal" style="width:480px;max-width:92vw;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-border-all" style="color:var(--accent);"></i> Custom Page Border
+        </h3>
+        <button class="modal-close-icon" id="customPageBorderCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="form-group">
+          <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Line Style</label>
+          <select id="customBorderLineType" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);">
+            <option value="solid" selected>Solid Line</option>
+            <option value="dashed">Dashed Line</option>
+            <option value="dotted">Dotted Line</option>
+            <option value="double">Double Line</option>
+            <option value="groove">Groove 3D</option>
+            <option value="ridge">Ridge 3D</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Line Width</label>
+          <select id="customBorderWidth" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);">
+            <option value="1px">1 px (Fine)</option>
+            <option value="2px" selected>2 px (Standard)</option>
+            <option value="3px">3 px (Medium)</option>
+            <option value="4px">4 px (Thick)</option>
+            <option value="6px">6 px (Bold)</option>
+            <option value="8px">8 px (Heavy)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="form-group">
+          <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Border Color</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" id="customBorderColorInput" value="#0284c7" style="width:40px;height:34px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer;">
+            <input type="text" id="customBorderColorText" value="#0284c7" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Corner Radius</label>
+          <select id="customBorderRadius" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);">
+            <option value="0px" selected>0 px (Square Corners)</option>
+            <option value="4px">4 px (Subtle Round)</option>
+            <option value="8px">8 px (Rounded)</option>
+            <option value="14px">14 px (Smooth)</option>
+            <option value="22px">22 px (Soft Oval)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Live Preview Box -->
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px;">LIVE PREVIEW</label>
+        <div id="customBorderPreviewBox" style="width:100%;height:68px;background:var(--bg-secondary);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-secondary);border:2px solid #0284c7;border-radius:0px;">
+          Document Page Sample
+        </div>
+      </div>
+
+      <div class="modal-actions" style="display:flex;justify-content:space-between;align-items:center;">
+        <button class="modal-btn" id="customBorderRemoveBtn" style="color:var(--danger);"><i class="fas fa-trash-can"></i> Remove Border</button>
+        <div style="display:flex;gap:8px;">
+          <button class="modal-btn" id="customBorderCancelBtn">Cancel</button>
+          <button class="modal-btn primary" id="customBorderApplyBtn"><i class="fas fa-check"></i> Apply Border</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create PDF from Images Modal (Issue 6) -->
+  <div class="modal-overlay" id="createPdfFromImagesModal" role="dialog" aria-modal="true" aria-label="Create PDF from Images">
+    <div class="modal" style="width:560px;max-width:92vw;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-file-image" style="color:#ea580c;"></i> Create PDF from Images
+        </h3>
+        <button class="modal-close-icon" id="createPdfImagesCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">
+        Select single or multiple photos / images to compile into a high quality PDF document.
+      </p>
+
+      <div class="drop-zone" id="pdfImagesDropZone" style="padding:20px;border:2px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer;background:var(--bg-tertiary);margin-bottom:14px;">
+        <i class="fas fa-cloud-arrow-up" style="font-size:26px;color:var(--accent);margin-bottom:6px;display:block;"></i>
+        <div style="font-weight:600;font-size:13px;color:var(--text-primary);">Click or Drag Images Here</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Supports PNG, JPG, JPEG, WebP (Select multiple files)</div>
+        <input type="file" id="pdfImagesFileInput" accept="image/*" multiple hidden>
+      </div>
+
+      <div id="pdfImagesSelectedList" style="max-height:160px;overflow-y:auto;margin-bottom:14px;display:flex;flex-direction:column;gap:6px;">
+        <!-- Dynamically rendered list of selected images -->
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Page Orientation</label>
+          <select id="pdfImagesOrientation" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+            <option value="portrait" selected>Portrait (Vertical)</option>
+            <option value="landscape">Landscape (Horizontal)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Page Sizing & Margins</label>
+          <select id="pdfImagesMargin" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+            <option value="fit" selected>Fit to Page (10mm Margin)</option>
+            <option value="bleed">Full Bleed (0mm Margin)</option>
+            <option value="large">Spacious (20mm Margin)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Image Alignment / Position</label>
+          <select id="pdfImagesPosition" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+            <option value="center" selected>Center Aligned</option>
+            <option value="top">Top Aligned</option>
+            <option value="stretch">Fill / Stretch</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Image Sizing</label>
+          <select id="pdfImagesScale" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+            <option value="fit" selected>Auto Fit (Maintain Aspect Ratio)</option>
+            <option value="large">Large (Full Width)</option>
+            <option value="medium">Medium (75% Width)</option>
+            <option value="small">Small (50% Width)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+        <button class="modal-btn" id="createPdfImagesCancelBtn">Cancel</button>
+        <button class="modal-btn" id="insertImagesToDocBtn" title="Insert into Document Editor with Word-like image resizing handles & toolbar" style="background:var(--bg-tertiary);border:1px solid var(--border);color:var(--text-primary);"><i class="fas fa-file-pen" style="color:var(--accent);"></i> Insert into Document</button>
+        <button class="modal-btn primary" id="createPdfImagesSubmitBtn"><i class="fas fa-file-pdf"></i> Generate & Open PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Excel Custom Border Modal (Issue 4) -->
+  <div class="modal-overlay" id="excelCustomBorderModal" role="dialog" aria-modal="true" aria-label="Custom Cell Border">
+    <div class="modal" style="width:420px;max-width:92vw;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-border-all" style="color:var(--accent);"></i> Custom Cell Border
+        </h3>
+        <button class="modal-close-icon" id="excelCustomBorderCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Border Width (Size)</label>
+          <select id="excelBorderWidthInput" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+            <option value="1px" selected>1px (Thin)</option>
+            <option value="2px">2px (Medium)</option>
+            <option value="3px">3px (Thick)</option>
+            <option value="4px">4px (Extra Thick)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Border Style</label>
+          <select id="excelBorderStyleInput" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+            <option value="solid" selected>Solid</option>
+            <option value="dashed">Dashed</option>
+            <option value="dotted">Dotted</option>
+            <option value="double">Double</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Border Color</label>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="color" id="excelBorderColorInput" value="#16a34a" style="width:38px;height:30px;padding:0;border:1px solid var(--border);border-radius:4px;cursor:pointer;">
+            <span id="excelBorderColorHex" style="font-size:12px;font-family:monospace;color:var(--text-secondary);">#16a34a</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label style="font-size:11px;font-weight:600;display:block;margin-bottom:4px;">Apply To Sides</label>
+          <select id="excelBorderSidesInput" class="form-input" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;">
+            <option value="all" selected>All Sides (Box & Inner)</option>
+            <option value="outline">Outside Box Only</option>
+            <option value="top">Top Border Only</option>
+            <option value="bottom">Bottom Border Only</option>
+            <option value="left">Left Border Only</option>
+            <option value="right">Right Border Only</option>
+            <option value="top-bottom">Top & Bottom</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" id="excelCustomBorderCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="excelCustomBorderApplyBtn"><i class="fas fa-check"></i> Apply Border</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
@@ -1185,7 +1989,17 @@
   <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@excalidraw/excalidraw@0.17.6/dist/excalidraw.production.min.js"></script>
-
+  <script>
+    (function () {
+      try {
+        var year = new Date().getFullYear();
+        var d = document.getElementById("copyrightYearDesktop");
+        var m = document.getElementById("copyrightYearMobile");
+        if (d) d.textContent = year;
+        if (m) m.textContent = year;
+      } catch (e) {}
+    })();
+  </script>
   <!-- Local Modular Scripts -->
   <script src="js/ui.js"></script>
   <script src="js/editor.js"></script>

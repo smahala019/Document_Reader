@@ -20,8 +20,18 @@
       .replace(/'/g, '&#39;');
   }
 
-  // Toast Notification System (capped at 5 to prevent infinite stacking)
+  // Toast Notification System (capped at 5 to prevent infinite stacking, deduplicated to prevent spam)
+  let lastToastMsg = '';
+  let lastToastTime = 0;
+
   function showToast(message, type = 'info') {
+    const now = Date.now();
+    if (message === lastToastMsg && (now - lastToastTime) < 1500) {
+      return; // Deduplicate repeated toast
+    }
+    lastToastMsg = message;
+    lastToastTime = now;
+
     const container = $('#toastContainer');
     if (!container) return;
 
@@ -173,23 +183,17 @@
     activeId: null,
 
     create(name, content, fileType, type = 'edit') {
-      // Disambiguate duplicate tab names
-      let finalName = name;
-      let counter = 1;
-      while (this.list.some(t => t.name.toLowerCase() === finalName.toLowerCase())) {
-        const parts = name.split('.');
-        if (parts.length > 1) {
-          const ext = parts.pop();
-          finalName = `${parts.join('.')} (${counter}).${ext}`;
-        } else {
-          finalName = `${name} (${counter})`;
-        }
-        counter++;
+      // Prevent opening duplicate file with the same name and extension (Issue 1)
+      const existing = this.list.find(t => t.name.toLowerCase() === name.toLowerCase());
+      if (existing) {
+        this.switchTo(existing.id);
+        showToast(`"${name}" is already open`, 'info');
+        return existing;
       }
 
       const tab = {
         id: 't' + Date.now() + Math.random().toString(36).slice(2, 6),
-        name: finalName,
+        name,
         content,
         fileType,
         type,
@@ -244,23 +248,29 @@
             editor.classList.remove('excel-view-mode');
           }
 
-          // Link Excel formula bar with table cells
+          // Link Excel formula bar with table cells & setup interactions
           if (isExcelOrCsv) {
-            const formulaInput = editor.querySelector('.excel-formula-input');
-            if (formulaInput) {
-              editor.querySelectorAll('.excel-grid-table td').forEach(td => {
-                td.addEventListener('focus', () => {
-                  formulaInput.value = td.textContent || '';
-                  window._activeExcelCell = td;
-                });
-              });
-              formulaInput.addEventListener('input', () => {
-                if (window._activeExcelCell) {
-                  window._activeExcelCell.textContent = formulaInput.value;
-                  window.DocFlow.Editor?.notifyChange();
-                }
-              });
+            if (window.DocFlow && window.DocFlow.setupExcelInteractions) {
+              window.DocFlow.setupExcelInteractions();
+            } else {
+              setTimeout(() => {
+                window.DocFlow?.setupExcelInteractions?.();
+              }, 50);
             }
+          }
+
+          // Auto-adjust editor canvas for PPT deck mode (Issue 7: Only slide shows, no white paper sheet below)
+          const isPptx = (tab.name && (tab.name.endsWith('.pptx') || tab.name.endsWith('.ppt'))) ||
+            tab.fileType === 'PPTX' || tab.fileType === 'PPT' || (tab.content && tab.content.includes('pptx-slide-card'));
+          if (isPptx) {
+            editor.classList.add('is-pptx-deck');
+            const sb = $('#pptxSlideSidebar');
+            if (sb) sb.style.display = 'flex';
+            setTimeout(() => window.DocFlow?.updatePptSidebar?.(), 60);
+          } else {
+            editor.classList.remove('is-pptx-deck');
+            const sb = $('#pptxSlideSidebar');
+            if (sb) sb.style.display = 'none';
           }
         }
 
@@ -280,8 +290,19 @@
           if (window.DocFlow && window.DocFlow.Find) {
             window.DocFlow.Find.updateOutline();
           }
+          if (window.DocFlow && window.DocFlow.updatePptSidebar) {
+            window.DocFlow.updatePptSidebar();
+          }
+          if (tab.name && (tab.name.toLowerCase().endsWith('.pptx') || tab.name.toLowerCase().endsWith('.ppt'))) {
+            window.DocFlow?.switchRibbonTab?.('ppt');
+          } else if (tab.name && (tab.name.toLowerCase().endsWith('.xlsx') || tab.name.toLowerCase().endsWith('.xls'))) {
+            window.DocFlow?.switchRibbonTab?.('excel');
+          }
         });
       } else if (tab.type === 'pdf') {
+        const sidebar = $('#pptxSlideSidebar');
+        if (sidebar) sidebar.style.display = 'none';
+        window.DocFlow?.switchRibbonTab?.('pdf');
         if (tab.pdfData && window.DocFlow && window.DocFlow.PDF) {
           window.DocFlow.PDF.loadPdfTab(tab);
         } else {
@@ -501,26 +522,35 @@
   };
 
   // Floating Popover Positioner (Prevents clipping from scrolling containers on mobile & desktop)
+  // Floating Popover Positioner (Guarantees popovers float on top of editor with z-index 99999)
   function positionPopover(trigger, popover) {
     if (!trigger || !popover) return;
     const rect = trigger.getBoundingClientRect();
     popover.style.position = 'fixed';
-    popover.style.top = (rect.bottom + 4) + 'px';
-    popover.style.maxHeight = 'calc(100vh - ' + (rect.bottom + 12) + 'px)';
-    popover.style.overflowY = 'auto';
-    popover.style.zIndex = '1200';
+    popover.style.zIndex = '99999';
     popover.classList.add('show');
-    const popoverWidth = popover.offsetWidth || 220;
-    let left = rect.left;
-    if (left + popoverWidth > window.innerWidth - 8) {
-      left = window.innerWidth - popoverWidth - 8;
+
+    // Smart vertical positioning
+    if (rect.bottom + 220 > window.innerHeight && rect.top > 220) {
+      popover.style.top = Math.max(8, rect.top - popover.offsetHeight - 4) + 'px';
+      popover.style.maxHeight = (rect.top - 16) + 'px';
+    } else {
+      popover.style.top = (rect.bottom + 4) + 'px';
+      popover.style.maxHeight = 'calc(100vh - ' + (rect.bottom + 16) + 'px)';
     }
-    if (left < 8) left = 8;
+
+    popover.style.overflowY = 'auto';
+    const popoverWidth = popover.offsetWidth || 230;
+    let left = rect.left;
+    if (left + popoverWidth > window.innerWidth - 10) {
+      left = window.innerWidth - popoverWidth - 10;
+    }
+    if (left < 10) left = 10;
     popover.style.left = left + 'px';
   }
 
   function closeAllPopovers() {
-    document.querySelectorAll('.margin-popover.show, .bullet-popover.show, .spacing-popover.show, .tab-menu-dropdown.show, .dropdown.show').forEach(p => {
+    document.querySelectorAll('.margin-popover.show, .bullet-popover.show, .spacing-popover.show, .tab-menu-dropdown.show, .dropdown.show, .df-popover.show').forEach(p => {
       p.classList.remove('show');
     });
   }
@@ -529,12 +559,13 @@
   document.addEventListener('click', e => {
     if (!e.target.closest('.tab-more-btn') && !e.target.closest('.tab-menu-dropdown') &&
         !e.target.closest('.bullet-dropdown-wrap') && !e.target.closest('.margin-popover') &&
-        !e.target.closest('.dropdown') && !e.target.closest('#ribbonSaveDropdownBtn')) {
+        !e.target.closest('.spacing-popover') && !e.target.closest('.dropdown') &&
+        !e.target.closest('#ribbonSaveDropdownBtn')) {
       closeAllPopovers();
     }
   });
 
-  // Dynamic Responsive Toolbar / Ribbon Balancer (Max 2 Rows, Single-row fallback, Orphan Prevention)
+  // Dynamic Responsive Toolbar / Ribbon Balancer (Single row default, scrollable mobile, 2 rows on desktop only if space insufficient)
   function balanceRibbonPanel(panel) {
     if (!panel || !panel.classList.contains('active')) return;
     const container = document.getElementById('ribbonContainer');
@@ -553,40 +584,8 @@
       delete btn.dataset.movedOrphan;
     });
 
-    // Test if all buttons fit in a single row
-    panel.classList.add('single-row');
-    const singleRowWidth = panel.scrollWidth;
-
-    if (singleRowWidth <= availableWidth) {
-      // Fits in 1 single row! Keep .single-row
-      return;
-    }
-
-    // Does not fit in 1 row -> switch to 2 rows
-    panel.classList.remove('single-row');
-
-    // In 2-row mode, check each group for orphan buttons on row 2
-    // If only 1 button remains on the second row and there is space to accommodate it on the first row,
-    // move it back to the first row to avoid leaving a single button alone on the second row.
-    panel.querySelectorAll('.ribbon-group').forEach(group => {
-      const rows = group.querySelectorAll('.ribbon-row');
-      if (rows.length === 2) {
-        const row1 = rows[0];
-        const row2 = rows[1];
-
-        if (row2.children.length === 1) {
-          const orphanBtn = row2.children[0];
-          const row1Width = Array.from(row1.children).reduce((acc, el) => acc + (el.offsetWidth || 30) + 4, 0);
-          const orphanWidth = orphanBtn.offsetWidth || 30;
-
-          if (row1Width + orphanWidth < 300) {
-            orphanBtn._originalRow = row2;
-            orphanBtn.dataset.movedOrphan = 'true';
-            row1.appendChild(orphanBtn);
-          }
-        }
-      }
-    });
+    // Issue 1: ALWAYS single row across all devices (mobile and desktop)
+    panel.classList.remove('two-rows');
   }
 
   function balanceAllRibbons() {

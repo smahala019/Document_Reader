@@ -15,6 +15,7 @@
   let pdfZoomPct = 100;
   let pdfRefW = 612;
   let pdfRefH = 792;
+  let pdfRotation = 0;
   let pdfObserver = null;
   let mergeFiles = [];
 
@@ -40,6 +41,7 @@
       pdfCurrentPage = 1;
       pdfZoomPct = 100;
       pdfScale = PDF_BASE_SCALE;
+      pdfRotation = 0;
       updatePdfControls();
       await buildPdfPlaceholders();
       return;
@@ -85,7 +87,7 @@
 
     try {
       const p1 = await pdfDoc.getPage(1);
-      const vp = p1.getViewport({ scale: 1 });
+      const vp = p1.getViewport({ scale: 1, rotation: ((p1.rotate || 0) + pdfRotation) % 360 });
       pdfRefW = vp.width;
       pdfRefH = vp.height;
     } catch (e) { }
@@ -136,7 +138,7 @@
       if (scaleAtStart !== pdfScale || !container.isConnected) return;
 
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const vp = page.getViewport({ scale: pdfScale });
+      const vp = page.getViewport({ scale: pdfScale, rotation: ((page.rotate || 0) + pdfRotation) % 360 });
       const cssW = Math.min(vp.width, window.innerWidth - 32);
       const cssH = vp.height * (cssW / vp.width);
 
@@ -189,21 +191,7 @@
 
   function rerenderPdf() {
     if (!pdfDoc || !pdfPages) return;
-    const cssW = Math.min(pdfRefW * pdfScale, window.innerWidth - 32);
-
-    pdfPages.querySelectorAll('.pdf-page-wrap').forEach(w => {
-      delete w.dataset.rendered;
-      w.style.width = cssW + 'px';
-      w.style.height = (pdfRefH * (cssW / (pdfRefW * pdfScale))) + 'px';
-      w.innerHTML = `
-        <div class="pdf-loading" style="padding:40px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
-          <i class="fas fa-spinner"></i>
-        </div>
-        <span class="pdf-page-num">${w.dataset.page}</span>
-      `;
-    });
-
-    setupPdfObserver();
+    buildPdfPlaceholders();
   }
 
   // Scroll to page with offset for the sticky header
@@ -235,18 +223,31 @@
       }
     });
 
-    $('#pdfZoomIn')?.addEventListener('click', () => {
-      pdfZoomPct = Math.min(400, pdfZoomPct + 25);
-      pdfScale = (PDF_BASE_SCALE * pdfZoomPct) / 100;
-      updatePdfControls();
-      rerenderPdf();
+    $('#pdfRibbonPrevBtn')?.addEventListener('click', () => {
+      if (pdfCurrentPage > 1) {
+        pdfCurrentPage--;
+        updatePdfControls();
+        scrollToPage(pdfCurrentPage);
+      }
     });
 
-    $('#pdfZoomOut')?.addEventListener('click', () => {
-      pdfZoomPct = Math.max(40, pdfZoomPct - 25);
-      pdfScale = (PDF_BASE_SCALE * pdfZoomPct) / 100;
-      updatePdfControls();
-      rerenderPdf();
+    $('#pdfRibbonNextBtn')?.addEventListener('click', () => {
+      if (pdfCurrentPage < pdfTotalPages) {
+        pdfCurrentPage++;
+        updatePdfControls();
+        scrollToPage(pdfCurrentPage);
+      }
+    });
+
+    $('#pdfRibbonFirstPageBtn')?.addEventListener('click', () => jumpToPage(1));
+    $('#pdfRibbonLastPageBtn')?.addEventListener('click', () => jumpToPage(pdfTotalPages));
+
+    $('#pdfRibbonPageJumpBtn')?.addEventListener('click', () => {
+      const pageStr = prompt(`Enter page number to jump to (1 - ${pdfTotalPages}):`, pdfCurrentPage);
+      if (pageStr) {
+        const pageNum = parseInt(pageStr, 10);
+        if (pageNum >= 1 && pageNum <= pdfTotalPages) jumpToPage(pageNum);
+      }
     });
 
     // Tracking page while scrolling
@@ -268,14 +269,25 @@
       });
     }
 
-    // Extract Text Button
-    $('#pdfExtractBtn')?.addEventListener('click', extractTextFromPdf);
+    // Extract Text & Images Buttons
+    $('#pdfExtractBtn')?.addEventListener('click', () => extractTextFromPdf(true));
+    $('#pdfRibbonExtractTextBtn')?.addEventListener('click', () => extractTextFromPdf(false));
+    $('#pdfRibbonExtractAllBtn')?.addEventListener('click', () => extractTextFromPdf(true));
+    $('#pdfQuickExtractAllBtn')?.addEventListener('click', () => extractTextFromPdf(true));
+
+    // Create PDF from Images
+    $('#pdfCreateFromImagesBtn')?.addEventListener('click', openCreatePdfFromImagesModal);
+    $('#emptyCreatePdfImagesBtn')?.addEventListener('click', openCreatePdfFromImagesModal);
+    $('#pdfQuickCreateImgBtn')?.addEventListener('click', openCreatePdfFromImagesModal);
+
+    // Merge PDFs
+    $('#pdfRibbonMergeModalBtn')?.addEventListener('click', openMergeModal);
   }
 
-  // Extract Text from PDF to Editable Document
-  async function extractTextFromPdf() {
+  // Extract Text & Embedded Images from PDF into Editable Document (Issue 6)
+  async function extractTextFromPdf(includeImages = true) {
     if (!pdfDoc) return;
-    showToast('Extracting text from all pages...', 'info');
+    showToast(includeImages ? 'Extracting text and images from PDF...' : 'Extracting text from all pages...', 'info');
 
     try {
       let extractedHtml = '';
@@ -314,25 +326,67 @@
           });
         }
 
+        let pageImgHtml = '';
+        if (includeImages) {
+          try {
+            const ops = await page.getOperatorList();
+            let hasImages = false;
+            for (let k = 0; k < ops.fnArray.length; k++) {
+              if (ops.fnArray[k] === pdfjsLib.OPS.paintImageXObject || ops.fnArray[k] === pdfjsLib.OPS.paintInlineImageXObject) {
+                hasImages = true;
+                break;
+              }
+            }
+            if (hasImages || !textContent.items.length) {
+              const vp = page.getViewport({ scale: 1.4 });
+              const cv = document.createElement('canvas');
+              cv.width = vp.width;
+              cv.height = vp.height;
+              const ctx = cv.getContext('2d');
+              await page.render({ canvasContext: ctx, viewport: vp }).promise;
+              const dataUrl = cv.toDataURL('image/jpeg', 0.9);
+              pageImgHtml = `
+                <div class="pdf-extracted-image-block" style="margin:16px auto;text-align:center;">
+                  <img src="${dataUrl}" alt="PDF Page ${i} Image" style="max-width:100%;height:auto;border-radius:6px;box-shadow:0 3px 12px rgba(0,0,0,0.12);" data-wrap="inline">
+                </div>`;
+            }
+          } catch (imgErr) {
+            console.warn('Image extraction notice for page', i, imgErr);
+          }
+        }
+
+        if (pageImgHtml) {
+          extractedHtml += pageImgHtml;
+        }
+
         if (i < pdfTotalPages) {
           extractedHtml += '<hr><p><br></p>';
         }
       }
 
       if (!extractedHtml.replace(/<[^>]+>/g, '').trim()) {
-        showToast('No extractable text found in this PDF (might be scanned images)', 'warning');
+        showToast('No extractable content found in this PDF', 'warning');
         return;
       }
 
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
       const baseName = (activeTab ? activeTab.name : 'Document').replace(/\.pdf$/i, '');
-      const tab = window.DocFlow.UI.Tabs.create(baseName + ' (extracted).html', extractedHtml, 'Extracted', 'edit');
+      const tabName = `${baseName} (extracted).html`;
+      const tab = window.DocFlow.UI.Tabs.create(tabName, extractedHtml, 'Extracted', 'edit');
 
       window.DocFlow.UI.Tabs.activateTab(tab);
-      showToast('Extracted text into new editable document', 'success');
+      if (window.DocFlow.Recent) {
+        window.DocFlow.Recent.add({
+          name: tabName,
+          type: 'HTML',
+          mode: 'edit',
+          content: extractedHtml
+        });
+      }
+      showToast('Extracted text and images into new editable document', 'success');
     } catch (e) {
       console.error(e);
-      showToast('Failed to extract text: ' + e.message, 'error');
+      showToast('Failed to extract: ' + e.message, 'error');
     }
   }
 
@@ -504,17 +558,381 @@
     }
   }
 
+  function rotatePdf(deg) {
+    if (!pdfDoc) {
+      showToast('Open a PDF document first', 'warning');
+      return;
+    }
+    pdfRotation = (pdfRotation + deg) % 360;
+    if (pdfRotation < 0) pdfRotation += 360;
+    rerenderPdf();
+    showToast(`Rotated PDF to ${pdfRotation}°`, 'info');
+  }
+
+  function jumpToPage(num) {
+    if (!pdfDoc) return;
+    const target = Math.max(1, Math.min(pdfTotalPages, num));
+    pdfCurrentPage = target;
+    updatePdfControls();
+    scrollToPage(target);
+  }
+
+  function setPdfZoom(pct) {
+    if (!pdfDoc) return;
+    pdfZoomPct = Math.max(25, Math.min(400, pct));
+    pdfScale = (PDF_BASE_SCALE * pdfZoomPct) / 100;
+    updatePdfControls();
+    rerenderPdf();
+  }
+
+  function fitPdf(mode) {
+    if (!pdfDoc) return;
+    if (mode === 'width') {
+      const availW = (pdfWrap ? pdfWrap.clientWidth - 48 : window.innerWidth - 64);
+      pdfScale = availW / (pdfRefW || 612);
+      pdfZoomPct = Math.round((pdfScale / PDF_BASE_SCALE) * 100);
+    } else if (mode === 'page') {
+      const availH = (pdfWrap ? pdfWrap.clientHeight - 80 : window.innerHeight - 150);
+      pdfScale = availH / (pdfRefH || 792);
+      pdfZoomPct = Math.round((pdfScale / PDF_BASE_SCALE) * 100);
+    } else {
+      pdfZoomPct = 100;
+      pdfScale = PDF_BASE_SCALE;
+    }
+    updatePdfControls();
+    rerenderPdf();
+    showToast(`PDF Fit Mode: ${mode}`, 'info');
+  }
+
+  function toggleTwoPage() {
+    if (!pdfPages) return;
+    const isTwo = pdfPages.classList.toggle('pdf-two-page-view');
+    showToast(`Two Page Spread: ${isTwo ? 'ON' : 'OFF'}`, 'info');
+  }
+
+  async function extractImagesFromPdf() {
+    if (!pdfDoc) {
+      showToast('Open a PDF document first', 'warning');
+      return;
+    }
+    showToast('Extracting images from PDF...', 'info');
+    try {
+      let imageHtml = `<div style="max-width:850px;margin:20px auto;font-family:inherit;">
+        <h2 style="margin-bottom:16px;color:var(--text-primary);"><i class="fas fa-images" style="color:#f59e0b;margin-right:8px;"></i>Extracted Images from PDF</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:16px;">`;
+      let count = 0;
+
+      for (let pNum = 1; pNum <= Math.min(pdfTotalPages, 20); pNum++) {
+        const page = await pdfDoc.getPage(pNum);
+        const vp = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        const dataUrl = canvas.toDataURL('image/png');
+        count++;
+        imageHtml += `
+          <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+            <img src="${dataUrl}" style="max-width:100%;height:auto;border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.15);" alt="Page ${pNum} render">
+            <div style="margin-top:8px;font-size:12px;font-weight:600;color:var(--text-secondary);">Page ${pNum}</div>
+            <a href="${dataUrl}" download="pdf_page_${pNum}.png" style="display:inline-block;margin-top:6px;padding:3px 10px;font-size:11px;background:var(--accent);color:#fff;border-radius:4px;text-decoration:none;">Download PNG</a>
+          </div>`;
+      }
+      imageHtml += `</div></div>`;
+
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      const baseName = (activeTab ? activeTab.name : 'Document').replace(/\.pdf$/i, '');
+      const tab = window.DocFlow.UI.Tabs.create(`${baseName} (images).html`, imageHtml, 'Extracted Images', 'edit');
+      window.DocFlow.UI.Tabs.activateTab(tab);
+      showToast(`Extracted ${count} page image(s)`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Error extracting images: ' + err.message, 'error');
+    }
+  }
+
+  function downloadCurrentPdf() {
+    const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+    if (!activeTab || !activeTab.pdfData) {
+      showToast('No active PDF data to download', 'warning');
+      return;
+    }
+    const blob = new Blob([activeTab.pdfData], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = activeTab.name || 'document.pdf';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+    showToast('Downloading PDF...', 'success');
+  }
+
+  // ==========================================================================
+  // Create PDF from Images (Issue 6)
+  // ==========================================================================
+  let selectedPdfImages = [];
+
+  function openCreatePdfFromImagesModal() {
+    selectedPdfImages = [];
+    renderSelectedPdfImages();
+    openModal('#createPdfFromImagesModal');
+  }
+
+  function renderSelectedPdfImages() {
+    const list = $('#pdfImagesSelectedList');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!selectedPdfImages.length) {
+      list.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:10px;">No images added yet. Click above to browse.</div>';
+      return;
+    }
+    selectedPdfImages.forEach((img, idx) => {
+      const item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:10px;padding:6px 10px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;';
+      item.innerHTML = `
+        <img src="${img.dataUrl}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;" alt="Thumb">
+        <div style="flex:1;min-width:0;font-size:12px;font-weight:600;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(img.name)}</div>
+        <button type="button" class="img-del-btn" style="background:transparent;border:none;color:var(--danger);cursor:pointer;padding:4px;"><i class="fas fa-trash-can"></i></button>
+      `;
+      item.querySelector('.img-del-btn').addEventListener('click', () => {
+        selectedPdfImages.splice(idx, 1);
+        renderSelectedPdfImages();
+      });
+      list.appendChild(item);
+    });
+  }
+
+  function setupCreatePdfFromImagesModal() {
+    const dropZone = $('#pdfImagesDropZone');
+    const fileInput = $('#pdfImagesFileInput');
+    const closeBtn = $('#createPdfImagesCloseBtn');
+    const cancelBtn = $('#createPdfImagesCancelBtn');
+    const submitBtn = $('#createPdfImagesSubmitBtn');
+    const insertDocBtn = $('#insertImagesToDocBtn');
+
+    const handleFiles = (files) => {
+      Array.from(files).forEach(f => {
+        if (!f.type.startsWith('image/')) return;
+        // Deduplicate files by name
+        if (selectedPdfImages.some(img => img.name === f.name)) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+          if (selectedPdfImages.some(img => img.dataUrl === e.target.result)) return;
+          selectedPdfImages.push({ name: f.name, dataUrl: e.target.result });
+          renderSelectedPdfImages();
+        };
+        reader.readAsDataURL(f);
+      });
+    };
+
+    dropZone?.addEventListener('click', e => {
+      if (e.target === fileInput) return;
+      fileInput?.click();
+    });
+    fileInput?.addEventListener('click', e => e.stopPropagation());
+    fileInput?.addEventListener('change', e => {
+      if (e.target.files) handleFiles(e.target.files);
+      fileInput.value = '';
+    });
+
+    dropZone?.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.style.borderColor = 'var(--accent)';
+    });
+    dropZone?.addEventListener('dragleave', () => {
+      dropZone.style.borderColor = '';
+    });
+    dropZone?.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.style.borderColor = '';
+      if (e.dataTransfer && e.dataTransfer.files) {
+        handleFiles(e.dataTransfer.files);
+      }
+    });
+
+    closeBtn?.addEventListener('click', () => closeModal('#createPdfFromImagesModal'));
+    cancelBtn?.addEventListener('click', () => closeModal('#createPdfFromImagesModal'));
+
+    // Insert directly into Document Editor with Word-like adjustable handles & toolbar (Issue 5)
+    insertDocBtn?.addEventListener('click', () => {
+      if (!selectedPdfImages.length) {
+        showToast('Please select at least one image to insert', 'warning');
+        return;
+      }
+      closeModal('#createPdfFromImagesModal');
+      let activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || activeTab.format === 'pdf') {
+        activeTab = window.DocFlow.UI.Tabs.create('Image Document', '<p><br></p>', 'DOCX', 'docx');
+        window.DocFlow.UI.Tabs.activateTab(activeTab);
+      }
+      window.DocFlow.switchMode('edit');
+      const count = selectedPdfImages.length;
+      selectedPdfImages.forEach(img => {
+        window.DocFlow.ImageManager?.insertImageIntoDocument(img.dataUrl, img.name);
+      });
+      selectedPdfImages = [];
+      showToast(`Inserted ${count} image(s). Use resize handles and toolbar to customize size & position!`, 'success');
+    });
+
+    submitBtn?.addEventListener('click', async () => {
+      if (!selectedPdfImages.length) {
+        showToast('Please select at least one image to create PDF', 'warning');
+        return;
+      }
+
+      showToast('Generating PDF from images...', 'info');
+      try {
+        const { jsPDF } = window.jspdf;
+        const isLandscape = $('#pdfImagesOrientation')?.value === 'landscape';
+        const marginOpt = $('#pdfImagesMargin')?.value || 'fit';
+        const positionOpt = $('#pdfImagesPosition')?.value || 'center';
+        const scaleOpt = $('#pdfImagesScale')?.value || 'fit';
+        const pdf = new jsPDF(isLandscape ? 'l' : 'p', 'mm', 'a4');
+
+        const pageW = isLandscape ? 297 : 210;
+        const pageH = isLandscape ? 210 : 297;
+        const margin = marginOpt === 'bleed' ? 0 : (marginOpt === 'large' ? 20 : 10);
+        const maxW = pageW - margin * 2;
+        const maxH = pageH - margin * 2;
+
+        for (let i = 0; i < selectedPdfImages.length; i++) {
+          if (i > 0) pdf.addPage();
+          const img = selectedPdfImages[i];
+
+          await new Promise((resolve) => {
+            const tempImg = new Image();
+            tempImg.onload = () => {
+              let w = tempImg.naturalWidth || tempImg.width || 800;
+              let h = tempImg.naturalHeight || tempImg.height || 600;
+
+              let renderW, renderH;
+              if (scaleOpt === 'stretch') {
+                renderW = maxW;
+                renderH = maxH;
+              } else if (scaleOpt === 'large') {
+                renderW = maxW;
+                renderH = Math.min(maxH, h * (maxW / w));
+              } else if (scaleOpt === 'medium') {
+                renderW = maxW * 0.75;
+                renderH = Math.min(maxH, h * (renderW / w));
+              } else if (scaleOpt === 'small') {
+                renderW = maxW * 0.5;
+                renderH = Math.min(maxH, h * (renderW / w));
+              } else {
+                // Auto fit
+                const ratio = Math.min(maxW / w, maxH / h);
+                renderW = w * ratio;
+                renderH = h * ratio;
+              }
+
+              let posX = margin + (maxW - renderW) / 2;
+              let posY = margin + (maxH - renderH) / 2;
+              if (positionOpt === 'top') {
+                posY = margin;
+              } else if (positionOpt === 'stretch') {
+                posX = margin;
+                posY = margin;
+              }
+
+              const isPng = img.dataUrl.startsWith('data:image/png');
+              pdf.addImage(img.dataUrl, isPng ? 'PNG' : 'JPEG', posX, posY, renderW, renderH);
+              resolve();
+            };
+            tempImg.onerror = resolve;
+            tempImg.src = img.dataUrl;
+          });
+        }
+
+        const pdfArrayBuffer = pdf.output('arraybuffer');
+        const pdfName = `Images_${Date.now()}.pdf`;
+
+        if (window.DocFlow.Recent) {
+          window.DocFlow.Recent.add({
+            name: pdfName,
+            type: 'PDF',
+            mode: 'view',
+            pdfData: pdfArrayBuffer
+          });
+        }
+
+        closeModal('#createPdfFromImagesModal');
+        const count = selectedPdfImages.length;
+        selectedPdfImages = [];
+
+        const tab = window.DocFlow.UI.Tabs.create(pdfName, '', 'PDF', 'pdf');
+        tab.pdfData = pdfArrayBuffer;
+        loadPdfTab(tab);
+        window.DocFlow.UI.Tabs.activateTab(tab);
+
+        showToast(`Created PDF "${pdfName}" from ${count} image(s) and saved to Recents!`, 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to create PDF: ' + err.message, 'error');
+      }
+    });
+  }
+
+  function printCurrentPdf() {
+    const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+    if (!activeTab || !activeTab.pdfData) {
+      showToast('Open a PDF document first to print', 'warning');
+      return;
+    }
+    const blob = new Blob([activeTab.pdfData], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    iframe.onload = () => {
+      setTimeout(() => {
+        iframe.focus();
+        iframe.contentWindow.print();
+        setTimeout(() => document.body.removeChild(iframe), 60000);
+      }, 300);
+    };
+  }
+
   function initPdfViewer() {
     setupPdfControls();
     setupMergePdfModal();
+    setupCreatePdfFromImagesModal();
   }
+
+  const openPdfWatermarkModal = () => {};
 
   // Export module
   window.DocFlow = window.DocFlow || {};
   window.DocFlow.PDF = {
     initPdfViewer,
     loadPdfTab,
-    openMergeModal
+    openMergeModal,
+    openCreatePdfFromImagesModal,
+    openPdfWatermarkModal,
+    extractTextFromPdf,
+    extractImagesFromPdf,
+    rotatePdf,
+    jumpToPage,
+    setPdfZoom,
+    fitPdf,
+    toggleTwoPage,
+    downloadCurrentPdf,
+    printCurrentPdf,
+    nextPage: () => $('#pdfNext')?.click(),
+    prevPage: () => $('#pdfPrev')?.click(),
+    getTotalPages: () => pdfTotalPages,
+    getCurrentPage: () => pdfCurrentPage
   };
 
 })(window);
+

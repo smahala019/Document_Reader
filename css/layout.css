@@ -247,18 +247,21 @@
   box-shadow: none;
 }
 
-/* Ribbon Panels (Content of active ribbon tab) - Max 2 rows of buttons, smooth mobile scroll with hidden scrollbar */
+/* Ribbon Panels (Content of active ribbon tab) — Always Single Row & Smoothly Scrollable */
 .ribbon-panel {
   display: none;
   align-items: center;
-  padding: 4px 10px;
+  padding: 3px 10px;
   gap: 8px;
-  min-height: 68px;
-  max-height: 72px; /* STRICT MAX 2 ROWS */
+  min-height: 40px;
+  max-height: 44px;
+  height: 42px;
   background: var(--bg-primary);
   position: relative;
   overflow-x: auto;
   overflow-y: hidden;
+  white-space: nowrap;
+  flex-wrap: nowrap;
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
@@ -266,38 +269,25 @@
 
 .ribbon-panel::-webkit-scrollbar {
   display: none;
+  height: 0;
+  width: 0;
 }
 
 .ribbon-panel.active {
   display: flex;
 }
 
-/* Single row layout when enough screen space exists */
-.ribbon-panel.single-row {
-  min-height: 38px;
-  max-height: 42px;
-}
-
-.ribbon-panel.single-row .ribbon-group {
-  flex-direction: row;
-  align-items: center;
-  max-height: 36px;
-  gap: 4px;
-}
-
-.ribbon-panel.single-row .ribbon-row {
-  display: contents;
-}
-
-/* Ribbon Groups: 2 rows of buttons */
+/* Ribbon Groups: Clean single horizontal row */
 .ribbon-group {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   padding-right: 8px;
   border-right: 1px solid var(--border);
   flex-shrink: 0;
+  flex-wrap: nowrap;
   height: 100%;
 }
 
@@ -308,8 +298,19 @@
 
 .ribbon-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 3px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+/* Inline Reset Zoom styling in View group */
+#editorZoomResetBtn {
+  font-size: 11px;
+  padding: 0 8px;
+  height: 28px;
+  white-space: nowrap;
 }
 
 /* Ribbon Action Buttons */
@@ -671,11 +672,11 @@
   font-weight: 600;
 }
 
-/* Recent Documents Section on Welcome Screen */
+/* Recent Documents Section on Welcome Screen (Row 2, directly below drop zone) */
 .recent-files-container {
-  width: 560px;
+  width: 580px;
   max-width: 92vw;
-  margin-top: 0;
+  margin: 0 auto;
   flex-shrink: 0;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -734,8 +735,9 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 260px;
+  max-height: 195px;
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .recent-file-item {
@@ -1094,11 +1096,25 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  overflow-y: auto;
+  overflow-y: auto !important;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   z-index: 1;
   transition: opacity 0.2s;
-  padding: 32px 16px 60px;
-  gap: 20px;
+  padding: 24px 16px 40px;
+  gap: 16px;
+}
+
+@media (min-width: 992px) {
+  .empty-state {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    padding: 20px 20px 24px;
+    margin: 0 auto;
+    overflow-y: auto !important;
+  }
 }
 
 .empty-state.hidden {
@@ -1109,9 +1125,11 @@
 }
 
 .drop-zone {
-  width: 560px;
+  width: 580px;
   max-width: 92vw;
-  padding: 50px 36px;
+  margin: 0 auto;
+  flex-shrink: 0;
+  padding: 24px 24px;
   border: 2px dashed var(--border-light);
   border-radius: 20px;
   text-align: center;
@@ -1671,4 +1689,189 @@ body.reading-mode .exit-reading-mode-btn {
   scrollbar-width: thin;
 }
 
+/* ==========================================================================
+   Full Project Responsive Suite (Mobile, Tablet, Desktop)
+   ========================================================================== */
+.ribbon-menu-bar {
+  display: flex;
+  align-items: center;
+  overflow-x: auto !important;
+  white-space: nowrap !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+}
+.ribbon-menu-bar::-webkit-scrollbar {
+  display: none !important;
+}
 
+.ribbon-panel {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: none !important;
+}
+.ribbon-panel::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Desktop PPT Slide Sidebar & Main Content Alignment (Issue 3) */
+.main-content:has(#pptxSlideSidebar:not([style*="display: none"]):not([style*="display:none"])) {
+  display: flex !important;
+  flex-direction: row !important;
+}
+.main-content:has(#pptxSlideSidebar:not([style*="display: none"]):not([style*="display:none"])) .editor-wrap {
+  position: relative !important;
+  inset: auto !important;
+  flex: 1 !important;
+  height: 100% !important;
+}
+
+@media (max-width: 768px) {
+  .main-content {
+    flex-direction: column !important;
+  }
+  .pptx-slide-sidebar {
+    width: 100% !important;
+    height: 96px !important;
+    max-height: 96px !important;
+    border-right: none !important;
+    border-top: 1px solid var(--border) !important;
+    flex-direction: column !important;
+    order: 2;
+  }
+  .pptx-sidebar-header {
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+  }
+  .pptx-sidebar-thumbnails {
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 4px 8px !important;
+    gap: 8px !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .pptx-thumbnail-item {
+    min-width: 105px !important;
+    max-width: 105px !important;
+    padding: 3px !important;
+  }
+  .pptx-thumbnail-preview {
+    width: 72px !important;
+    height: 42px !important;
+  }
+  .editor-wrap {
+    padding: 12px 6px 70px !important;
+    width: 100% !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .editor-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 20px 14px !important;
+    box-shadow: none !important;
+    border-radius: 4px !important;
+    box-sizing: border-box !important;
+  }
+  .editor-page.is-pptx-deck {
+    padding: 10px 6px !important;
+  }
+  .pptx-slide-card {
+    padding: 14px !important;
+    min-height: 240px !important;
+  }
+  .empty-state {
+    padding: 14px 10px 60px !important;
+    gap: 14px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    justify-content: flex-start !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .drop-zone {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 20px 14px !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+  }
+  .recent-files-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px 14px !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+  }
+  .excel-spreadsheet-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .modal-box, .modal {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    padding: 16px 14px !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    padding: 0 8px !important;
+    gap: 6px !important;
+  }
+  .topbar-brand span {
+    display: none !important;
+  }
+  .topbar-filename {
+    font-size: 12px !important;
+    max-width: 130px !important;
+  }
+  .tb-btn.text-btn span {
+    display: none !important;
+  }
+  .tb-btn.text-btn {
+    width: 30px !important;
+    padding: 0 !important;
+  }
+  .tb-divider {
+    display: none !important;
+  }
+  #lineInfoWrap, #charCountItem {
+    display: none !important;
+  }
+  .statusbar {
+    padding: 0 8px !important;
+    font-size: 10.5px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .drop-title {
+    font-size: 14px !important;
+  }
+  .drop-subtitle {
+    font-size: 11px !important;
+    margin-bottom: 12px !important;
+  }
+  .format-tag {
+    font-size: 9.5px !important;
+    padding: 3px 6px !important;
+  }
+  .recent-files-title {
+    font-size: 12px !important;
+  }
+  .recent-file-item {
+    padding: 6px 8px !important;
+    gap: 8px !important;
+  }
+  .recent-item-title {
+    font-size: 12px !important;
+  }
+  .recent-item-meta {
+    font-size: 9.5px !important;
+  }
+}

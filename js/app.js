@@ -130,6 +130,74 @@
   const modeInfo = $('#modeInfo');
 
   // ==========================================================================
+  // IndexedDB Storage for PDF Documents (Issue 1)
+  // ==========================================================================
+  const PdfStore = {
+    DB_NAME: 'DocFlow_PDF_Store',
+    STORE_NAME: 'pdf_files',
+    _dbPromise: null,
+
+    getDb() {
+      if (!this._dbPromise) {
+        this._dbPromise = new Promise((resolve, reject) => {
+          const req = indexedDB.open(this.DB_NAME, 1);
+          req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+              db.createObjectStore(this.STORE_NAME, { keyPath: 'name' });
+            }
+          };
+          req.onsuccess = e => resolve(e.target.result);
+          req.onerror = e => reject(e.target.error);
+        });
+      }
+      return this._dbPromise;
+    },
+
+    async set(name, arrayBuffer) {
+      if (!name || !arrayBuffer) return;
+      try {
+        const db = await this.getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.STORE_NAME, 'readwrite');
+          const store = tx.objectStore(this.STORE_NAME);
+          store.put({ name: name.toLowerCase(), buffer: arrayBuffer, timestamp: Date.now() });
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = e => reject(e.target.error);
+        });
+      } catch (err) {
+        console.warn('PdfStore save error:', err);
+      }
+    },
+
+    async get(name) {
+      if (!name) return null;
+      try {
+        const db = await this.getDb();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.STORE_NAME, 'readonly');
+          const store = tx.objectStore(this.STORE_NAME);
+          const req = store.get(name.toLowerCase());
+          req.onsuccess = () => resolve(req.result ? req.result.buffer : null);
+          req.onerror = e => reject(e.target.error);
+        });
+      } catch (err) {
+        console.warn('PdfStore get error:', err);
+        return null;
+      }
+    },
+
+    async remove(name) {
+      if (!name) return;
+      try {
+        const db = await this.getDb();
+        const tx = db.transaction(this.STORE_NAME, 'readwrite');
+        tx.objectStore(this.STORE_NAME).delete(name.toLowerCase());
+      } catch (e) {}
+    }
+  };
+
+  // ==========================================================================
   // Recent Files Manager (Persistent, Individual Delete, Clear All, Reopen)
   // ==========================================================================
   const Recent = {
@@ -159,14 +227,19 @@
       list = list.filter(item => item.name.toLowerCase() !== doc.name.toLowerCase());
 
       const ext = (doc.name.split('.').pop() || '').toLowerCase();
+      const isPdf = ext === 'pdf' || doc.type === 'PDF';
       const entry = {
         id: 'rec_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         name: doc.name,
-        type: doc.type || ext.toUpperCase() || 'DOC',
-        mode: doc.mode || (ext === 'pdf' ? 'view' : 'edit'),
+        type: doc.type || (isPdf ? 'PDF' : ext.toUpperCase()) || 'DOC',
+        mode: doc.mode || (isPdf ? 'view' : 'edit'),
         content: doc.content || '<p><br></p>',
         timestamp: Date.now()
       };
+
+      if (doc.pdfData) {
+        PdfStore.set(doc.name, doc.pdfData);
+      }
 
       list.unshift(entry);
       this.saveAll(list);
@@ -193,6 +266,10 @@
 
     remove(id) {
       let list = this.getAll();
+      const target = list.find(item => item.id === id);
+      if (target && (target.type === 'PDF' || target.name.toLowerCase().endsWith('.pdf'))) {
+        PdfStore.remove(target.name);
+      }
       list = list.filter(item => item.id !== id);
       this.saveAll(list);
       this.render();
@@ -213,17 +290,40 @@
 
     openDocument(item) {
       if (!item) return;
+
+      // Update timestamp and bring to top of recents when reopened (Issue 1)
+      item.timestamp = Date.now();
+      let list = this.getAll().filter(d => d.name.toLowerCase() !== item.name.toLowerCase());
+      list.unshift(item);
+      this.saveAll(list);
+      this.render();
+
       // If document is already open in a tab, switch to it immediately
-      const existing = window.DocFlow.UI.Tabs.findByFile(item.name);
+      const existing = window.DocFlow.UI.Tabs.findByFile ? window.DocFlow.UI.Tabs.findByFile(item.name) : window.DocFlow.UI.Tabs.list.find(t => t.name.toLowerCase() === item.name.toLowerCase());
       if (existing) {
         window.DocFlow.UI.Tabs.switchTo(existing.id);
         showToast(`Switched to "${item.name}"`, 'info');
         return;
       }
 
-      if (item.mode === 'view' || item.type === 'PDF') {
-        showToast(`To view PDF "${item.name}", please browse or drop the file`, 'info');
-        $('#openBtn')?.click();
+      // Reopen PDF documents with full preserved binary data from PdfStore (Issue 1)
+      if (item.type === 'PDF' || item.name.toLowerCase().endsWith('.pdf')) {
+        showToast(`Loading PDF "${item.name}"...`, 'info');
+        PdfStore.get(item.name).then(data => {
+          if (data) {
+            const tab = window.DocFlow.UI.Tabs.create(item.name, '', 'PDF', 'pdf');
+            tab.pdfData = data;
+            window.DocFlow.PDF?.loadPdfTab?.(tab);
+            window.DocFlow.UI.Tabs.activateTab(tab);
+            showToast(`Reopened PDF "${item.name}"`, 'success');
+          } else {
+            showToast(`PDF file data not found in local cache. Please browse to reopen "${item.name}".`, 'info');
+            $('#openBtn')?.click();
+          }
+        }).catch(() => {
+          showToast(`To view PDF "${item.name}", please browse or drop the file`, 'info');
+          $('#openBtn')?.click();
+        });
         return;
       }
 
@@ -403,6 +503,7 @@
   // ==========================================================================
   function switchMode(mode) {
     window.DocFlow.currentMode = mode;
+    document.body.dataset.mode = mode;
 
     if (emptyState) {
       emptyState.classList.toggle('hidden', mode !== 'empty');
@@ -442,6 +543,14 @@
     if (mode === 'edit') {
       window.DocFlow.Editor?.updateCounts();
       window.DocFlow.Editor?.updateCursorPos();
+      const editor = $('#editor');
+      if (editor) {
+        editor.contentEditable = isPptxDocument() ? 'false' : 'true';
+      }
+      updatePptSidebar();
+    } else {
+      const sidebar = $('#pptxSlideSidebar');
+      if (sidebar) sidebar.style.display = 'none';
     }
   }
 
@@ -583,7 +692,7 @@
       // Adapt content to chosen format (Bug 11: Real 25-row Excel grid; Bug 12: PPTX deck)
       if (ext === 'xlsx') {
         content = tmpl.id === 'blank'
-          ? (window.DocFlow.FileIO?.createBlankExcelGrid(8, 25) || `<p>Spreadsheet Document</p>`)
+          ? (window.DocFlow.FileIO?.createBlankExcelGrid(50, 50) || `<p>Spreadsheet Document</p>`)
           : `<p><strong>${escHtml(tmpl.name)}</strong></p>${content}`;
       } else if (ext === 'pptx') {
         content = window.DocFlow.FileIO?.createBlankPresentation() || '<p>Presentation Document</p>';
@@ -601,9 +710,16 @@
         }
       }
 
+      const fullName = `${docTitle}.${ext}`;
+      const duplicateOpen = window.DocFlow.UI.Tabs.list.some(t => t.name.toLowerCase() === fullName.toLowerCase());
+      const duplicateRecent = Recent.getAll().some(r => r.name.toLowerCase() === fullName.toLowerCase());
+      if (duplicateOpen || duplicateRecent) {
+        showToast(`A file named "${fullName}" already exists. Please choose a different name or extension.`, 'error');
+        return;
+      }
+
       closeModal('#newDocModal');
 
-      const fullName = `${docTitle}.${ext}`;
       const tab = window.DocFlow.UI.Tabs.create(fullName, content, ext.toUpperCase(), 'edit');
       window.DocFlow.UI.Tabs.activateTab(tab);
 
@@ -721,7 +837,10 @@
       home: '#ribbonPanelHome',
       insert: '#ribbonPanelInsert',
       layout: '#ribbonPanelLayout',
-      view: '#ribbonPanelView'
+      view: '#ribbonPanelView',
+      ppt: '#ribbonPanelPpt',
+      excel: '#ribbonPanelExcel',
+      pdf: '#ribbonPanelPdf'
     };
 
     $$('.ribbon-panel').forEach(p => p.classList.remove('active'));
@@ -915,6 +1034,89 @@
 
     $('#symbolCancel')?.addEventListener('click', () => closeModal('#symbolModal'));
     $('#statsCloseBtn')?.addEventListener('click', () => closeModal('#statsModal'));
+  }
+
+  // Custom Page Border Modal (Issue 2)
+  function initCustomBorderModal() {
+    const modal = $('#customPageBorderModal');
+    if (!modal) return;
+
+    const closeBtn = $('#customPageBorderCloseBtn');
+    const cancelBtn = $('#customBorderCancelBtn');
+    const applyBtn = $('#customBorderApplyBtn');
+    const removeBtn = $('#customBorderRemoveBtn');
+
+    const lineTypeSelect = $('#customBorderLineType');
+    const widthSelect = $('#customBorderWidth');
+    const colorInput = $('#customBorderColorInput');
+    const colorText = $('#customBorderColorText');
+    const radiusSelect = $('#customBorderRadius');
+    const previewBox = $('#customBorderPreviewBox');
+
+    function updatePreview() {
+      const lineType = lineTypeSelect?.value || 'solid';
+      const width = widthSelect?.value || '2px';
+      const color = colorInput?.value || '#0284c7';
+      const radius = radiusSelect?.value || '0px';
+      if (previewBox) {
+        previewBox.style.border = `${width} ${lineType} ${color}`;
+        previewBox.style.borderRadius = radius;
+      }
+    }
+
+    closeBtn?.addEventListener('click', () => closeModal('#customPageBorderModal'));
+    cancelBtn?.addEventListener('click', () => closeModal('#customPageBorderModal'));
+
+    colorInput?.addEventListener('input', e => {
+      if (colorText) colorText.value = e.target.value;
+      updatePreview();
+    });
+
+    colorText?.addEventListener('input', e => {
+      const val = e.target.value.trim();
+      if (/^#[0-9a-fA-F]{3,8}$/.test(val) && colorInput) {
+        colorInput.value = val;
+      }
+      updatePreview();
+    });
+
+    lineTypeSelect?.addEventListener('change', updatePreview);
+    widthSelect?.addEventListener('change', updatePreview);
+    radiusSelect?.addEventListener('change', updatePreview);
+
+    applyBtn?.addEventListener('click', () => {
+      const page = $('.editor-page');
+      if (page) {
+        window.DocFlow.Editor?.saveSnapshot?.();
+        const lineType = lineTypeSelect?.value || 'solid';
+        const width = widthSelect?.value || '2px';
+        const color = colorInput?.value || '#0284c7';
+        const radius = radiusSelect?.value || '0px';
+
+        page.classList.remove('page-border-box', 'page-border-shadow', 'page-border-double');
+        page.style.border = `${width} ${lineType} ${color}`;
+        page.style.borderRadius = radius;
+
+        window.DocFlow.Editor?.notifyChange();
+        showToast(`Custom border (${width} ${lineType}) applied`, 'success');
+      }
+      closeModal('#customPageBorderModal');
+    });
+
+    removeBtn?.addEventListener('click', () => {
+      const page = $('.editor-page');
+      if (page) {
+        window.DocFlow.Editor?.saveSnapshot?.();
+        page.style.border = '';
+        page.style.borderRadius = '';
+        page.classList.remove('page-border-box', 'page-border-shadow', 'page-border-double');
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Page border removed', 'info');
+      }
+      closeModal('#customPageBorderModal');
+    });
+
+    updatePreview();
   }
 
   // Whiteboard & Excalidraw Canvas Studio (Insert Tab -> Draw Tool)
@@ -1510,7 +1712,7 @@
   function createNewDocDirect(ext, docTitle) {
     let content = '<p><br></p>';
     if (ext === 'xlsx') {
-      content = window.DocFlow.FileIO?.createBlankExcelGrid(10, 30) || '<p>Spreadsheet Document</p>';
+      content = window.DocFlow.FileIO?.createBlankExcelGrid(50, 50) || '<p>Spreadsheet Document</p>';
     } else if (ext === 'pptx') {
       content = window.DocFlow.FileIO?.createBlankPresentation() || '<p>Presentation Document</p>';
     } else if (ext === 'docx') {
@@ -1524,6 +1726,10 @@
     const tab = window.DocFlow.UI.Tabs.create(fullName, content, ext.toUpperCase(), 'edit');
     window.DocFlow.UI.Tabs.activateTab(tab);
 
+    if (ext === 'xlsx') {
+      setTimeout(setupExcelInteractions, 50);
+    }
+
     Recent.add({
       name: fullName,
       type: ext.toUpperCase(),
@@ -1534,130 +1740,1798 @@
     showToast(`Created new document "${fullName}"`, 'success');
   }
 
-  // Office Integration Helpers (Excel table styling, PPT slide card, Excel grid)
-  function applyExcelTableStyle() {
+  // Office & Embed Helpers (PPT Outside/Nested Slides, Charts, Presentation Slideshow, Excel Sheet Protection)
+  function isPptxDocument() {
+    const activeTab = window.DocFlow?.UI?.Tabs?.get(window.DocFlow?.UI?.Tabs?.activeId);
+    if (!activeTab) return false;
+    const name = (activeTab.name || '').toLowerCase();
+    const type = (activeTab.fileType || '').toLowerCase();
+    return name.endsWith('.pptx') || name.endsWith('.ppt') || type === 'pptx' || type === 'ppt';
+  }
+
+  // PowerPoint Slide Deck Management & Sidebar (Issue 5)
+  let currentActiveSlideIndex = 0;
+
+  function updatePptSidebar() {
+    const isPpt = isPptxDocument();
+    const sidebar = $('#pptxSlideSidebar');
+    const editor = $('#editor');
+    if (!editor) return;
+
+    if (!isPpt) {
+      if (sidebar) sidebar.style.display = 'none';
+      editor.classList.remove('is-pptx-deck');
+      editor.querySelectorAll('.pptx-slide-wrapper').forEach(w => w.style.display = '');
+      return;
+    }
+
+    if (sidebar) sidebar.style.display = 'flex';
+    editor.classList.add('is-pptx-deck');
+
+    let slideWrappers = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+
+    if (slideWrappers.length === 0) {
+      const bareCards = Array.from(editor.querySelectorAll('.pptx-slide-card'));
+      if (bareCards.length > 0) {
+        bareCards.forEach(card => {
+          if (!card.closest('.pptx-slide-wrapper')) {
+            const wrap = document.createElement('div');
+            wrap.className = 'pptx-slide-wrapper';
+            wrap.style.cssText = 'position:relative;margin:28px auto;max-width:850px;';
+            card.parentNode.insertBefore(wrap, card);
+            wrap.appendChild(card);
+          }
+        });
+        slideWrappers = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+      }
+    }
+
+    if (slideWrappers.length === 0) {
+      editor.innerHTML = createEmptySlideHtml();
+      slideWrappers = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    }
+
+    currentActiveSlideIndex = Math.max(0, Math.min(currentActiveSlideIndex, slideWrappers.length - 1));
+
+    const slideCountEl = $('#pptxSlideCount');
+    if (slideCountEl) slideCountEl.textContent = slideWrappers.length;
+
+    // Display ONLY the slide selected by the user, not all slides at once (Issue 5)
+    slideWrappers.forEach((w, idx) => {
+      if (idx === currentActiveSlideIndex) {
+        w.style.display = 'block';
+        w.classList.add('active-slide');
+      } else {
+        w.style.display = 'none';
+        w.classList.remove('active-slide');
+      }
+    });
+
+    // Populate Sidebar Thumbnails
+    const thumbsContainer = $('#pptxSidebarThumbnails');
+    if (thumbsContainer) {
+      if (!thumbsContainer._delegated) {
+        thumbsContainer._delegated = true;
+        thumbsContainer.addEventListener('click', e => {
+          const delBtn = e.target.closest('.pptx-thumbnail-delete-btn');
+          if (delBtn) {
+            e.stopPropagation();
+            const idx = parseInt(delBtn.dataset.deleteIdx, 10);
+            deletePptSlide(idx);
+            return;
+          }
+          const thumb = e.target.closest('.pptx-thumbnail-item');
+          if (thumb) {
+            const idx = parseInt(thumb.dataset.slideIndex, 10);
+            if (!isNaN(idx)) selectPptSlide(idx);
+          }
+        });
+      }
+      thumbsContainer.innerHTML = '';
+      slideWrappers.forEach((w, idx) => {
+        const card = w.querySelector('.pptx-slide-card') || w;
+        const titleText = card.querySelector('.pptx-slide-title, .slide-title-box, h1, h2, h3, h4')?.textContent.trim() || `Slide ${idx + 1}`;
+        const snippetText = (card.innerText || '').replace(titleText, '').trim().substring(0, 60);
+
+        const thumb = document.createElement('div');
+        thumb.className = `pptx-thumbnail-item ${idx === currentActiveSlideIndex ? 'active' : ''}`;
+        thumb.dataset.slideIndex = idx;
+        thumb.innerHTML = `
+          <div class="pptx-thumbnail-num">${idx + 1}</div>
+          <div class="pptx-thumbnail-card-wrap">
+            <div class="pptx-thumbnail-preview">
+              <div style="font-weight:700;color:var(--text-primary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(titleText)}</div>
+              <div style="font-size:7.5px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${escHtml(snippetText || 'Empty slide')}</div>
+            </div>
+            <button class="pptx-thumbnail-delete-btn" data-delete-idx="${idx}" title="Delete slide ${idx + 1}">
+              <i class="fas fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        thumbsContainer.appendChild(thumb);
+      });
+    }
+  }
+
+  function selectPptSlide(index) {
+    currentActiveSlideIndex = index;
+    updatePptSidebar();
+    const editor = $('#editor');
+    if (editor) {
+      const slides = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+      const activeWrapper = slides[currentActiveSlideIndex];
+      if (activeWrapper) {
+        activeWrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const focusable = activeWrapper.querySelector('.slide-title-box, .slide-content-box, [contenteditable="true"]') || activeWrapper.querySelector('.pptx-slide-card');
+        if (focusable) {
+          focusable.focus();
+          clearSlidePlaceholder(activeWrapper.querySelector('.pptx-slide-card'));
+        }
+      }
+    }
+  }
+
+  function deletePptSlide(index) {
+    const editor = $('#editor');
+    if (!editor) return;
+    const slides = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    if (index >= 0 && index < slides.length) {
+      if (slides.length <= 1) {
+        showToast('Presentation must have at least one slide', 'warning');
+        return;
+      }
+      // Save Undo snapshot so Ctrl+Z restores deleted slide
+      window.DocFlow.Editor?.saveSnapshot?.();
+      slides[index].remove();
+      if (currentActiveSlideIndex >= slides.length - 1) {
+        currentActiveSlideIndex = Math.max(0, slides.length - 2);
+      }
+      window.DocFlow.Editor?.notifyChange();
+      updatePptSidebar();
+      showToast('Slide deleted. Press Ctrl+Z to undo', 'info');
+    }
+  }
+
+  function duplicatePptSlide() {
+    const editor = $('#editor');
+    if (!editor) return;
+    const slides = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    if (currentActiveSlideIndex >= 0 && currentActiveSlideIndex < slides.length) {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const current = slides[currentActiveSlideIndex];
+      const clone = current.cloneNode(true);
+      current.insertAdjacentElement('afterend', clone);
+      window.DocFlow.Editor?.notifyChange();
+      selectPptSlide(currentActiveSlideIndex + 1);
+      showToast('Slide duplicated', 'success');
+    }
+  }
+
+  function movePptSlide(direction) {
+    const editor = $('#editor');
+    if (!editor) return;
+    const slides = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    const idx = currentActiveSlideIndex;
+    if (direction === -1 && idx > 0) {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      slides[idx - 1].insertAdjacentElement('beforebegin', slides[idx]);
+      selectPptSlide(idx - 1);
+      window.DocFlow.Editor?.notifyChange();
+    } else if (direction === 1 && idx < slides.length - 1) {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      slides[idx + 1].insertAdjacentElement('afterend', slides[idx]);
+      selectPptSlide(idx + 1);
+      window.DocFlow.Editor?.notifyChange();
+    }
+  }
+
+  function createEmptySlideHtml(layout = 'blank') {
+    let bodyContent = `<p class="slide-placeholder-text" style="color:var(--text-muted);font-style:italic;margin:0;">Empty slide. Click here or use the "+" button at top-right to add rectangle, shapes, or bullet points...</p>`;
+    if (layout === 'title') {
+      bodyContent = `<div class="slide-title-box" contenteditable="true" style="font-size:32px;font-weight:700;color:var(--text-primary);text-align:center;padding:24px 16px 8px;min-height:50px;">Presentation Title</div><div class="slide-content-box" contenteditable="true" style="font-size:18px;color:var(--text-muted);text-align:center;padding:8px 16px;min-height:36px;">Subtitle / Presenter Name</div>`;
+    } else if (layout === 'title-box') {
+      bodyContent = `<div class="slide-title-box" contenteditable="true" style="font-size:26px;font-weight:700;color:var(--text-primary);border:1.5px dashed var(--border);border-radius:6px;padding:12px 16px;margin-bottom:18px;min-height:50px;">Click to add Title</div><div class="slide-content-box" contenteditable="true" style="font-size:16px;line-height:1.6;color:var(--text-secondary);border:1.5px dashed var(--border);border-radius:6px;padding:16px;min-height:180px;">Click to add text, bullet points, or paste content...</div>`;
+    } else if (layout === 'split') {
+      bodyContent = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:12px 0;min-height:220px;"><div class="slide-freeform-rect" contenteditable="true" style="border:1.5px dashed var(--border);border-radius:8px;padding:16px;"><h4>Left Column</h4><p>Click to edit...</p></div><div class="slide-freeform-rect" contenteditable="true" style="border:1.5px dashed var(--border);border-radius:8px;padding:16px;"><h4>Right Column</h4><p>Click to edit...</p></div></div>`;
+    } else if (layout === 'cards') {
+      bodyContent = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:12px 0;min-height:180px;"><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 1</h4><p>Details...</p></div><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 2</h4><p>Details...</p></div><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 3</h4><p>Details...</p></div></div>`;
+    }
+
+    return `
+      <div class="pptx-slide-wrapper" style="position:relative;margin:28px auto;max-width:850px;">
+        <div class="slide-quick-action-bar" contenteditable="false">
+          <button class="slide-plus-action-btn" title="Add elements to slide (+)" aria-label="Add elements to slide">
+            <i class="fas fa-plus"></i>
+          </button>
+          <div class="slide-plus-menu" role="menu">
+            <div class="slide-plus-menu-title">Insert Into Slide</div>
+            <button class="slide-plus-menu-item" data-action="rect"><i class="fas fa-vector-square" style="color:#0284c7;"></i> Rectangle Box</button>
+            <button class="slide-plus-menu-item" data-action="nested-rect"><i class="fas fa-layer-group" style="color:#8b5cf6;"></i> Nested Card</button>
+            <button class="slide-plus-menu-item" data-action="bullets"><i class="fas fa-list-ul" style="color:#10b981;"></i> Bullet Points</button>
+            <div class="slide-plus-menu-sep"></div>
+            <div class="slide-plus-menu-title">Shapes</div>
+            <div class="slide-plus-shapes-grid">
+              <button class="slide-shape-quick-btn" data-shape="circle" title="Circle"><i class="fas fa-circle"></i></button>
+              <button class="slide-shape-quick-btn" data-shape="star" title="Star"><i class="fas fa-star"></i></button>
+              <button class="slide-shape-quick-btn" data-shape="arrow-right" title="Arrow"><i class="fas fa-arrow-right"></i></button>
+              <button class="slide-shape-quick-btn" data-shape="diamond" title="Diamond"><i class="fas fa-diamond"></i></button>
+            </div>
+            <div class="slide-plus-menu-sep"></div>
+            <div class="slide-plus-menu-title">Slide Layout Formats</div>
+            <button class="slide-plus-menu-item" data-action="layout-title-box"><i class="fas fa-table-cells-large" style="color:#ea580c;"></i> Title & Box</button>
+            <button class="slide-plus-menu-item" data-action="layout-blank"><i class="fas fa-square" style="color:#94a3b8;"></i> Blank Canvas</button>
+            <button class="slide-plus-menu-item" data-action="layout-split"><i class="fas fa-columns" style="color:#f59e0b;"></i> Split 2 Columns</button>
+            <button class="slide-plus-menu-item" data-action="layout-cards"><i class="fas fa-table-cells-large" style="color:#06b6d4;"></i> 3 Card Blocks</button>
+            <div class="slide-plus-menu-sep"></div>
+            <button class="slide-plus-menu-item" data-action="bg-image"><i class="fas fa-image" style="color:#10b981;"></i> Background Image</button>
+            <div class="slide-plus-menu-sep"></div>
+            <button class="slide-plus-menu-item slide-plus-next-btn" data-action="add-next-slide"><i class="fas fa-circle-plus" style="color:#ea580c;"></i> Add Next Slide</button>
+          </div>
+        </div>
+        <div class="pptx-slide-card" contenteditable="true" style="aspect-ratio:16/9;width:100%;min-height:360px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;">
+          ${bodyContent}
+        </div>
+      </div><p><br></p>`;
+  }
+
+  function insertPptSlide(isNested = false, layout = 'blank') {
     if (window.DocFlow.currentMode !== 'edit') {
       showToast('Open a document in edit mode first', 'info');
       return;
     }
+    if (!isPptxDocument()) {
+      showToast('PPT slides can only be added to PowerPoint (.pptx) documents', 'warning');
+      return;
+    }
+
     const sel = window.getSelection();
-    let table = null;
+    let parentWrapper = null;
     if (sel && sel.rangeCount) {
       let node = sel.getRangeAt(0).commonAncestorContainer;
       if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-      table = node.closest('table');
+      parentWrapper = node.closest('.pptx-slide-wrapper') || node.closest('.pptx-slide-card');
+    }
+    const slides = Array.from(document.querySelectorAll('#editor .pptx-slide-wrapper'));
+    if (!parentWrapper && slides.length > 0) {
+      parentWrapper = slides[currentActiveSlideIndex] || slides[slides.length - 1];
     }
 
-    if (table) {
-      table.classList.add('excel-styled-table');
-      table.style.borderCollapse = 'collapse';
-      table.style.width = '100%';
-      table.style.margin = '16px 0';
-      table.querySelectorAll('th').forEach(th => {
-        th.style.backgroundColor = '#16a34a';
-        th.style.color = '#ffffff';
-        th.style.fontWeight = '700';
-        th.style.padding = '8px 12px';
-        th.style.border = '1px solid #15803d';
-      });
-      table.querySelectorAll('td').forEach(td => {
-        td.style.padding = '8px 12px';
-        td.style.border = '1px solid #cbd5e1';
-      });
-      table.querySelectorAll('tbody tr:nth-child(even)').forEach(tr => {
-        tr.style.backgroundColor = '#f8fafc';
-      });
+    window.DocFlow.Editor?.saveSnapshot?.();
+
+    if (!isNested && parentWrapper) {
+      const topWrapper = parentWrapper.closest('.pptx-slide-wrapper') || parentWrapper;
+      const slidesList = Array.from(document.querySelectorAll('#editor .pptx-slide-wrapper'));
+      const curIdx = slidesList.indexOf(topWrapper);
+      topWrapper.insertAdjacentHTML('afterend', createEmptySlideHtml(layout));
       window.DocFlow.Editor?.notifyChange();
-      showToast('Applied Excel table styling', 'success');
+      updatePptSidebar();
+      selectPptSlide(curIdx >= 0 ? curIdx + 1 : currentActiveSlideIndex + 1);
+      showToast('New Presentation Slide added', 'success');
+    } else if (isNested && parentWrapper) {
+      const card = parentWrapper.querySelector('.pptx-slide-card') || parentWrapper;
+      clearSlidePlaceholder(card);
+      card.insertAdjacentHTML('beforeend', `
+        <div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:18px;margin:12px 0;background:var(--bg-primary);box-shadow:var(--shadow-sm);">
+          <h4 style="margin:0 0 8px;color:var(--text-primary);font-size:16px;">Nested Card Title</h4>
+          <p style="margin:0;color:var(--text-secondary);font-size:14px;">Nested card content...</p>
+        </div><p><br></p>`);
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Nested Slide Card added (Inside)', 'success');
     } else {
-      const tableHtml = `
-        <table class="excel-styled-table" style="border-collapse:collapse;width:100%;margin:16px 0;font-size:13px;border:1px solid #15803d;">
-          <thead>
-            <tr style="background-color:#16a34a;color:#ffffff;">
-              <th style="padding:8px 12px;border:1px solid #15803d;text-align:left;">Item</th>
-              <th style="padding:8px 12px;border:1px solid #15803d;text-align:left;">Category</th>
-              <th style="padding:8px 12px;border:1px solid #15803d;text-align:right;">Amount ($)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="background-color:#ffffff;">
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Quarterly Revenue</td>
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Finance</td>
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;text-align:right;">125,000</td>
-            </tr>
-            <tr style="background-color:#f8fafc;">
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Operating Expenses</td>
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Operations</td>
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;text-align:right;">45,000</td>
-            </tr>
-            <tr style="background-color:#ffffff;font-weight:700;">
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Net Margin</td>
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;">Summary</td>
-              <td style="padding:8px 12px;border:1px solid #cbd5e1;text-align:right;color:#16a34a;">80,000</td>
-            </tr>
-          </tbody>
-        </table><p><br></p>`;
-      window.DocFlow.Editor?.insertHtmlAtCursor(tableHtml);
-      window.DocFlow.Editor?.notifyChange();
-      showToast('Inserted Excel-formatted table', 'success');
-    }
-  }
-
-  function insertPptSlideCard() {
-    if (window.DocFlow.currentMode !== 'edit') {
-      showToast('Open a document in edit mode first', 'info');
-      return;
-    }
-    const slideHtml = `
-      <div class="pptx-slide-card" contenteditable="false" style="margin:16px 0;border:1px solid #cbd5e1;border-radius:8px;padding:24px;background:#ffffff;box-shadow:0 4px 6px -1px rgba(0,0,0,0.07);aspect-ratio:16/9;max-width:800px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid #f1f5f9;padding-bottom:8px;">
-          <span style="font-size:11px;font-weight:700;color:#ea580c;text-transform:uppercase;letter-spacing:0.5px;"><i class="fas fa-file-powerpoint" style="margin-right:4px;"></i>PowerPoint Presentation Slide</span>
-        </div>
-        <h2 contenteditable="true" style="margin:0 0 10px;font-size:20px;font-weight:700;color:#1e293b;">Executive Summary & Key Takeaways</h2>
-        <div contenteditable="true" style="color:#475569;font-size:14px;line-height:1.6;">
-          <ul>
-            <li>Strategic milestone deliveries achieved ahead of quarterly target</li>
-            <li>Collaborative multi-device editing workflow active across teams</li>
-            <li>Next review meeting scheduled with stakeholders</li>
-          </ul>
-        </div>
-      </div><p><br></p>`;
-    window.DocFlow.Editor?.insertHtmlAtCursor(slideHtml);
-    window.DocFlow.Editor?.notifyChange();
-    showToast('PowerPoint slide card inserted', 'success');
-  }
-
-  function insertExcelSpreadsheetGrid() {
-    if (window.DocFlow.currentMode !== 'edit') {
-      showToast('Open a document in edit mode first', 'info');
-      return;
-    }
-    const cols = ['A', 'B', 'C', 'D', 'E'];
-    let theadHtml = '<th style="background:#e2e8f0;padding:6px 10px;border:1px solid #cbd5e1;width:40px;text-align:center;font-size:11px;font-weight:700;color:#64748b;">#</th>';
-    cols.forEach(c => {
-      theadHtml += `<th style="background:#f1f5f9;padding:6px 10px;border:1px solid #cbd5e1;min-width:90px;text-align:center;font-size:11px;font-weight:700;color:#334155;">${c}</th>`;
-    });
-    let rowsHtml = '';
-    for (let r = 1; r <= 5; r++) {
-      rowsHtml += `<tr><td style="background:#f8fafc;padding:6px 10px;border:1px solid #cbd5e1;text-align:center;font-size:11px;font-weight:700;color:#64748b;">${r}</td>`;
-      for (let c = 0; c < 5; c++) {
-        rowsHtml += `<td contenteditable="true" style="padding:6px 10px;border:1px solid #cbd5e1;background:#ffffff;outline:none;font-size:12px;min-width:90px;"><br></td>`;
+      const editor = $('#editor');
+      if (editor) {
+        editor.insertAdjacentHTML('beforeend', createEmptySlideHtml(layout));
+        window.DocFlow.Editor?.notifyChange();
+        updatePptSidebar();
+        const count = editor.querySelectorAll('.pptx-slide-wrapper').length;
+        selectPptSlide(Math.max(0, count - 1));
+        showToast('Presentation slide inserted', 'success');
       }
-      rowsHtml += '</tr>';
     }
-    const gridHtml = `
-      <div class="excel-embedded-grid" contenteditable="false" style="margin:16px 0;overflow-x:auto;border:1px solid #16a34a;border-radius:6px;background:#ffffff;">
-        <div style="background:#16a34a;color:#ffffff;padding:6px 12px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:6px;">
-          <i class="fas fa-file-excel"></i> Excel Spreadsheet Grid (Editable Cells)
-        </div>
-        <table style="border-collapse:collapse;width:100%;table-layout:fixed;">
-          <thead><tr>${theadHtml}</tr></thead>
-          <tbody>${rowsHtml}</tbody>
+  }
+
+  function clearSlidePlaceholder(slideCard) {
+    if (!slideCard) return;
+    const hint = slideCard.querySelector('.slide-placeholder-text');
+    if (hint) {
+      hint.remove();
+      if (!slideCard.innerHTML.trim() || slideCard.innerHTML === '<p></p>') {
+        slideCard.innerHTML = '<p><br></p>';
+      }
+      window.DocFlow.Editor?.notifyChange();
+    }
+  }
+
+  function setupSlideInteractions() {
+    const editor = $('#editor');
+    if (!editor) return;
+
+    editor.addEventListener('click', e => {
+      const plusBtn = e.target.closest('.slide-plus-action-btn');
+      if (plusBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const actionBar = plusBtn.closest('.slide-quick-action-bar');
+        const menu = actionBar?.querySelector('.slide-plus-menu');
+        document.querySelectorAll('.slide-plus-menu.open').forEach(m => {
+          if (m !== menu) m.classList.remove('open');
+        });
+        if (menu) menu.classList.toggle('open');
+        return;
+      }
+
+      const menuItem = e.target.closest('.slide-plus-menu-item, .slide-shape-quick-btn');
+      if (menuItem) {
+        e.preventDefault();
+        e.stopPropagation();
+        const wrapper = menuItem.closest('.pptx-slide-wrapper');
+        const slideCard = wrapper?.querySelector('.pptx-slide-card');
+        const menu = menuItem.closest('.slide-plus-menu');
+        if (menu) menu.classList.remove('open');
+        if (!slideCard) return;
+
+        handleSlideAction(menuItem, wrapper, slideCard);
+        return;
+      }
+
+      if (!e.target.closest('.slide-quick-action-bar')) {
+        document.querySelectorAll('.slide-plus-menu.open').forEach(m => m.classList.remove('open'));
+      }
+    });
+
+    // Instant placeholder removal on any user interaction with slide cards (Issue 4)
+    editor.addEventListener('pointerdown', e => {
+      if (isPptxDocument()) {
+        const slideCard = e.target.closest('.pptx-slide-card');
+        if (slideCard) {
+          clearSlidePlaceholder(slideCard);
+          return;
+        }
+        if (e.target.closest('.slide-quick-action-bar') || e.target.closest('.slide-speaker-notes') || e.target.closest('#pptxSlideSidebar')) {
+          return;
+        }
+        // Clicked outside slide in PPT deck: prevent caret placement outside slide cards
+        e.preventDefault();
+        const slides = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+        const curSlide = slides[currentActiveSlideIndex] || slides[0];
+        const focusTarget = curSlide?.querySelector('.slide-title-box, .slide-content-box, [contenteditable="true"]') || curSlide?.querySelector('.pptx-slide-card');
+        if (focusTarget) {
+          focusTarget.focus();
+          clearSlidePlaceholder(focusTarget.closest('.pptx-slide-card'));
+        }
+      }
+    });
+
+    editor.addEventListener('focusin', e => {
+      const slideCard = e.target.closest('.pptx-slide-card');
+      if (slideCard) {
+        clearSlidePlaceholder(slideCard);
+      }
+    });
+
+    editor.addEventListener('beforeinput', e => {
+      const slideCard = e.target.closest('.pptx-slide-card');
+      if (slideCard) {
+        clearSlidePlaceholder(slideCard);
+      }
+    });
+
+    editor.addEventListener('keydown', e => {
+      const slideCard = e.target.closest('.pptx-slide-card');
+      if (slideCard) {
+        clearSlidePlaceholder(slideCard);
+      }
+    });
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.slide-quick-action-bar')) {
+        document.querySelectorAll('.slide-plus-menu.open').forEach(m => m.classList.remove('open'));
+      }
+    });
+
+    // Keyboard Arrow navigation between PPT slides (Issue 5)
+    document.addEventListener('keydown', e => {
+      if (isPptxDocument()) {
+        const activeEl = document.activeElement;
+        const isEditingText = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || (activeEl.isContentEditable && activeEl.closest('.slide-freeform-rect, .slide-nested-card, .slide-title-box, .slide-content-box, p, h1, h2, h3')));
+        if (!isEditingText) {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') {
+            e.preventDefault();
+            const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+            if (currentActiveSlideIndex < slides.length - 1) {
+              selectPptSlide(currentActiveSlideIndex + 1);
+            }
+          } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') {
+            e.preventDefault();
+            if (currentActiveSlideIndex > 0) {
+              selectPptSlide(currentActiveSlideIndex - 1);
+            }
+          }
+        }
+      }
+    });
+
+    // Freeform drag for slide content boxes extending beyond slide boundaries (Issue 5)
+    editor.addEventListener('mousedown', e => {
+      const box = e.target.closest('.slide-freeform-rect, .slide-nested-card');
+      if (!box || !editor.contains(box)) return;
+
+      const rect = box.getBoundingClientRect();
+      const isTopHandle = (e.clientY - rect.top) < 18;
+      const isBorder = (e.clientX - rect.left) < 12 || (rect.right - e.clientX) < 12 || (rect.bottom - e.clientY) < 12;
+      if (!isTopHandle && !isBorder && !e.altKey) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      box.setAttribute('data-dragging', 'true');
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startLeft = parseFloat(box.style.left) || 0;
+      const startTop = parseFloat(box.style.top) || 0;
+
+      const onMouseMove = ev => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        box.style.position = 'relative';
+        box.style.left = `${startLeft + dx}px`;
+        box.style.top = `${startTop + dy}px`;
+      };
+
+      const onMouseUp = () => {
+        box.removeAttribute('data-dragging');
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        window.DocFlow.Editor?.notifyChange();
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // Add Slide button on PPT Sidebar (Issue 3: Shows dropdown and performs layout insertion)
+    const pptSidebarAddBtn = $('#pptxSidebarAddBtn');
+    const pptSidebarAddPopover = $('#pptxSidebarAddPopover');
+    if (pptSidebarAddBtn) {
+      pptSidebarAddBtn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (pptSidebarAddPopover) {
+          pptSidebarAddPopover.classList.toggle('show');
+        } else {
+          insertPptSlide(false);
+        }
+      });
+    }
+
+    $$('#pptxSidebarAddPopover .spacing-opt-item[data-ppt-layout]').forEach(item => {
+      item.addEventListener('click', e => {
+        e.stopPropagation();
+        const layout = item.dataset.pptLayout || 'blank';
+        insertPptSlide(false, layout);
+        pptSidebarAddPopover?.classList.remove('show');
+      });
+    });
+
+    // Directly click slide inside editor to activate it and select its thumbnail
+    editor.addEventListener('click', e => {
+      const wrapper = e.target.closest('.pptx-slide-wrapper');
+      if (wrapper && !e.target.closest('.slide-plus-action-btn, .slide-plus-menu')) {
+        const allWrappers = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+        const idx = allWrappers.indexOf(wrapper);
+        if (idx !== -1 && idx !== currentActiveSlideIndex) {
+          selectPptSlide(idx);
+        }
+      }
+    });
+  }
+
+  function handleSlideAction(item, wrapper, slideCard) {
+    slideCard.querySelector('.slide-placeholder-text')?.remove();
+
+    const action = item.dataset.action;
+    const shape = item.dataset.shape;
+
+    if (action === 'rect') {
+      const rectHtml = `<div class="slide-freeform-rect" contenteditable="true" style="border:1.5px dashed var(--accent, #ea580c);border-radius:8px;padding:16px;margin:12px 0;background:var(--bg-tertiary);min-height:50px;">Rectangle Box (Click to edit text)</div><p><br></p>`;
+      slideCard.insertAdjacentHTML('beforeend', rectHtml);
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Rectangle added to slide', 'success');
+    } else if (action === 'nested-rect') {
+      const nestedHtml = `<div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:18px;margin:12px 0;background:var(--bg-primary);box-shadow:var(--shadow-sm);"><h4 style="margin:0 0 8px;color:var(--text-primary);font-size:16px;">Nested Card Title</h4><p style="margin:0;color:var(--text-secondary);font-size:14px;">Nested card content...</p></div><p><br></p>`;
+      slideCard.insertAdjacentHTML('beforeend', nestedHtml);
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Nested Card added to slide', 'success');
+    } else if (action === 'bullets') {
+      const bulletsHtml = `<ul style="margin:12px 0 12px 24px;color:var(--text-primary);font-size:15px;line-height:1.7;"><li contenteditable="true">Presentation Key Point 1</li><li contenteditable="true">Presentation Key Point 2</li><li contenteditable="true">Presentation Key Point 3</li></ul><p><br></p>`;
+      slideCard.insertAdjacentHTML('beforeend', bulletsHtml);
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Bullet points added to slide', 'success');
+    } else if (shape) {
+      const fill = '#ea580c';
+      const stroke = '#c2410c';
+      const svg = window.DocFlow.ImageManager?.getShapeSvg ? window.DocFlow.ImageManager.getShapeSvg(shape, fill, stroke, 2, 100) : '';
+      const shapeHtml = `<div class="doc-shape-container" contenteditable="false" style="display:inline-block;margin:12px;cursor:pointer;">${svg}</div>`;
+      slideCard.insertAdjacentHTML('beforeend', shapeHtml);
+      const inserted = slideCard.querySelector('.doc-shape-container:last-of-type');
+      if (inserted) {
+        window.DocFlow.ImageManager?.attachShapeListeners(inserted);
+        window.DocFlow.ImageManager?.selectImage(inserted);
+      }
+      window.DocFlow.Editor?.notifyChange();
+      showToast(`Shape (${shape}) added to slide`, 'success');
+    } else if (action === 'layout-title-box') {
+      slideCard.innerHTML = `
+        <div class="slide-title-box" contenteditable="true" style="font-size:26px;font-weight:700;color:var(--text-primary);border:1.5px dashed var(--border);border-radius:6px;padding:12px 16px;margin-bottom:18px;min-height:50px;">Click to add Title</div>
+        <div class="slide-content-box" contenteditable="true" style="font-size:16px;line-height:1.6;color:var(--text-secondary);border:1.5px dashed var(--border);border-radius:6px;padding:16px;min-height:180px;">Click to add text, bullet points, or paste content...</div>
+        <p><br></p>`;
+      window.DocFlow.Editor?.notifyChange();
+      updatePptSidebar();
+      showToast('Title & Box layout applied', 'success');
+    } else if (action === 'layout-blank') {
+      slideCard.innerHTML = '<p><br></p>';
+      window.DocFlow.Editor?.notifyChange();
+      updatePptSidebar();
+      showToast('Blank canvas applied', 'info');
+    } else if (action === 'layout-split') {
+      slideCard.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:12px 0;min-height:220px;"><div class="slide-freeform-rect" contenteditable="true" style="border:1.5px dashed var(--border);border-radius:8px;padding:16px;"><h4>Left Column</h4><p>Click to edit...</p></div><div class="slide-freeform-rect" contenteditable="true" style="border:1.5px dashed var(--border);border-radius:8px;padding:16px;"><h4>Right Column</h4><p>Click to edit...</p></div></div><p><br></p>`;
+      window.DocFlow.Editor?.notifyChange();
+      updatePptSidebar();
+      showToast('2-Column split layout applied', 'success');
+    } else if (action === 'layout-cards') {
+      slideCard.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:12px 0;min-height:180px;"><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 1</h4><p>Details...</p></div><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 2</h4><p>Details...</p></div><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 3</h4><p>Details...</p></div></div><p><br></p>`;
+      window.DocFlow.Editor?.notifyChange();
+      updatePptSidebar();
+      showToast('3-Card grid layout applied', 'success');
+    } else if (action === 'bg-image') {
+      $('#pptBgFileInput')?.click();
+    } else if (action === 'add-next-slide') {
+      wrapper.insertAdjacentHTML('afterend', createEmptySlideHtml());
+      window.DocFlow.Editor?.notifyChange();
+      updatePptSidebar();
+      selectPptSlide(currentActiveSlideIndex + 1);
+      showToast('New Presentation Slide added below', 'success');
+    }
+  }
+
+  // ==========================================================================
+  // Excel Toolbar Actions (Issue 7)
+  // ==========================================================================
+  function insertExcelSheetTable(rows = 6, cols = 5) {
+    let colHeaders = '';
+    for (let c = 0; c < cols; c++) {
+      colHeaders += `<th style="background:var(--bg-tertiary);border:1px solid var(--border);padding:6px 10px;font-size:12px;font-weight:700;text-align:center;">${String.fromCharCode(65 + c)}</th>`;
+    }
+    let bodyRows = '';
+    for (let r = 1; r <= rows; r++) {
+      let cells = `<td style="background:var(--bg-tertiary);border:1px solid var(--border);padding:4px 8px;font-size:11px;font-weight:700;text-align:center;user-select:none;">${r}</td>`;
+      for (let c = 0; c < cols; c++) {
+        cells += `<td style="border:1px solid var(--border);padding:6px 10px;min-width:60px;min-height:22px;" contenteditable="true"></td>`;
+      }
+      bodyRows += `<tr>${cells}</tr>`;
+    }
+    const tableHtml = `
+      <div class="excel-table-container" style="overflow-x:auto;margin:16px 0;">
+        <table class="df-excel-table" style="border-collapse:collapse;width:100%;min-width:400px;background:var(--bg-primary);border:1px solid var(--border);">
+          <thead><tr><th style="background:var(--bg-tertiary);border:1px solid var(--border);width:36px;">#</th>${colHeaders}</tr></thead>
+          <tbody>${bodyRows}</tbody>
         </table>
       </div><p><br></p>`;
-    window.DocFlow.Editor?.insertHtmlAtCursor(gridHtml);
+    window.DocFlow.Editor?.insertHtmlAtCursor(tableHtml);
     window.DocFlow.Editor?.notifyChange();
-    showToast('Excel spreadsheet grid inserted', 'success');
+    showToast('Spreadsheet Table inserted', 'success');
+  }
+
+  function getActiveTableCell() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return null;
+    let node = sel.getRangeAt(0).commonAncestorContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    return node.closest('td, th');
+  }
+
+  function getExcelColLetter(index) {
+    let letter = '';
+    let temp = index;
+    while (temp >= 0) {
+      letter = String.fromCharCode((temp % 26) + 65) + letter;
+      temp = Math.floor(temp / 26) - 1;
+    }
+    return letter;
+  }
+
+  function renumberExcelTable(table) {
+    if (!table) return;
+    const theadTr = table.querySelector('thead tr');
+    if (theadTr) {
+      const ths = Array.from(theadTr.children);
+      let colIdx = 0;
+      ths.forEach((th, idx) => {
+        if (th.classList.contains('excel-corner') || idx === 0) {
+          th.textContent = '';
+        } else {
+          const letter = getExcelColLetter(colIdx);
+          th.textContent = letter;
+          th.dataset.col = colIdx;
+          colIdx++;
+        }
+      });
+    }
+
+    const tbody = table.querySelector('tbody') || table;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.forEach((tr, rIdx) => {
+      const rowHdr = tr.querySelector('.excel-row-hdr') || (tr.firstElementChild && tr.firstElementChild.tagName === 'TH' ? tr.firstElementChild : null);
+      if (rowHdr) {
+        rowHdr.textContent = rIdx + 1;
+        rowHdr.dataset.row = rIdx + 1;
+      }
+      const dataCells = Array.from(tr.querySelectorAll('td'));
+      dataCells.forEach((td, cIdx) => {
+        const coord = `${getExcelColLetter(cIdx)}${rIdx + 1}`;
+        td.dataset.coord = coord;
+      });
+    });
+  }
+
+  function restoreCellFocus(preferredCell) {
+    setTimeout(() => {
+      const table = document.querySelector('.excel-grid-table') || document.querySelector('#editor table');
+      if (!table) return;
+      let target = preferredCell;
+      if (!target || !document.body.contains(target) || target.tagName !== 'TD') {
+        target = table.querySelector('td.excel-cell-selected') || table.querySelector('tbody tr td') || window._activeExcelCell;
+      }
+      if (target && document.body.contains(target)) {
+        target.focus();
+        window._activeExcelCell = target;
+        const coordBox = document.querySelector('.excel-coord-box');
+        if (coordBox && target.dataset.coord) {
+          coordBox.value = target.dataset.coord;
+        }
+      }
+    }, 20);
+  }
+
+  function handleExcelTableAction(action) {
+    const cell = getActiveTableCell();
+    const table = cell ? cell.closest('table') : document.querySelector('#editor table');
+    if (!table) {
+      if (action === 'insert-grid') insertExcelSheetTable();
+      else showToast('Click inside a spreadsheet table first', 'info');
+      return;
+    }
+
+    const theadTr = table.querySelector('thead tr');
+    const tbody = table.querySelector('tbody') || table;
+
+    if (action === 'add-row-below' || action === 'add-row-above') {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const targetRow = cell ? cell.closest('tr') : tbody.querySelector('tr:last-child');
+      if (targetRow) {
+        const newRow = document.createElement('tr');
+        const rowHdr = document.createElement('th');
+        rowHdr.className = 'excel-row-hdr';
+        rowHdr.contentEditable = 'false';
+        newRow.appendChild(rowHdr);
+
+        const colCount = theadTr ? theadTr.querySelectorAll('th:not(.excel-corner)').length : targetRow.querySelectorAll('td').length;
+        for (let c = 0; c < Math.max(1, colCount); c++) {
+          const td = document.createElement('td');
+          td.contentEditable = 'true';
+          newRow.appendChild(td);
+        }
+
+        if (action === 'add-row-above') {
+          targetRow.insertAdjacentElement('beforebegin', newRow);
+        } else {
+          targetRow.insertAdjacentElement('afterend', newRow);
+        }
+
+        renumberExcelTable(table);
+        setupExcelInteractions();
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Row inserted', 'success');
+        restoreCellFocus(newRow.querySelector('td'));
+      }
+    } else if (action === 'delete-row') {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const selectedRows = Array.from(table.querySelectorAll('tr.excel-row-selected'));
+      let fallbackCell = null;
+      if (selectedRows.length > 0) {
+        const lastRow = selectedRows[selectedRows.length - 1];
+        const nextRow = lastRow.nextElementSibling || selectedRows[0].previousElementSibling;
+        fallbackCell = nextRow?.querySelector('td');
+        selectedRows.forEach(r => r.remove());
+        renumberExcelTable(table);
+        window.DocFlow.Editor?.notifyChange();
+        showToast(`Deleted ${selectedRows.length} row(s)`, 'success');
+      } else {
+        const row = cell?.closest('tr');
+        if (row && tbody.querySelectorAll('tr').length > 1) {
+          const adjacent = row.nextElementSibling || row.previousElementSibling;
+          const cIdx = cell ? cell.cellIndex : 1;
+          fallbackCell = adjacent ? (adjacent.children[cIdx] || adjacent.querySelector('td')) : null;
+          row.remove();
+          renumberExcelTable(table);
+          window.DocFlow.Editor?.notifyChange();
+          showToast('Row deleted', 'info');
+        } else {
+          showToast('Table must have at least one row', 'warning');
+          fallbackCell = cell;
+        }
+      }
+      setupExcelInteractions();
+      restoreCellFocus(fallbackCell);
+    } else if (action === 'add-col-right' || action === 'add-col-left') {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const colIdx = cell ? (cell.cellIndex - 1) : 0;
+      const insertIdx = action === 'add-col-left' ? Math.max(0, colIdx) : (colIdx + 1);
+
+      if (theadTr) {
+        const targetTh = theadTr.children[insertIdx + 1];
+        const newTh = document.createElement('th');
+        newTh.className = 'excel-col-hdr';
+        newTh.contentEditable = 'false';
+        if (targetTh) theadTr.insertBefore(newTh, targetTh);
+        else theadTr.appendChild(newTh);
+      }
+
+      Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+        const targetTd = r.children[insertIdx + 1];
+        const newTd = document.createElement('td');
+        newTd.contentEditable = 'true';
+        if (targetTd) r.insertBefore(newTd, targetTd);
+        else r.appendChild(newTd);
+      });
+
+      renumberExcelTable(table);
+      setupExcelInteractions();
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Column inserted', 'success');
+      restoreCellFocus(tbody.querySelector('tr')?.children[insertIdx + 1]);
+    } else if (action === 'delete-col') {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const selectedColHeaders = Array.from(table.querySelectorAll('th.excel-col-selected'));
+      let fallbackCell = null;
+      if (selectedColHeaders.length > 0) {
+        const colIndices = selectedColHeaders.map(th => Array.from(th.parentElement.children).indexOf(th)).filter(idx => idx > 0);
+        colIndices.sort((a, b) => b - a);
+
+        const firstCol = Math.min(...colIndices);
+        const adjacentColIdx = Math.max(1, firstCol - 1);
+        const sampleRow = tbody.querySelector('tr');
+        fallbackCell = sampleRow?.children[adjacentColIdx];
+
+        colIndices.forEach(idx => {
+          if (theadTr && theadTr.children[idx]) theadTr.children[idx].remove();
+          Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+            if (r.children[idx]) r.children[idx].remove();
+          });
+        });
+
+        renumberExcelTable(table);
+        window.DocFlow.Editor?.notifyChange();
+        showToast(`Deleted ${colIndices.length} column(s)`, 'success');
+      } else if (cell) {
+        const cellColIdx = cell.cellIndex;
+        if (cellColIdx > 0 && Array.from(tbody.querySelectorAll('tr'))[0]?.children.length > 2) {
+          const targetColIdx = Math.max(1, cellColIdx - 1);
+          const sampleRow = cell.closest('tr') || tbody.querySelector('tr');
+          fallbackCell = sampleRow?.children[targetColIdx];
+
+          if (theadTr && theadTr.children[cellColIdx]) theadTr.children[cellColIdx].remove();
+          Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+            if (r.children[cellColIdx]) r.children[cellColIdx].remove();
+          });
+          renumberExcelTable(table);
+          window.DocFlow.Editor?.notifyChange();
+          showToast('Column deleted', 'info');
+        } else {
+          showToast('Table must have at least one column', 'warning');
+          fallbackCell = cell;
+        }
+      }
+      setupExcelInteractions();
+      restoreCellFocus(fallbackCell);
+    } else if (action === 'merge') {
+      const selectedCells = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+      if (selectedCells.length < 2) {
+        showToast('Please select at least 2 cells, a row, or a column to merge', 'warning');
+        restoreCellFocus(cell);
+        return;
+      }
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const firstCell = selectedCells[0];
+      const combinedText = selectedCells.map(c => c.textContent.trim()).filter(Boolean).join(' ');
+      firstCell.textContent = combinedText;
+
+      const minRow = Math.min(...selectedCells.map(c => c.closest('tr').rowIndex));
+      const maxRow = Math.max(...selectedCells.map(c => c.closest('tr').rowIndex));
+      const minCol = Math.min(...selectedCells.map(c => c.cellIndex));
+      const maxCol = Math.max(...selectedCells.map(c => c.cellIndex));
+
+      firstCell.colSpan = Math.max(1, maxCol - minCol + 1);
+      firstCell.rowSpan = Math.max(1, maxRow - minRow + 1);
+      firstCell.style.textAlign = 'center';
+
+      selectedCells.slice(1).forEach(c => c.remove());
+      table.querySelectorAll('td.excel-cell-selected').forEach(c => c.classList.remove('excel-cell-selected'));
+
+      renumberExcelTable(table);
+      setupExcelInteractions();
+      window.DocFlow.Editor?.notifyChange();
+      showToast(`Merged ${selectedCells.length} cells`, 'success');
+      restoreCellFocus(firstCell);
+    } else if (action === 'unmerge') {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const targetCell = (cell && (cell.colSpan > 1 || cell.rowSpan > 1)) ? cell : table.querySelector('td[colspan], td[rowspan]');
+      if (targetCell && ((targetCell.colSpan && targetCell.colSpan > 1) || (targetCell.rowSpan && targetCell.rowSpan > 1))) {
+        const cSpan = targetCell.colSpan || 1;
+        const rSpan = targetCell.rowSpan || 1;
+        targetCell.colSpan = 1;
+        targetCell.rowSpan = 1;
+
+        for (let i = 1; i < cSpan; i++) {
+          const newTd = document.createElement('td');
+          newTd.contentEditable = 'true';
+          targetCell.insertAdjacentElement('afterend', newTd);
+        }
+
+        if (rSpan > 1) {
+          const tr = targetCell.closest('tr');
+          let nextTr = tr.nextElementSibling;
+          for (let r = 1; r < rSpan && nextTr; r++) {
+            for (let c = 0; c < cSpan; c++) {
+              const newTd = document.createElement('td');
+              newTd.contentEditable = 'true';
+              nextTr.appendChild(newTd);
+            }
+            nextTr = nextTr.nextElementSibling;
+          }
+        }
+
+        renumberExcelTable(table);
+        setupExcelInteractions();
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Cell split into individual cells', 'success');
+        restoreCellFocus(targetCell);
+      } else {
+        showToast('Active cell is not merged', 'info');
+        restoreCellFocus(cell);
+      }
+    }
+  }
+
+  function applyExcelFormula(funcName) {
+    const cell = getActiveTableCell();
+    if (!cell) {
+      showToast('Click a spreadsheet cell to calculate formula', 'info');
+      return;
+    }
+    const table = cell.closest('table');
+    if (!table) return;
+
+    const colIdx = cell.cellIndex;
+    const nums = [];
+    Array.from(table.rows).forEach(r => {
+      const c = r.cells[colIdx];
+      if (c && c !== cell) {
+        const val = parseFloat(c.textContent.replace(/[^0-9.-]/g, ''));
+        if (!isNaN(val)) nums.push(val);
+      }
+    });
+
+    let result = 0;
+    if (nums.length === 0) {
+      cell.textContent = `= ${funcName}()`;
+      window.DocFlow.Editor?.notifyChange();
+      restoreCellFocus(cell);
+      return;
+    }
+
+    if (funcName === 'SUM') result = nums.reduce((a, b) => a + b, 0);
+    else if (funcName === 'AVERAGE') result = (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2);
+    else if (funcName === 'COUNT') result = nums.length;
+    else if (funcName === 'MAX') result = Math.max(...nums);
+    else if (funcName === 'MIN') result = Math.min(...nums);
+    else if (funcName === 'MEDIAN') {
+      const sorted = [...nums].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      result = sorted.length % 2 !== 0 ? sorted[mid] : ((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2);
+    } else if (funcName === 'PRODUCT') {
+      result = nums.reduce((a, b) => a * b, 1);
+    } else if (funcName === 'COUNTA') {
+      let countA = 0;
+      Array.from(table.rows).forEach(r => {
+        const c = r.cells[colIdx];
+        if (c && c !== cell && c.textContent.trim().length > 0) countA++;
+      });
+      result = countA;
+    } else if (funcName === 'STDEV') {
+      const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+      const variance = nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (nums.length > 1 ? nums.length - 1 : 1);
+      result = Math.sqrt(variance).toFixed(2);
+    } else if (funcName === 'ROUND') {
+      result = Math.round(nums[nums.length - 1] || nums[0] || 0);
+    }
+
+    cell.textContent = String(result);
+    cell.style.fontWeight = 'bold';
+    window.DocFlow.Editor?.notifyChange();
+    showToast(`Formula ${funcName} calculated: ${result}`, 'success');
+    restoreCellFocus(cell);
+  }
+
+  // Visual Chart Generator (Issue 5: 9 Chart Types with Corner Resize & Drag)
+  function insertChartIntoDocument() {
+    if (window.DocFlow.currentMode !== 'edit') {
+      showToast('Open a document in edit mode first', 'info');
+      return;
+    }
+    const chartType = $('#chartTypeSelect')?.value || 'column';
+    const chartTitle = $('#chartTitleInput')?.value.trim() || 'Data Chart';
+    const valInput = $('#chartValuesInput')?.value.trim() || '45, 82, 63, 95';
+    const values = valInput.split(',').map(v => parseFloat(v.trim()) || 0);
+    const labels = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8'].slice(0, values.length);
+    const maxVal = Math.max(...values, 10);
+    const colors = ['#0284c7', '#16a34a', '#ea580c', '#8b5cf6', '#eab308', '#ec4899', '#06b6d4'];
+
+    const w = 520;
+    const h = 280;
+    let svgContent = '';
+
+    if (chartType === 'column') {
+      const padLeft = 45, padBottom = 35, padTop = 30, padRight = 20;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+      const barWidth = Math.min(50, Math.floor((plotW / values.length) * 0.65));
+      const colStep = plotW / values.length;
+
+      svgContent += `<line x1="${padLeft}" y1="${h - padBottom}" x2="${w - padRight}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+      svgContent += `<line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+
+      values.forEach((val, idx) => {
+        const barH = Math.round((val / maxVal) * (plotH - 20));
+        const barX = Math.round(padLeft + idx * colStep + (colStep - barWidth) / 2);
+        const barY = h - padBottom - barH;
+        const color = colors[idx % colors.length];
+
+        svgContent += `<rect x="${barX}" y="${barY}" width="${barWidth}" height="${barH}" rx="3" fill="${color}" />`;
+        svgContent += `<text x="${barX + barWidth / 2}" y="${barY - 6}" font-size="11" font-weight="600" text-anchor="middle" fill="var(--text-primary, #334155)">${val}</text>`;
+        svgContent += `<text x="${barX + barWidth / 2}" y="${h - padBottom + 16}" font-size="11" text-anchor="middle" fill="var(--text-muted, #64748b)">${labels[idx] || `Item ${idx+1}`}</text>`;
+      });
+    } else if (chartType === 'bar') {
+      const padLeft = 60, padBottom = 25, padTop = 30, padRight = 45;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+      const barHeight = Math.min(30, Math.floor((plotH / values.length) * 0.65));
+      const rowStep = plotH / values.length;
+
+      svgContent += `<line x1="${padLeft}" y1="${h - padBottom}" x2="${padLeft}" y2="${padTop}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+
+      values.forEach((val, idx) => {
+        const barW = Math.round((val / maxVal) * plotW);
+        const barY = Math.round(padTop + idx * rowStep + (rowStep - barHeight) / 2);
+        const color = colors[idx % colors.length];
+
+        svgContent += `<rect x="${padLeft}" y="${barY}" width="${barW}" height="${barHeight}" rx="3" fill="${color}" />`;
+        svgContent += `<text x="${padLeft - 8}" y="${barY + barHeight / 2 + 4}" font-size="11" text-anchor="end" fill="var(--text-muted, #64748b)">${labels[idx] || `Item ${idx+1}`}</text>`;
+        svgContent += `<text x="${padLeft + barW + 8}" y="${barY + barHeight / 2 + 4}" font-size="11" font-weight="600" fill="var(--text-primary, #334155)">${val}</text>`;
+      });
+    } else if (chartType === 'line') {
+      const padLeft = 45, padBottom = 35, padTop = 30, padRight = 20;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+      const step = plotW / (values.length - 1 || 1);
+
+      svgContent += `<line x1="${padLeft}" y1="${h - padBottom}" x2="${w - padRight}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+      svgContent += `<line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+
+      let points = [];
+      values.forEach((val, idx) => {
+        const px = Math.round(padLeft + idx * step);
+        const py = Math.round(h - padBottom - (val / maxVal) * (plotH - 20));
+        points.push(`${px},${py}`);
+        svgContent += `<circle cx="${px}" cy="${py}" r="5" fill="#0284c7" stroke="#ffffff" stroke-width="2" />`;
+        svgContent += `<text x="${px}" y="${py - 8}" font-size="11" font-weight="600" text-anchor="middle" fill="var(--text-primary, #334155)">${val}</text>`;
+        svgContent += `<text x="${px}" y="${h - padBottom + 16}" font-size="11" text-anchor="middle" fill="var(--text-muted, #64748b)">${labels[idx] || `P${idx+1}`}</text>`;
+      });
+      svgContent = `<polyline points="${points.join(' ')}" fill="none" stroke="#0284c7" stroke-width="3" />` + svgContent;
+    } else if (chartType === 'doughnut') {
+      const cx = w / 2 - 40, cy = h / 2 + 8, r = 85, rInner = 52;
+      const total = values.reduce((a, b) => a + b, 0) || 1;
+      let startAngle = 0;
+
+      values.forEach((val, idx) => {
+        const sliceAngle = (val / total) * 2 * Math.PI;
+        const endAngle = startAngle + sliceAngle;
+        const x1 = cx + r * Math.cos(startAngle);
+        const y1 = cy + r * Math.sin(startAngle);
+        const x2 = cx + r * Math.cos(endAngle);
+        const y2 = cy + r * Math.sin(endAngle);
+        const x3 = cx + rInner * Math.cos(endAngle);
+        const y3 = cy + rInner * Math.sin(endAngle);
+        const x4 = cx + rInner * Math.cos(startAngle);
+        const y4 = cy + rInner * Math.sin(startAngle);
+        const largeArc = sliceAngle > Math.PI ? 1 : 0;
+        const color = colors[idx % colors.length];
+
+        const pathData = `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${rInner} ${rInner} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+        svgContent += `<path d="${pathData}" fill="${color}" stroke="var(--bg-secondary, #ffffff)" stroke-width="1.5" />`;
+
+        const legY = 32 + idx * 24;
+        const pct = Math.round((val / total) * 100);
+        svgContent += `<rect x="${w - 110}" y="${legY}" width="12" height="12" rx="2" fill="${color}" />`;
+        svgContent += `<text x="${w - 92}" y="${legY + 10}" font-size="11" fill="var(--text-primary, #334155)">${labels[idx] || `Item ${idx+1}`} (${pct}%)</text>`;
+
+        startAngle = endAngle;
+      });
+
+      svgContent += `<text x="${cx}" y="${cy - 4}" font-size="11" font-weight="700" text-anchor="middle" fill="var(--text-muted, #64748b)">TOTAL</text>`;
+      svgContent += `<text x="${cx}" y="${cy + 16}" font-size="16" font-weight="800" text-anchor="middle" fill="var(--text-primary, #0f172a)">${total}</text>`;
+    } else if (chartType === 'area') {
+      const padLeft = 45, padBottom = 35, padTop = 30, padRight = 20;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+      const step = plotW / (values.length - 1 || 1);
+      const gradId = 'areaGrad_' + Math.floor(Math.random() * 100000);
+
+      svgContent += `<defs>
+        <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#0284c7" stop-opacity="0.45" />
+          <stop offset="100%" stop-color="#0284c7" stop-opacity="0.05" />
+        </linearGradient>
+      </defs>`;
+      svgContent += `<line x1="${padLeft}" y1="${h - padBottom}" x2="${w - padRight}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+      svgContent += `<line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+
+      let points = [];
+      let areaPoints = [`${padLeft},${h - padBottom}`];
+      values.forEach((val, idx) => {
+        const px = Math.round(padLeft + idx * step);
+        const py = Math.round(h - padBottom - (val / maxVal) * (plotH - 20));
+        points.push(`${px},${py}`);
+        areaPoints.push(`${px},${py}`);
+      });
+      areaPoints.push(`${padLeft + (values.length - 1) * step},${h - padBottom}`);
+
+      svgContent += `<polygon points="${areaPoints.join(' ')}" fill="url(#${gradId})" />`;
+      svgContent += `<polyline points="${points.join(' ')}" fill="none" stroke="#0284c7" stroke-width="3" />`;
+
+      values.forEach((val, idx) => {
+        const px = Math.round(padLeft + idx * step);
+        const py = Math.round(h - padBottom - (val / maxVal) * (plotH - 20));
+        svgContent += `<circle cx="${px}" cy="${py}" r="5" fill="#0284c7" stroke="#ffffff" stroke-width="2" />`;
+        svgContent += `<text x="${px}" y="${py - 8}" font-size="11" font-weight="600" text-anchor="middle" fill="var(--text-primary, #334155)">${val}</text>`;
+        svgContent += `<text x="${px}" y="${h - padBottom + 16}" font-size="11" text-anchor="middle" fill="var(--text-muted, #64748b)">${labels[idx] || `P${idx+1}`}</text>`;
+      });
+    } else if (chartType === 'radar') {
+      const cx = w / 2 - 40, cy = h / 2 + 8, r = 85;
+      const count = values.length || 4;
+
+      [0.33, 0.66, 1.0].forEach(factor => {
+        let gridPts = [];
+        for (let i = 0; i < count; i++) {
+          const angle = (i * 2 * Math.PI / count) - (Math.PI / 2);
+          gridPts.push(`${cx + r * factor * Math.cos(angle)},${cy + r * factor * Math.sin(angle)}`);
+        }
+        svgContent += `<polygon points="${gridPts.join(' ')}" fill="none" stroke="var(--border, #cbd5e1)" stroke-width="1" stroke-dasharray="2 2" />`;
+      });
+
+      let dataPts = [];
+      for (let i = 0; i < count; i++) {
+        const angle = (i * 2 * Math.PI / count) - (Math.PI / 2);
+        const sx = cx + r * Math.cos(angle);
+        const sy = cy + r * Math.sin(angle);
+        svgContent += `<line x1="${cx}" y1="${cy}" x2="${sx}" y2="${sy}" stroke="var(--border, #cbd5e1)" stroke-width="1" />`;
+
+        const lx = cx + (r + 16) * Math.cos(angle);
+        const ly = cy + (r + 16) * Math.sin(angle) + 4;
+        svgContent += `<text x="${lx}" y="${ly}" font-size="10" font-weight="600" text-anchor="middle" fill="var(--text-muted, #64748b)">${labels[i] || `A${i+1}`}</text>`;
+
+        const val = values[i] || 0;
+        const dist = (val / maxVal) * r;
+        const dx = cx + dist * Math.cos(angle);
+        const dy = cy + dist * Math.sin(angle);
+        dataPts.push(`${dx},${dy}`);
+      }
+
+      svgContent += `<polygon points="${dataPts.join(' ')}" fill="rgba(139, 92, 246, 0.35)" stroke="#8b5cf6" stroke-width="2.5" />`;
+      dataPts.forEach((pt) => {
+        const [px, py] = pt.split(',');
+        svgContent += `<circle cx="${px}" cy="${py}" r="4" fill="#8b5cf6" stroke="#ffffff" stroke-width="1.5" />`;
+      });
+    } else if (chartType === 'scatter') {
+      const padLeft = 45, padBottom = 35, padTop = 30, padRight = 20;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+
+      svgContent += `<line x1="${padLeft}" y1="${h - padBottom}" x2="${w - padRight}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+      svgContent += `<line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+
+      for (let g = 1; g <= 3; g++) {
+        const gy = Math.round(h - padBottom - (g / 4) * plotH);
+        svgContent += `<line x1="${padLeft}" y1="${gy}" x2="${w - padRight}" y2="${gy}" stroke="var(--border, #cbd5e1)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6" />`;
+      }
+
+      const step = plotW / (values.length - 1 || 1);
+      values.forEach((val, idx) => {
+        const px = Math.round(padLeft + idx * step);
+        const py = Math.round(h - padBottom - (val / maxVal) * (plotH - 20));
+
+        svgContent += `<circle cx="${px}" cy="${py}" r="8" fill="rgba(234, 88, 12, 0.2)" />`;
+        svgContent += `<circle cx="${px}" cy="${py}" r="5" fill="#ea580c" stroke="#ffffff" stroke-width="2" />`;
+        svgContent += `<text x="${px}" y="${py - 10}" font-size="11" font-weight="600" text-anchor="middle" fill="var(--text-primary, #334155)">${val}</text>`;
+        svgContent += `<text x="${px}" y="${h - padBottom + 16}" font-size="11" text-anchor="middle" fill="var(--text-muted, #64748b)">${labels[idx] || `P${idx+1}`}</text>`;
+      });
+    } else if (chartType === 'stacked') {
+      const padLeft = 45, padBottom = 35, padTop = 30, padRight = 20;
+      const plotW = w - padLeft - padRight;
+      const plotH = h - padTop - padBottom;
+      const barWidth = Math.min(48, Math.floor((plotW / values.length) * 0.65));
+      const colStep = plotW / values.length;
+
+      svgContent += `<line x1="${padLeft}" y1="${h - padBottom}" x2="${w - padRight}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+      svgContent += `<line x1="${padLeft}" y1="${padTop}" x2="${padLeft}" y2="${h - padBottom}" stroke="var(--border, #cbd5e1)" stroke-width="1.5" />`;
+
+      values.forEach((val, idx) => {
+        const totalBarH = Math.round((val / maxVal) * (plotH - 20));
+        const seg1H = Math.round(totalBarH * 0.6);
+        const seg2H = totalBarH - seg1H;
+        const barX = Math.round(padLeft + idx * colStep + (colStep - barWidth) / 2);
+        const seg1Y = h - padBottom - seg1H;
+        const seg2Y = seg1Y - seg2H;
+
+        svgContent += `<rect x="${barX}" y="${seg1Y}" width="${barWidth}" height="${seg1H}" fill="#0284c7" />`;
+        svgContent += `<rect x="${barX}" y="${seg2Y}" width="${barWidth}" height="${seg2H}" rx="3" fill="#10b981" />`;
+
+        svgContent += `<text x="${barX + barWidth / 2}" y="${seg2Y - 6}" font-size="11" font-weight="700" text-anchor="middle" fill="var(--text-primary, #334155)">${val}</text>`;
+        svgContent += `<text x="${barX + barWidth / 2}" y="${h - padBottom + 16}" font-size="11" text-anchor="middle" fill="var(--text-muted, #64748b)">${labels[idx] || `Item ${idx+1}`}</text>`;
+      });
+
+      svgContent += `<rect x="${w - 140}" y="${padTop}" width="10" height="10" fill="#0284c7" />`;
+      svgContent += `<text x="${w - 124}" y="${padTop + 9}" font-size="10" fill="var(--text-primary, #334155)">Series A (60%)</text>`;
+      svgContent += `<rect x="${w - 140}" y="${padTop + 16}" width="10" height="10" fill="#10b981" />`;
+      svgContent += `<text x="${w - 124}" y="${padTop + 25}" font-size="10" fill="var(--text-primary, #334155)">Series B (40%)</text>`;
+    } else {
+      const cx = w / 2 - 40, cy = h / 2 + 8, r = 85;
+      const total = values.reduce((a, b) => a + b, 0) || 1;
+      let startAngle = 0;
+
+      values.forEach((val, idx) => {
+        const sliceAngle = (val / total) * 2 * Math.PI;
+        const endAngle = startAngle + sliceAngle;
+        const x1 = cx + r * Math.cos(startAngle);
+        const y1 = cy + r * Math.sin(startAngle);
+        const x2 = cx + r * Math.cos(endAngle);
+        const y2 = cy + r * Math.sin(endAngle);
+        const largeArc = sliceAngle > Math.PI ? 1 : 0;
+        const color = colors[idx % colors.length];
+
+        const pathData = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        svgContent += `<path d="${pathData}" fill="${color}" stroke="#ffffff" stroke-width="1.5" />`;
+
+        const legY = 40 + idx * 24;
+        const pct = Math.round((val / total) * 100);
+        svgContent += `<rect x="${w - 110}" y="${legY}" width="12" height="12" rx="2" fill="${color}" />`;
+        svgContent += `<text x="${w - 92}" y="${legY + 10}" font-size="11" fill="var(--text-primary, #334155)">${labels[idx] || `Item ${idx+1}`} (${pct}%)</text>`;
+
+        startAngle = endAngle;
+      });
+    }
+
+    const chartHtml = `
+      <div class="doc-chart-container" contenteditable="false" style="margin:16px auto;width:${w}px;max-width:100%;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;padding:14px;box-shadow:var(--shadow-sm);cursor:pointer;position:relative;">
+        <div class="chart-header-title" style="font-size:14px;font-weight:700;color:var(--text-primary);margin-bottom:8px;text-align:center;">
+          <i class="fas fa-chart-column" style="color:#0284c7;margin-right:6px;"></i>${escHtml(chartTitle)}
+        </div>
+        <svg class="doc-chart-svg" width="100%" height="${h}" viewBox="0 0 ${w} ${h}" style="overflow:visible;display:block;">
+          ${svgContent}
+        </svg>
+      </div><p><br></p>`;
+
+    window.DocFlow.Editor?.insertHtmlAtCursor(chartHtml);
+    window.DocFlow.Editor?.notifyChange();
+    closeModal('#chartModal');
+    showToast('Visual Data Chart inserted', 'success');
+
+    setTimeout(() => {
+      const charts = $('#editor')?.querySelectorAll('.doc-chart-container');
+      if (charts && charts.length) {
+        const newlyInserted = charts[charts.length - 1];
+        window.DocFlow.ImageManager?.attachShapeListeners(newlyInserted);
+        window.DocFlow.ImageManager?.selectImage(newlyInserted);
+      }
+    }, 50);
+  }
+
+  // Presentation Slide Show Player (Issue 7: restricted to .pptx documents)
+  let slideShowSlides = [];
+  let currentSlideShowIdx = 0;
+
+  function startSlideShow() {
+    if (!isPptxDocument()) {
+      showToast('Slide Show presentation mode is only available for PowerPoint (.pptx) documents', 'warning');
+      return;
+    }
+    const editor = $('#editor');
+    if (!editor) return;
+
+    let slideCards = Array.from(editor.querySelectorAll('.pptx-slide-card'));
+    if (!slideCards.length) {
+      slideCards = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    }
+    if (!slideCards.length) {
+      showToast('No slides found to present in this presentation', 'info');
+      return;
+    }
+
+    slideShowSlides = slideCards.map(c => {
+      const clone = c.cloneNode(true);
+      clone.querySelectorAll('.slide-placeholder-text, .slide-quick-action-bar').forEach(el => el.remove());
+      return clone.innerHTML || '<p>Slide content</p>';
+    });
+
+    currentSlideShowIdx = 0;
+    const overlay = $('#slideshowOverlay');
+    if (!overlay) return;
+
+    overlay.classList.add('show');
+    showSlideShowIndex(0);
+
+    document.removeEventListener('keydown', handleSlideShowKey);
+    document.addEventListener('keydown', handleSlideShowKey);
+    showToast('Presentation Slide Show started. Press Esc to exit.', 'info');
+  }
+
+  function showSlideShowIndex(idx) {
+    if (idx < 0) idx = 0;
+    if (idx >= slideShowSlides.length) idx = slideShowSlides.length - 1;
+    currentSlideShowIdx = idx;
+
+    const body = $('#slideshowCurrentSlideBody');
+    const counter = $('#slideshowCounter');
+    if (body) {
+      body.innerHTML = slideShowSlides[idx];
+    }
+    if (counter) {
+      counter.textContent = `${idx + 1} / ${slideShowSlides.length}`;
+    }
+  }
+
+  function exitSlideShow() {
+    const overlay = $('#slideshowOverlay');
+    if (overlay) overlay.classList.remove('show');
+    document.removeEventListener('keydown', handleSlideShowKey);
+    showToast('Exited presentation slide show', 'info');
+  }
+
+  function handleSlideShowKey(e) {
+    const overlay = $('#slideshowOverlay');
+    if (!overlay || !overlay.classList.contains('show')) return;
+
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+      e.preventDefault();
+      showSlideShowIndex(currentSlideShowIdx + 1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+      e.preventDefault();
+      showSlideShowIndex(currentSlideShowIdx - 1);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      exitSlideShow();
+    }
+  }
+
+  // Layout Tools (Issue 5: Page Orientation, Page Borders, Print Area)
+  function togglePageOrientation() {
+    const page = $('.editor-page');
+    if (!page) return;
+    const isLandscape = page.classList.toggle('landscape-page');
+    $('#layoutOrientationBtn')?.classList.toggle('active', isLandscape);
+    showToast(isLandscape ? 'Page Orientation: Landscape (11" × 8.5")' : 'Page Orientation: Portrait (8.5" × 11")', 'info');
+  }
+
+  function togglePageBorders() {
+    const page = $('.editor-page');
+    if (!page) return;
+    const hasBorders = page.classList.toggle('page-borders-mode');
+    $('#layoutPageBordersBtn')?.classList.toggle('active', hasBorders);
+    showToast(hasBorders ? 'Page Borders: ON' : 'Page Borders: OFF', 'info');
+  }
+
+  function setPrintArea() {
+    const page = $('.editor-page');
+    if (!page) return;
+    const isArea = page.classList.toggle('print-area-active');
+    $('#layoutPrintAreaBtn')?.classList.toggle('active', isArea);
+    showToast(isArea ? 'Print Area defined for document' : 'Print Area cleared', 'info');
+  }
+
+  // True Excel Capacity & Coordinates Controller (Issues 7, 8, 9)
+  function jumpToExcelCoord(container, coordStr) {
+    if (!container || !coordStr) return;
+    const parsed = window.DocFlow.FileIO?.parseExcelCoord ?
+      window.DocFlow.FileIO.parseExcelCoord(coordStr) : null;
+    if (!parsed) {
+      showToast(`Invalid Excel coordinate: "${coordStr}". Valid range: A1 to XFD1048576`, 'error');
+      return;
+    }
+
+    const { col, row, colLetter } = parsed;
+    const targetCoord = `${colLetter}${row}`;
+    const table = container.querySelector('.excel-grid-table');
+    if (!table) return;
+
+    let targetCell = table.querySelector(`td[data-coord="${targetCoord}"]`);
+
+    if (!targetCell) {
+      const tbody = table.querySelector('tbody');
+      const thead = table.querySelector('thead tr');
+      const getLetter = window.DocFlow.FileIO?.getExcelColLetter || (i => i === 16383 ? 'XFD' : 'A');
+
+      if (row > 100 || col > 50) {
+        let colHdr = table.querySelector(`th.excel-col-hdr[data-col="${col}"]`);
+        if (!colHdr) {
+          const th = document.createElement('th');
+          th.className = 'excel-col-hdr';
+          th.dataset.col = col;
+          th.contentEditable = 'false';
+          th.textContent = colLetter;
+          thead.appendChild(th);
+        }
+        let tr = tbody.querySelector(`tr[data-row="${row}"]`);
+        if (!tr) {
+          tr = document.createElement('tr');
+          tr.dataset.row = row;
+          const rowHdr = document.createElement('th');
+          rowHdr.className = 'excel-row-hdr';
+          rowHdr.contentEditable = 'false';
+          rowHdr.textContent = row;
+          tr.appendChild(rowHdr);
+          tbody.appendChild(tr);
+        }
+        targetCell = tr.querySelector(`td[data-coord="${targetCoord}"]`);
+        if (!targetCell) {
+          targetCell = document.createElement('td');
+          targetCell.contentEditable = 'true';
+          targetCell.dataset.coord = targetCoord;
+          tr.appendChild(targetCell);
+        }
+      } else {
+        const currentCols = thead.querySelectorAll('.excel-col-hdr').length;
+        for (let c = currentCols; c <= col; c++) {
+          const th = document.createElement('th');
+          th.className = 'excel-col-hdr';
+          th.contentEditable = 'false';
+          th.textContent = getLetter(c);
+          thead.appendChild(th);
+        }
+        const currentRows = tbody.querySelectorAll('tr').length;
+        for (let r = currentRows + 1; r <= row; r++) {
+          const tr = document.createElement('tr');
+          const rowHdr = document.createElement('th');
+          rowHdr.className = 'excel-row-hdr';
+          rowHdr.contentEditable = 'false';
+          rowHdr.textContent = r;
+          tr.appendChild(rowHdr);
+          const totalCols = thead.querySelectorAll('.excel-col-hdr').length;
+          for (let c = 0; c < totalCols; c++) {
+            const td = document.createElement('td');
+            td.contentEditable = 'true';
+            td.dataset.coord = `${getLetter(c)}${r}`;
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+        targetCell = table.querySelector(`td[data-coord="${targetCoord}"]`);
+      }
+    }
+
+    if (targetCell) {
+      targetCell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      targetCell.focus();
+      window._activeExcelCell = targetCell;
+      const coordBox = container.querySelector('.excel-coord-box');
+      const formulaInput = container.querySelector('.excel-formula-input');
+      if (coordBox) coordBox.value = targetCoord;
+      if (formulaInput) formulaInput.value = targetCell.textContent || '';
+      showToast(`Jumped to cell ${targetCoord}`, 'info');
+    }
+  }
+
+  function setupExcelInteractions() {
+    const editor = $('#editor');
+    if (!editor) return;
+
+    const container = editor.querySelector('.excel-spreadsheet-container');
+    if (!container) return;
+
+    // Issue 7 & 9: Lock editor canvas so whole sheet cannot be deleted by freeform selection
+    editor.contentEditable = 'false';
+    container.contentEditable = 'false';
+
+    const formulaInput = container.querySelector('.excel-formula-input');
+    const coordBox = container.querySelector('.excel-coord-box');
+
+    const attachCellSync = (td) => {
+      if (td._excelSynced) return;
+      td._excelSynced = true;
+
+      td.addEventListener('focus', () => {
+        window._activeExcelCell = td;
+        if (formulaInput) formulaInput.value = td.textContent || '';
+        if (coordBox) coordBox.value = td.dataset.coord || 'A1';
+      });
+
+      td.addEventListener('input', () => {
+        if (formulaInput && window._activeExcelCell === td) {
+          formulaInput.value = td.textContent || '';
+        }
+        window.DocFlow.Editor?.notifyChange();
+      });
+
+      td.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown' || e.key === 'Enter') {
+          const tr = td.closest('tr');
+          const nextTr = tr?.nextElementSibling;
+          if (nextTr) {
+            const target = nextTr.children[td.cellIndex] || nextTr.querySelector('td');
+            if (target && target.tagName === 'TD') {
+              e.preventDefault();
+              target.focus();
+            }
+          }
+        } else if (e.key === 'ArrowUp') {
+          const tr = td.closest('tr');
+          const prevTr = tr?.previousElementSibling;
+          if (prevTr) {
+            const target = prevTr.children[td.cellIndex] || prevTr.querySelector('td');
+            if (target && target.tagName === 'TD') {
+              e.preventDefault();
+              target.focus();
+            }
+          }
+        } else if (e.key === 'ArrowRight' || e.key === 'Tab') {
+          const sel = window.getSelection();
+          const isAtEnd = e.key === 'Tab' || (sel && sel.isCollapsed && sel.anchorOffset >= td.textContent.length);
+          if (isAtEnd) {
+            const next = td.nextElementSibling;
+            if (next && next.tagName === 'TD') {
+              e.preventDefault();
+              next.focus();
+            } else if (e.key === 'Tab') {
+              const tr = td.closest('tr');
+              const nextTr = tr?.nextElementSibling;
+              const firstTd = nextTr?.querySelector('td');
+              if (firstTd) {
+                e.preventDefault();
+                firstTd.focus();
+              }
+            }
+          }
+        } else if (e.key === 'ArrowLeft') {
+          const sel = window.getSelection();
+          const isAtStart = (sel && sel.isCollapsed && sel.anchorOffset === 0);
+          if (isAtStart) {
+            const prev = td.previousElementSibling;
+            if (prev && prev.tagName === 'TD') {
+              e.preventDefault();
+              prev.focus();
+            }
+          }
+        }
+      });
+    };
+
+    container.querySelectorAll('.excel-grid-table td').forEach(attachCellSync);
+
+    const table = container.querySelector('.excel-grid-table');
+    if (table && !table._hdrListeners) {
+      table._hdrListeners = true;
+      table.addEventListener('click', e => {
+        const rowHdr = e.target.closest('.excel-row-hdr');
+        if (rowHdr) {
+          const tr = rowHdr.closest('tr');
+          if (tr) {
+            if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+              table.querySelectorAll('td.excel-cell-selected').forEach(c => {
+                c.classList.remove('excel-cell-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
+              });
+              table.querySelectorAll('tr.excel-row-selected, th.excel-col-selected').forEach(el => el.classList.remove('excel-row-selected', 'excel-col-selected'));
+            }
+            const isSelected = tr.classList.toggle('excel-row-selected');
+            tr.querySelectorAll('td').forEach(td => td.classList.toggle('excel-cell-selected', isSelected));
+            const firstTd = tr.querySelector('td');
+            if (firstTd && isSelected) {
+              firstTd.focus();
+              window._activeExcelCell = firstTd;
+              if (coordBox) coordBox.value = firstTd.dataset.coord || 'A1';
+              if (formulaInput) formulaInput.value = firstTd.textContent || '';
+            }
+          }
+          return;
+        }
+
+        const colHdr = e.target.closest('.excel-col-hdr');
+        if (colHdr) {
+          const tr = colHdr.parentElement;
+          const idx = Array.from(tr.children).indexOf(colHdr);
+          if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+            table.querySelectorAll('td.excel-cell-selected').forEach(c => {
+              c.classList.remove('excel-cell-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
+            });
+            table.querySelectorAll('tr.excel-row-selected, th.excel-col-selected').forEach(el => el.classList.remove('excel-row-selected', 'excel-col-selected'));
+          }
+          const isSelected = colHdr.classList.toggle('excel-col-selected');
+          table.querySelectorAll('tbody tr').forEach(row => {
+            const cell = row.children[idx];
+            if (cell && cell.tagName === 'TD') cell.classList.toggle('excel-cell-selected', isSelected);
+          });
+          const firstTd = table.querySelector(`tbody tr td:nth-child(${idx + 1})`);
+          if (firstTd && isSelected) {
+            firstTd.focus();
+            window._activeExcelCell = firstTd;
+            if (coordBox) coordBox.value = firstTd.dataset.coord || 'A1';
+            if (formulaInput) formulaInput.value = firstTd.textContent || '';
+          }
+          return;
+        }
+      });
+
+      let isSelecting = false;
+      let startCell = null;
+
+      // Mouse Selection (Hold Ctrl for multi-cell click selection)
+      table.addEventListener('mousedown', e => {
+        const td = e.target.closest('td');
+        if (!td) return;
+
+        if (e.ctrlKey || e.metaKey) {
+          td.classList.toggle('excel-cell-selected');
+          window._activeExcelCell = td;
+          if (coordBox) coordBox.value = td.dataset.coord || 'A1';
+          if (formulaInput) formulaInput.value = td.textContent || '';
+          return;
+        }
+
+        if (!e.shiftKey) {
+          table.querySelectorAll('td.excel-cell-selected').forEach(c => {
+            c.classList.remove('excel-cell-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
+          });
+          table.querySelectorAll('tr.excel-row-selected, th.excel-col-selected').forEach(el => {
+            el.classList.remove('excel-row-selected', 'excel-col-selected');
+          });
+        }
+        isSelecting = true;
+        startCell = td;
+        td.classList.add('excel-cell-selected');
+        window._activeExcelCell = td;
+        if (coordBox) coordBox.value = td.dataset.coord || 'A1';
+        if (formulaInput) formulaInput.value = td.textContent || '';
+      });
+
+      table.addEventListener('mouseover', e => {
+        if (!isSelecting || !startCell) return;
+        const currentTd = e.target.closest('td');
+        if (!currentTd) return;
+
+        const startTr = startCell.closest('tr');
+        const currTr = currentTd.closest('tr');
+        if (!startTr || !currTr) return;
+
+        const minR = Math.min(startTr.rowIndex, currTr.rowIndex);
+        const maxR = Math.max(startTr.rowIndex, currTr.rowIndex);
+        const minC = Math.min(startCell.cellIndex, currentTd.cellIndex);
+        const maxC = Math.max(startCell.cellIndex, currentTd.cellIndex);
+
+        table.querySelectorAll('tbody tr').forEach(r => {
+          if (r.rowIndex >= minR && r.rowIndex <= maxR) {
+            Array.from(r.children).forEach(c => {
+              if (c.tagName === 'TD') {
+                if (c.cellIndex >= minC && c.cellIndex <= maxC) {
+                  c.classList.add('excel-cell-selected');
+                } else if (!e.shiftKey) {
+                  c.classList.remove('excel-cell-selected');
+                }
+              }
+            });
+          } else if (!e.shiftKey) {
+            r.querySelectorAll('td').forEach(c => c.classList.remove('excel-cell-selected'));
+          }
+        });
+      });
+
+      window.addEventListener('mouseup', () => {
+        isSelecting = false;
+      });
+
+      // Mobile long-press multi-cell / row / col selection (Issue 4)
+      let touchTimer = null;
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchTarget = null;
+
+      table.addEventListener('touchstart', e => {
+        if (e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        touchTarget = e.target.closest('td, th.excel-row-hdr, th.excel-col-hdr');
+        if (!touchTarget) return;
+
+        clearTimeout(touchTimer);
+        touchTimer = setTimeout(() => {
+          if (!touchTarget) return;
+          if (navigator.vibrate) {
+            try { navigator.vibrate(40); } catch (_) {}
+          }
+          if (touchTarget.tagName === 'TD') {
+            const isSel = touchTarget.classList.toggle('excel-cell-selected');
+            window._activeExcelCell = touchTarget;
+            if (coordBox) coordBox.value = touchTarget.dataset.coord || 'A1';
+            if (formulaInput) formulaInput.value = touchTarget.textContent || '';
+            showToast(`Cell ${touchTarget.dataset.coord || ''} ${isSel ? 'selected' : 'unselected'}`, 'info');
+          } else if (touchTarget.classList.contains('excel-row-hdr')) {
+            const tr = touchTarget.closest('tr');
+            if (tr) {
+              const isSel = tr.classList.toggle('excel-row-selected');
+              tr.querySelectorAll('td').forEach(c => c.classList.toggle('excel-cell-selected', isSel));
+              showToast(`Row ${touchTarget.textContent.trim()} ${isSel ? 'selected' : 'unselected'}`, 'info');
+            }
+          } else if (touchTarget.classList.contains('excel-col-hdr')) {
+            const tr = touchTarget.parentElement;
+            const idx = Array.from(tr.children).indexOf(touchTarget);
+            const isSel = touchTarget.classList.toggle('excel-col-selected');
+            table.querySelectorAll('tbody tr').forEach(row => {
+              const cell = row.children[idx];
+              if (cell && cell.tagName === 'TD') cell.classList.toggle('excel-cell-selected', isSel);
+            });
+            showToast(`Column ${touchTarget.textContent.trim()} ${isSel ? 'selected' : 'unselected'}`, 'info');
+          }
+        }, 420);
+      }, { passive: true });
+
+      table.addEventListener('touchmove', e => {
+        if (!touchTarget || !touchTimer) return;
+        const touch = e.touches[0];
+        if (Math.abs(touch.clientX - touchStartX) > 12 || Math.abs(touch.clientY - touchStartY) > 12) {
+          clearTimeout(touchTimer);
+          touchTimer = null;
+        }
+      }, { passive: true });
+
+      table.addEventListener('touchend', () => {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+      });
+
+      table.addEventListener('touchcancel', () => {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+      });
+    }
+
+    if (formulaInput && !formulaInput._excelSynced) {
+      formulaInput._excelSynced = true;
+      formulaInput.addEventListener('input', () => {
+        if (window._activeExcelCell) {
+          window._activeExcelCell.textContent = formulaInput.value;
+          window.DocFlow.Editor?.notifyChange();
+        }
+      });
+      formulaInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          window._activeExcelCell?.focus();
+        }
+      });
+    }
+
+    if (coordBox && !coordBox._excelSynced) {
+      coordBox._excelSynced = true;
+      coordBox.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          jumpToExcelCoord(container, coordBox.value);
+        }
+      });
+      coordBox.addEventListener('change', () => {
+        jumpToExcelCoord(container, coordBox.value);
+      });
+    }
+
+    container.querySelectorAll('.excel-jump-btn').forEach(btn => {
+      if (btn._excelSynced) return;
+      btn._excelSynced = true;
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const type = btn.dataset.jump;
+        if (type === 'home') {
+          jumpToExcelCoord(container, 'A1');
+        } else if (type === 'end') {
+          jumpToExcelCoord(container, 'XFD1048576');
+        }
+      });
+    });
+
+    if (!container._deletionProtected) {
+      container._deletionProtected = true;
+      container.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+          if (document.activeElement === formulaInput || document.activeElement === coordBox) {
+            return;
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          const table = container.querySelector('.excel-grid-table');
+          if (table) {
+            table.querySelectorAll('th').forEach(th => th.classList.remove('excel-row-selected', 'excel-col-selected'));
+            table.querySelectorAll('tr').forEach(tr => tr.classList.remove('excel-row-selected'));
+            table.querySelectorAll('td').forEach(td => {
+              td.classList.remove('excel-cell-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
+            });
+
+            // Content area detection (Excel style square border covering content)
+            const allTds = Array.from(table.querySelectorAll('tbody td'));
+            const contentCells = allTds.filter(c => c.textContent.trim().length > 0);
+
+            let minR = 1, maxR = 1, minC = 1, maxC = 1;
+            if (contentCells.length > 0) {
+              minR = Math.min(...contentCells.map(c => c.closest('tr').rowIndex));
+              maxR = Math.max(...contentCells.map(c => c.closest('tr').rowIndex));
+              minC = Math.min(...contentCells.map(c => c.cellIndex));
+              maxC = Math.max(...contentCells.map(c => c.cellIndex));
+            } else {
+              const rows = table.querySelectorAll('tbody tr');
+              minR = 1;
+              maxR = Math.min(rows.length, 10);
+              minC = 1;
+              maxC = Math.min(rows[0]?.children.length - 1 || 10, 10);
+            }
+
+            table.querySelectorAll('tbody tr').forEach(r => {
+              if (r.rowIndex >= minR && r.rowIndex <= maxR) {
+                Array.from(r.children).forEach(c => {
+                  if (c.tagName === 'TD' && c.cellIndex >= minC && c.cellIndex <= maxC) {
+                    c.classList.add('excel-cell-selected');
+                    if (r.rowIndex === minR) c.classList.add('excel-sel-top');
+                    if (r.rowIndex === maxR) c.classList.add('excel-sel-bottom');
+                    if (c.cellIndex === minC) c.classList.add('excel-sel-left');
+                    if (c.cellIndex === maxC) c.classList.add('excel-sel-right');
+                  }
+                });
+              }
+            });
+            showToast('Spreadsheet content area selected (Excel perimeter border)', 'info');
+          }
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+          if (window._activeExcelCell && document.activeElement === window._activeExcelCell) {
+            setTimeout(() => {
+              if (formulaInput) formulaInput.value = window._activeExcelCell.textContent || '';
+              window.DocFlow.Editor?.notifyChange();
+            }, 0);
+          }
+        }
+      });
+    }
+
+    if (!editor._focusLockedToExcel) {
+      editor._focusLockedToExcel = true;
+      editor.addEventListener('click', e => {
+        if (editor.querySelector('.excel-spreadsheet-container')) {
+          if (!e.target.closest('.excel-spreadsheet-container')) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window._activeExcelCell) {
+              window._activeExcelCell.focus();
+            } else {
+              container.querySelector('td')?.focus();
+            }
+          }
+        }
+      });
+    }
   }
 
   // Watermark Inner HTML Generator
@@ -1760,13 +3634,53 @@
       showToast(`Auto-Save is now ${autoSaveEnabled ? 'ON (5s timer)' : 'OFF'}`, autoSaveEnabled ? 'success' : 'info');
     });
 
-    // Home Panel Office Integration Buttons
-    $('#homeExcelFormatBtn')?.addEventListener('click', applyExcelTableStyle);
-    $('#homePptLayoutBtn')?.addEventListener('click', insertPptSlideCard);
+    // Home Panel Office Integration Buttons (Issue 4: Sort Dropdown handled in editor.js)
+    $('#homePptShadowBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.toggleTextShadow();
+    });
 
     // 3. Insert Panel (Date, Symbol, Checklist, Note, Paint, Office Embeds)
-    $('#ribbonInsertExcelGridBtn')?.addEventListener('click', insertExcelSpreadsheetGrid);
-    $('#ribbonInsertPptSlideBtn')?.addEventListener('click', insertPptSlideCard);
+    $('#ribbonInsertChartBtn')?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode first', 'info');
+        return;
+      }
+      openModal('#chartModal');
+    });
+    $('#chartCancelBtn')?.addEventListener('click', () => closeModal('#chartModal'));
+    $('#chartInsertBtn')?.addEventListener('click', insertChartIntoDocument);
+
+    // Line Customization Modal Trigger (Issue 4)
+    $('#ribbonInsertHrBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.openLineModal();
+    });
+
+    // PPT Slide Dropdown & actions (Issue 4: Next Slide / Outside & Nested Slide / Inside)
+    const pptSlideDropdownBtn = $('#ribbonInsertPptSlideBtn');
+    const pptSlidePopover = $('#pptSlidePopover');
+    if (pptSlideDropdownBtn && pptSlidePopover) {
+      pptSlideDropdownBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const wasOpen = pptSlidePopover.classList.contains('show');
+        if (window.DocFlow?.UI?.closeAllPopovers) window.DocFlow.UI.closeAllPopovers();
+        if (!wasOpen) {
+          if (window.DocFlow?.UI?.positionPopover) {
+            window.DocFlow.UI.positionPopover(pptSlideDropdownBtn, pptSlidePopover);
+          } else {
+            pptSlidePopover.classList.add('show');
+          }
+        }
+      });
+    }
+
+    $('#pptInsertNextSlideBtn')?.addEventListener('click', () => {
+      $('#pptSlidePopover')?.classList.remove('show');
+      insertPptSlide(false);
+    });
+    $('#pptInsertNestedSlideBtn')?.addEventListener('click', () => {
+      $('#pptSlidePopover')?.classList.remove('show');
+      insertPptSlide(true);
+    });
 
     // 3. Insert Panel (Date, Symbol, Checklist, Note, Paint)
     $('#ribbonInsertDateBtn')?.addEventListener('click', () => {
@@ -1931,6 +3845,22 @@
     function applyPageSize(size) {
       const page = $('.editor-page');
       if (!page) return;
+      const wrap = $('#editorWrap');
+
+      if (size === 'full') {
+        if (wrap) wrap.classList.add('full-size-active');
+        page.style.maxWidth = '100%';
+        page.style.width = '100%';
+        page.style.minHeight = '100%';
+        page.style.height = '100%';
+        showToast('Paper Size: Full Page (Full width & height edge-to-edge)', 'info');
+        return;
+      }
+
+      if (wrap) wrap.classList.remove('full-size-active');
+      page.style.width = '';
+      page.style.height = '';
+
       switch (size) {
         case 'letter':
           page.style.maxWidth = '816px';
@@ -1946,12 +3876,6 @@
           page.style.maxWidth = '816px';
           page.style.minHeight = '1344px';
           showToast('Paper Size: Legal (8.5" × 14")', 'info');
-          break;
-        case 'full':
-          page.style.maxWidth = '100%';
-          page.style.width = '100%';
-          page.style.minHeight = '100%';
-          showToast('Paper Size: Full Page (100% Bleed)', 'info');
           break;
         case 'custom':
           openModal('#customPageSizeModal');
@@ -2058,6 +3982,12 @@
           columnsPopover.classList.remove('show');
         });
       });
+
+      // Insert Column Break nested inside Columns popover (Issue 5)
+      $('#popoverColumnBreakItem')?.addEventListener('click', () => {
+        columnsPopover.classList.remove('show');
+        window.DocFlow.Editor?.insertColumnBreak();
+      });
     }
 
     function applyColumns(cols) {
@@ -2070,6 +4000,11 @@
       page.style.columnFill = 'auto';
       showToast(`Layout: ${cols} Column${cols > 1 ? 's' : ''}`, 'info');
     }
+
+    // Page Orientation, Borders, and Print Area (Issue 5)
+    $('#layoutOrientationBtn')?.addEventListener('click', togglePageOrientation);
+    $('#layoutPageBordersBtn')?.addEventListener('click', togglePageBorders);
+    $('#layoutPrintAreaBtn')?.addEventListener('click', setPrintArea);
 
     // Watermark Popover
     const watermarkBtn = $('#watermarkDropdownBtn');
@@ -2178,21 +4113,791 @@
       showToast(isAspect ? 'PowerPoint 16:9 Aspect Ratio ON' : 'PowerPoint 16:9 Aspect Ratio OFF', 'info');
     });
 
-    // Dismiss Layout & Bullet Popovers on outside click
+    // Dismiss Layout, View, PPT, Excel & Bullet Popovers on outside click
     document.addEventListener('click', e => {
       if (!e.target.closest('#marginDropdownWrap') &&
           !e.target.closest('#pageSizeDropdownWrap') &&
           !e.target.closest('#columnsDropdownWrap') &&
           !e.target.closest('#watermarkDropdownWrap') &&
+          !e.target.closest('#hyphenDropdownWrap') &&
+          !e.target.closest('#pageBorderDropdownWrap') &&
+          !e.target.closest('#pptNewSlideDropdownWrap') &&
+          !e.target.closest('#pptLayoutDropdownWrap') &&
+          !e.target.closest('#pptBgImageDropdownWrap') &&
+          !e.target.closest('#pptTransitionDropdownWrap') &&
+          !e.target.closest('#excelFormulaDropdownWrap') &&
+          !e.target.closest('#excelBorderDropdownWrap') &&
+          !e.target.closest('#pptSlideDropdownWrap') &&
+          !e.target.closest('#paraSpacingDropdownWrap') &&
+          !e.target.closest('#pagePaddingDropdownWrap') &&
+          !e.target.closest('#zoomPresetsDropdownWrap') &&
+          !e.target.closest('.pptx-sidebar-add-wrap') &&
           !e.target.closest('.bullet-dropdown-wrap')) {
         $('#marginPopover')?.classList.remove('show');
         $('#pageSizePopover')?.classList.remove('show');
         $('#columnsPopover')?.classList.remove('show');
         $('#watermarkPopover')?.classList.remove('show');
+        $('#hyphenPopover')?.classList.remove('show');
+        $('#pageBorderPopover')?.classList.remove('show');
+        $('#paraSpacingPopover')?.classList.remove('show');
+        $('#pagePaddingPopover')?.classList.remove('show');
+        $('#zoomPresetsPopover')?.classList.remove('show');
+        $('#pptNewSlidePopover')?.classList.remove('show');
+        $('#pptLayoutPopover')?.classList.remove('show');
+        $('#pptBgImagePopover')?.classList.remove('show');
+        $('#pptTransitionPopover')?.classList.remove('show');
+        $('#excelFormulaPopover')?.classList.remove('show');
+        $('#excelBorderPopover')?.classList.remove('show');
+        $('#pptSlidePopover')?.classList.remove('show');
+        $('#pptxSidebarAddPopover')?.classList.remove('show');
       }
     });
 
-    // 5. View Panel & Home Panel Editing Actions
+    // 5. Layout Ribbon Panel Controls (Issue 3: Page Color, Spacing, Padding, Border, Hyphenation)
+    $('#layoutPageBgInput')?.addEventListener('input', e => {
+      const color = e.target.value;
+      const page = $('.editor-page');
+      if (page) {
+        page.style.backgroundColor = color;
+        window.DocFlow.Editor?.notifyChange();
+        showToast(`Page background color set to ${color}`, 'info');
+      }
+    });
+
+    $('#layoutParaSpacingBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#paraSpacingPopover');
+      const btn = $('#layoutParaSpacingBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+    $$('#paraSpacingPopover .margin-opt-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const spacing = item.dataset.spacing;
+        const editor = $('#editor');
+        if (editor) {
+          editor.classList.remove('para-spacing-tight', 'para-spacing-relaxed', 'para-spacing-double');
+          if (spacing !== 'normal') editor.classList.add(`para-spacing-${spacing}`);
+          $$('#paraSpacingPopover .margin-opt-item').forEach(el => el.classList.remove('active'));
+          item.classList.add('active');
+          showToast(`Paragraph spacing: ${spacing}`, 'info');
+          window.DocFlow.Editor?.notifyChange();
+        }
+        $('#paraSpacingPopover')?.classList.remove('show');
+      });
+    });
+
+    $('#layoutPagePaddingBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pagePaddingPopover');
+      const btn = $('#layoutPagePaddingBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+    $$('#pagePaddingPopover .margin-opt-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const pad = item.dataset.padding;
+        const page = $('.editor-page');
+        if (page) {
+          const padMap = { compact: '36px 36px', normal: '72px 72px', spacious: '96px 96px', edge: '12px 16px' };
+          page.style.padding = padMap[pad] || '72px 72px';
+          $$('#pagePaddingPopover .margin-opt-item').forEach(el => el.classList.remove('active'));
+          item.classList.add('active');
+          showToast(`Page padding: ${pad}`, 'info');
+          window.DocFlow.Editor?.notifyChange();
+        }
+        $('#pagePaddingPopover')?.classList.remove('show');
+      });
+    });
+
+    $('#layoutHyphenBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#hyphenPopover');
+      const btn = $('#layoutHyphenBtn');
+      if (pop?.classList.contains('show')) {
+        pop.classList.remove('show');
+      } else if (pop && btn) {
+        window.DocFlow.UI.positionPopover(btn, pop);
+      }
+    });
+    $$('#hyphenPopover .margin-opt-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const hyp = item.dataset.hyphen;
+        const page = $('.editor-page');
+        if (page) {
+          const isAuto = hyp === 'auto';
+          page.classList.toggle('doc-hyphen-auto', isAuto);
+          $$('#hyphenPopover .margin-opt-item').forEach(el => el.classList.remove('active'));
+          item.classList.add('active');
+          showToast(`Hyphenation: ${isAuto ? 'Automatic' : 'None'}`, 'info');
+        }
+        $('#hyphenPopover')?.classList.remove('show');
+      });
+    });
+
+    // Layout Ribbon Controls (Page Color, Custom Border, Text Direction)
+    $('#layoutPageBgBtn')?.addEventListener('click', () => {
+      $('#layoutPageBgInput')?.click();
+    });
+    $('#layoutPageBgInput')?.addEventListener('input', e => {
+      const color = e.target.value;
+      const page = $('.editor-page');
+      if (page) {
+        page.style.setProperty('background-color', color, 'important');
+        page.style.backgroundColor = color;
+        window.DocFlow.Editor?.notifyChange();
+      }
+    });
+    $('#layoutPageBgInput')?.addEventListener('change', e => {
+      window.DocFlow.Editor?.saveSnapshot?.();
+      showToast(`Page background color set to ${e.target.value}`, 'info');
+    });
+
+    $('#layoutPageBorderBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pageBorderPopover');
+      const btn = $('#layoutPageBorderBtn');
+      if (pop?.classList.contains('show')) {
+        pop.classList.remove('show');
+      } else if (pop && btn) {
+        window.DocFlow.UI.positionPopover(btn, pop);
+      }
+    });
+
+    $('#customPageBorderOpt')?.addEventListener('click', () => {
+      $('#pageBorderPopover')?.classList.remove('show');
+      openModal('#customPageBorderModal');
+    });
+
+    $$('#pageBorderPopover .margin-opt-item:not(#customPageBorderOpt)').forEach(item => {
+      item.addEventListener('click', () => {
+        const borderStyle = item.dataset.border;
+        const page = $('.editor-page');
+        if (page) {
+          window.DocFlow.Editor?.saveSnapshot?.();
+          page.style.border = '';
+          page.style.borderRadius = '';
+          page.classList.remove('page-border-box', 'page-border-shadow', 'page-border-double');
+          if (borderStyle === 'box') page.classList.add('page-border-box');
+          else if (borderStyle === 'shadow') page.classList.add('page-border-shadow');
+          else if (borderStyle === 'double') page.classList.add('page-border-double');
+          $$('#pageBorderPopover .margin-opt-item').forEach(el => el.classList.remove('active'));
+          item.classList.add('active');
+          window.DocFlow.Editor?.notifyChange();
+          showToast(`Page Border: ${borderStyle}`, 'info');
+        }
+        $('#pageBorderPopover')?.classList.remove('show');
+      });
+    });
+
+    $('#layoutTextDirBtn')?.addEventListener('click', () => {
+      const page = $('.editor-page');
+      if (page) {
+        const isRtl = page.classList.toggle('dir-rtl');
+        $('#layoutTextDirBtn')?.classList.toggle('active', isRtl);
+        showToast(isRtl ? 'Text Direction: Right-to-Left (RTL)' : 'Text Direction: Left-to-Right (LTR)', 'info');
+      }
+    });
+
+    // 6. View Ribbon Panel Controls (Issue 2: Split Window, Status Bar toggle)
+    $('#viewToggleStatusbarBtn')?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode === 'empty') {
+        showToast('Status bar is permanently displayed on Home screen', 'info');
+      }
+      const isHidden = document.body.classList.toggle('editor-statusbar-hidden');
+      $('#viewToggleStatusbarBtn')?.classList.toggle('active', isHidden);
+      showToast(isHidden ? 'Status bar hidden (in editors only)' : 'Status bar visible', 'info');
+    });
+
+    const splitDividerEl = $('#splitDividerBar');
+    const editorWrapPane = $('#editorWrap');
+    const splitMirrorPaneEl = $('#splitMirrorPane');
+    const mainContentArea = $('#mainContent');
+
+    $('#viewSplitWindowBtn')?.addEventListener('click', () => {
+      const isSplit = document.body.classList.toggle('has-split-window');
+      $('#viewSplitWindowBtn')?.classList.toggle('active', isSplit);
+      const editor = $('#editor');
+      const mirror = $('#editorSplitMirror');
+      if (isSplit && editor && mirror) {
+        mirror.innerHTML = editor.innerHTML;
+        mirror.contentEditable = 'true';
+      } else {
+        if (editorWrapPane) {
+          editorWrapPane.style.flex = '';
+          editorWrapPane.style.height = '';
+        }
+        if (splitMirrorPaneEl) {
+          splitMirrorPaneEl.style.flex = '';
+          splitMirrorPaneEl.style.height = '';
+        }
+      }
+      showToast(isSplit ? 'Dual-pane Split Window: ON' : 'Split Window: OFF', 'info');
+    });
+
+    // Resizable Split Divider Drag Handler
+    if (splitDividerEl && editorWrapPane && splitMirrorPaneEl && mainContentArea) {
+      let isDraggingSplit = false;
+
+      const onSplitDrag = e => {
+        if (!isDraggingSplit) return;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const rect = mainContentArea.getBoundingClientRect();
+        const offset = clientY - rect.top;
+        const totalHeight = rect.height;
+        if (totalHeight > 0) {
+          const percent = Math.min(85, Math.max(15, (offset / totalHeight) * 100));
+          editorWrapPane.style.flex = `0 0 ${percent}%`;
+          editorWrapPane.style.height = `${percent}%`;
+          splitMirrorPaneEl.style.flex = `0 0 ${100 - percent}%`;
+          splitMirrorPaneEl.style.height = `${100 - percent}%`;
+        }
+      };
+
+      const onSplitDragEnd = () => {
+        if (isDraggingSplit) {
+          isDraggingSplit = false;
+          splitDividerEl.classList.remove('dragging');
+          document.body.style.userSelect = '';
+          document.body.style.cursor = '';
+        }
+      };
+
+      splitDividerEl.addEventListener('mousedown', e => {
+        e.preventDefault();
+        isDraggingSplit = true;
+        splitDividerEl.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'row-resize';
+      });
+
+      splitDividerEl.addEventListener('touchstart', () => {
+        isDraggingSplit = true;
+        splitDividerEl.classList.add('dragging');
+      }, { passive: true });
+
+      window.addEventListener('mousemove', onSplitDrag);
+      window.addEventListener('touchmove', onSplitDrag, { passive: true });
+      window.addEventListener('mouseup', onSplitDragEnd);
+      window.addEventListener('touchend', onSplitDragEnd);
+      window.addEventListener('touchcancel', onSplitDragEnd);
+    }
+
+    const editorMainEl = $('#editor');
+    const editorSplitEl = $('#editorSplitMirror');
+    if (editorMainEl && editorSplitEl) {
+      editorMainEl.addEventListener('input', () => {
+        if (document.body.classList.contains('has-split-window') && document.activeElement === editorMainEl) {
+          editorSplitEl.innerHTML = editorMainEl.innerHTML;
+        }
+      });
+      editorSplitEl.addEventListener('input', () => {
+        if (document.body.classList.contains('has-split-window') && document.activeElement === editorSplitEl) {
+          editorMainEl.innerHTML = editorSplitEl.innerHTML;
+          window.DocFlow.Editor?.notifyChange();
+        }
+      });
+    }
+
+    $('#viewHighContrastBtn')?.addEventListener('click', () => {
+      const wrap = $('#editorWrap');
+      if (wrap) {
+        const isContrast = wrap.classList.toggle('high-contrast-mode');
+        $('#viewHighContrastBtn')?.classList.toggle('active', isContrast);
+        showToast(isContrast ? 'High Contrast Mode: ON' : 'High Contrast: OFF', 'info');
+      }
+    });
+
+    // 7. Dedicated PPT Ribbon Panel Controls (Issue 4)
+    $('#pptNewSlideMenuBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pptNewSlidePopover');
+      const btn = $('#pptNewSlideMenuBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+
+    $$('#pptNewSlidePopover .spacing-opt-item[data-ppt-layout]').forEach(item => {
+      item.addEventListener('click', () => {
+        const layout = item.dataset.pptLayout || 'blank';
+        insertPptSlide(false, layout);
+        $('#pptNewSlidePopover')?.classList.remove('show');
+      });
+    });
+
+    $('#pptDeleteSlideBtn')?.addEventListener('click', () => {
+      deletePptSlide(currentActiveSlideIndex);
+    });
+
+    $('#pptDuplicateSlideBtn')?.addEventListener('click', () => {
+      duplicatePptSlide();
+    });
+
+    // Presentation Themes & Palettes (Replacing duplicate layout button)
+    $('#pptSlideThemeBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pptSlideThemePopover');
+      const btn = $('#pptSlideThemeBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+
+    const PPT_THEMES_DICT = {
+      ocean: { bg: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)', text: '#f8fafc', border: '1px solid #3b82f6' },
+      emerald: { bg: 'linear-gradient(135deg, #064e3b 0%, #047857 100%)', text: '#f0fdf4', border: '1px solid #10b981' },
+      sunset: { bg: 'linear-gradient(135deg, #7c2d12 0%, #ea580c 100%)', text: '#fff7ed', border: '1px solid #f97316' },
+      royal: { bg: 'linear-gradient(135deg, #3b0764 0%, #7e22ce 100%)', text: '#faf5ff', border: '1px solid #a855f7' },
+      obsidian: { bg: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)', text: '#f4f4f5', border: '1px solid #3f3f46' },
+      monochrome: { bg: '#ffffff', text: '#0f172a', border: '2px solid #0f172a' }
+    };
+
+    $$('#pptSlideThemePopover .spacing-opt-item[data-ppt-theme]').forEach(item => {
+      item.addEventListener('click', () => {
+        const theme = PPT_THEMES_DICT[item.dataset.pptTheme];
+        if (theme) {
+          window.DocFlow.Editor?.saveSnapshot?.();
+          const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+          const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+          const card = curSlide ? (curSlide.querySelector('.pptx-slide-card') || curSlide) : null;
+          if (card) {
+            card.style.background = theme.bg;
+            card.style.color = theme.text;
+            card.style.border = theme.border;
+            card.querySelectorAll('h1, h2, h3, h4, .slide-title-box, .slide-content-box').forEach(el => el.style.color = theme.text);
+            window.DocFlow.Editor?.notifyChange();
+            showToast(`Theme applied: ${item.textContent.trim()}`, 'success');
+          }
+        }
+        $('#pptSlideThemePopover')?.classList.remove('show');
+      });
+    });
+
+    $('#pptBgColorBtn')?.addEventListener('click', () => {
+      $('#pptBgColorInput')?.click();
+    });
+    $('#pptBgColorInput')?.addEventListener('input', e => {
+      const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+      const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+      const card = curSlide ? (curSlide.querySelector('.pptx-slide-card') || curSlide) : null;
+      if (card) {
+        card.style.backgroundColor = e.target.value;
+        window.DocFlow.Editor?.notifyChange();
+      }
+    });
+
+    $('#pptBgImageBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pptBgImagePopover');
+      const btn = $('#pptBgImageBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+
+    $('#pptBgUploadDeviceBtn')?.addEventListener('click', () => {
+      $('#pptBgFileInput')?.click();
+      $('#pptBgImagePopover')?.classList.remove('show');
+    });
+
+    $('#pptBgFileInput')?.addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+        const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+        const card = curSlide ? (curSlide.querySelector('.pptx-slide-card') || curSlide) : null;
+        if (card) {
+          card.style.backgroundImage = `url(${ev.target.result})`;
+          card.style.backgroundSize = 'cover';
+          card.style.backgroundPosition = 'center';
+          card.style.backgroundRepeat = 'no-repeat';
+          window.DocFlow.Editor?.notifyChange();
+          showToast('Slide background image applied from device', 'success');
+        }
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    $('#pptBgOnlineUrlBtn')?.addEventListener('click', () => {
+      const url = prompt('Enter image URL for slide background:');
+      if (url && url.trim()) {
+        const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+        const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+        const card = curSlide ? (curSlide.querySelector('.pptx-slide-card') || curSlide) : null;
+        if (card) {
+          card.style.backgroundImage = `url(${url.trim()})`;
+          card.style.backgroundSize = 'cover';
+          card.style.backgroundPosition = 'center';
+          card.style.backgroundRepeat = 'no-repeat';
+          window.DocFlow.Editor?.notifyChange();
+          showToast('Online slide background image applied', 'success');
+        }
+      }
+      $('#pptBgImagePopover')?.classList.remove('show');
+    });
+
+    $('#pptBgRemoveBtn')?.addEventListener('click', () => {
+      const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+      const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+      const card = curSlide ? (curSlide.querySelector('.pptx-slide-card') || curSlide) : null;
+      if (card) {
+        card.style.backgroundImage = 'none';
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Slide background image removed', 'info');
+      }
+      $('#pptBgImagePopover')?.classList.remove('show');
+    });
+
+    // Speaker Notes Toggle
+    $('#pptNotesBtn')?.addEventListener('click', () => {
+      const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+      const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+      if (!curSlide) return;
+      let notes = curSlide.querySelector('.slide-speaker-notes');
+      if (notes) {
+        notes.remove();
+        $('#pptNotesBtn')?.classList.remove('active');
+        showToast('Speaker notes closed', 'info');
+      } else {
+        curSlide.insertAdjacentHTML('beforeend', `
+          <div class="slide-speaker-notes">
+            <div class="slide-speaker-notes-title"><i class="fas fa-comment-dots"></i> Speaker Notes</div>
+            <div class="slide-speaker-notes-content" contenteditable="true">Click here to add presentation notes...</div>
+          </div>
+        `);
+        $('#pptNotesBtn')?.classList.add('active');
+        showToast('Speaker notes opened', 'success');
+      }
+      window.DocFlow.Editor?.notifyChange();
+    });
+
+    // Slide Transitions (Issue 3: Expanded transitions & animations)
+    $('#pptTransitionBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pptTransitionPopover');
+      const btn = $('#pptTransitionBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+
+    $$('#pptTransitionPopover .spacing-opt-item[data-transition]').forEach(item => {
+      item.addEventListener('click', () => {
+        const trans = item.dataset.transition;
+        const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+        const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+        if (curSlide) {
+          curSlide.dataset.transition = trans;
+          const card = curSlide.querySelector('.pptx-slide-card') || curSlide;
+          card.classList.remove(
+            'anim-ppt-fade', 'anim-ppt-slide', 'anim-ppt-push', 'anim-ppt-zoom', 'anim-ppt-flip',
+            'anim-ppt-slide-up', 'anim-ppt-bounce', 'anim-ppt-rotate', 'anim-ppt-wipe', 'anim-ppt-blur', 'anim-ppt-cube'
+          );
+          if (trans && trans !== 'none') {
+            void card.offsetWidth;
+            card.classList.add(`anim-ppt-${trans}`);
+          }
+        }
+        $$('#pptTransitionPopover .spacing-opt-item').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        showToast(`Slide transition applied: ${trans}`, 'success');
+        $('#pptTransitionPopover')?.classList.remove('show');
+      });
+    });
+
+    // Move Slides & Presentation Slide Show
+    $('#pptMoveUpBtn')?.addEventListener('click', () => movePptSlide(-1));
+    $('#pptMoveDownBtn')?.addEventListener('click', () => movePptSlide(1));
+    $('#pptStartSlideShowBtn')?.addEventListener('click', startSlideShow);
+
+    // 8. Dedicated Excel Ribbon Panel Controls (Issue 5)
+    $('#excelMergeCellsBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('merge');
+    });
+    $('#excelUnmergeCellsBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('unmerge');
+    });
+    $('#excelAddRowAboveBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('add-row-above');
+    });
+    $('#excelAddRowBelowBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('add-row-below');
+    });
+    $('#excelDelRowBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('delete-row');
+    });
+    $('#excelAddColLeftBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('add-col-left');
+    });
+    $('#excelAddColRightBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('add-col-right');
+    });
+    $('#excelDelColBtn')?.addEventListener('click', () => {
+      handleExcelTableAction('delete-col');
+    });
+
+    $('#excelFormulaBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#excelFormulaPopover');
+      const btn = $('#excelFormulaBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+    $$('#excelFormulaPopover .spacing-opt-item[data-formula]').forEach(item => {
+      item.addEventListener('click', () => {
+        applyExcelFormula(item.dataset.formula);
+        $('#excelFormulaPopover')?.classList.remove('show');
+      });
+    });
+
+    $('#excelFmtCurrencyBtn')?.addEventListener('click', () => {
+      const cell = getActiveTableCell();
+      if (cell) {
+        const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
+        cell.textContent = `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Formatted as Currency ($)', 'info');
+      } else showToast('Click inside a table cell first', 'info');
+      restoreCellFocus(cell);
+    });
+
+    $('#excelFmtPercentBtn')?.addEventListener('click', () => {
+      const cell = getActiveTableCell();
+      if (cell) {
+        const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
+        cell.textContent = `${(num * (num < 1 ? 100 : 1)).toFixed(1)}%`;
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Formatted as Percentage (%)', 'info');
+      } else showToast('Click inside a table cell first', 'info');
+      restoreCellFocus(cell);
+    });
+
+    $('#excelFmtDecimalIncBtn')?.addEventListener('click', () => {
+      const cell = getActiveTableCell();
+      if (cell) {
+        const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
+        cell.textContent = num.toFixed(2);
+        window.DocFlow.Editor?.notifyChange();
+      }
+      restoreCellFocus(cell);
+    });
+
+    $('#excelFmtDecimalDecBtn')?.addEventListener('click', () => {
+      const cell = getActiveTableCell();
+      if (cell) {
+        const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
+        cell.textContent = num.toFixed(1);
+        window.DocFlow.Editor?.notifyChange();
+      }
+      restoreCellFocus(cell);
+    });
+
+    $('#excelBorderBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#excelBorderPopover');
+      const btn = $('#excelBorderBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+    $$('#excelBorderPopover .spacing-opt-item[data-border]').forEach(item => {
+      item.addEventListener('click', () => {
+        const type = item.dataset.border;
+        if (type === 'custom') {
+          $('#excelBorderPopover')?.classList.remove('show');
+          openModal('#excelCustomBorderModal');
+          return;
+        }
+
+        const cell = getActiveTableCell();
+        const table = cell ? cell.closest('table') : document.querySelector('#editor table');
+        if (table) {
+          window.DocFlow.Editor?.saveSnapshot?.();
+          const selected = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+          const targets = selected.length > 0 ? selected : (cell ? [cell] : Array.from(table.querySelectorAll('td')));
+          targets.forEach(c => {
+            if (type === 'all') {
+              c.style.border = '1px solid var(--border, #cbd5e1)';
+            } else if (type === 'outside') {
+              c.style.border = '2px solid var(--accent, #16a34a)';
+            } else if (type === 'thick-bottom') {
+              c.style.borderBottom = '3px solid #0f172a';
+            } else if (type === 'top-bottom') {
+              c.style.borderTop = '1px solid var(--border, #cbd5e1)';
+              c.style.borderBottom = '2px double #0f172a';
+            } else if (type === 'left') {
+              c.style.borderLeft = '2px solid var(--accent, #16a34a)';
+            } else if (type === 'right') {
+              c.style.borderRight = '2px solid var(--accent, #16a34a)';
+            } else if (type === 'top') {
+              c.style.borderTop = '2px solid var(--accent, #16a34a)';
+            } else if (type === 'bottom') {
+              c.style.borderBottom = '2px solid var(--accent, #16a34a)';
+            } else if (type === 'none') {
+              c.style.border = '1px solid transparent';
+            }
+          });
+          window.DocFlow.Editor?.notifyChange();
+          showToast(`Border style applied: ${type}`, 'info');
+        }
+        $('#excelBorderPopover')?.classList.remove('show');
+        restoreCellFocus(cell);
+      });
+    });
+
+    // Excel Custom Border Dialog Wiring (Issue 4)
+    $('#excelCustomBorderBtn')?.addEventListener('click', () => {
+      $('#excelBorderPopover')?.classList.remove('show');
+      openModal('#excelCustomBorderModal');
+    });
+
+    $('#excelBorderColorInput')?.addEventListener('input', e => {
+      const hex = $('#excelBorderColorHex');
+      if (hex) hex.textContent = e.target.value;
+    });
+
+    $('#excelCustomBorderCloseBtn')?.addEventListener('click', () => {
+      closeModal('#excelCustomBorderModal');
+    });
+    $('#excelCustomBorderCancelBtn')?.addEventListener('click', () => {
+      closeModal('#excelCustomBorderModal');
+    });
+
+    $('#excelCustomBorderApplyBtn')?.addEventListener('click', () => {
+      const width = $('#excelBorderWidthInput')?.value || '1px';
+      const style = $('#excelBorderStyleInput')?.value || 'solid';
+      const color = $('#excelBorderColorInput')?.value || '#16a34a';
+      const sides = $('#excelBorderSidesInput')?.value || 'all';
+
+      const cell = getActiveTableCell();
+      const table = cell ? cell.closest('table') : document.querySelector('#editor table');
+      if (!table) {
+        showToast('Please click inside an Excel spreadsheet first', 'warning');
+        closeModal('#excelCustomBorderModal');
+        return;
+      }
+
+      window.DocFlow.Editor?.saveSnapshot?.();
+      const selected = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+      const targets = selected.length > 0 ? selected : (cell ? [cell] : Array.from(table.querySelectorAll('td')));
+      const borderRule = `${width} ${style} ${color}`;
+
+      if (sides === 'outline') {
+        const minR = Math.min(...targets.map(c => c.closest('tr').rowIndex));
+        const maxR = Math.max(...targets.map(c => c.closest('tr').rowIndex));
+        const minC = Math.min(...targets.map(c => c.cellIndex));
+        const maxC = Math.max(...targets.map(c => c.cellIndex));
+
+        targets.forEach(c => {
+          const rIdx = c.closest('tr').rowIndex;
+          const cIdx = c.cellIndex;
+          if (rIdx === minR) c.style.borderTop = borderRule;
+          if (rIdx === maxR) c.style.borderBottom = borderRule;
+          if (cIdx === minC) c.style.borderLeft = borderRule;
+          if (cIdx === maxC) c.style.borderRight = borderRule;
+        });
+      } else {
+        targets.forEach(c => {
+          if (sides === 'all') {
+            c.style.border = borderRule;
+          } else if (sides === 'top') {
+            c.style.borderTop = borderRule;
+          } else if (sides === 'bottom') {
+            c.style.borderBottom = borderRule;
+          } else if (sides === 'left') {
+            c.style.borderLeft = borderRule;
+          } else if (sides === 'right') {
+            c.style.borderRight = borderRule;
+          } else if (sides === 'top-bottom') {
+            c.style.borderTop = borderRule;
+            c.style.borderBottom = borderRule;
+          }
+        });
+      }
+
+      window.DocFlow.Editor?.notifyChange();
+      showToast(`Custom border applied: ${width} ${style} ${sides}`, 'success');
+      closeModal('#excelCustomBorderModal');
+      restoreCellFocus(cell);
+    });
+
+    $('#excelCellFillInput')?.addEventListener('input', e => {
+      const cell = getActiveTableCell();
+      const table = cell ? cell.closest('table') : document.querySelector('#editor table');
+      if (table) {
+        const selected = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+        const targets = selected.length > 0 ? selected : (cell ? [cell] : []);
+        targets.forEach(c => c.style.backgroundColor = e.target.value);
+        window.DocFlow.Editor?.notifyChange();
+      }
+      restoreCellFocus(cell);
+    });
+
+    $('#excelSortAscBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.sortSelectedTextOrTable('asc');
+      restoreCellFocus(getActiveTableCell());
+    });
+    $('#excelSortDescBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.sortSelectedTextOrTable('desc');
+      restoreCellFocus(getActiveTableCell());
+    });
+
+    $('#excelExportCsvBtn')?.addEventListener('click', () => {
+      const table = document.querySelector('#editor table');
+      if (!table) {
+        showToast('No table found to export as CSV', 'warning');
+        return;
+      }
+      let csv = '';
+      Array.from(table.rows).forEach(r => {
+        const rowData = Array.from(r.cells).map(c => `"${c.textContent.replace(/"/g, '""').trim()}"`);
+        csv += rowData.join(',') + '\r\n';
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'spreadsheet_export.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Spreadsheet exported as CSV', 'success');
+      restoreCellFocus(getActiveTableCell());
+    });
+
+    // 9. Dedicated PDF Ribbon Panel Controls
+    $('#pdfRibbonPrevBtn')?.addEventListener('click', () => {
+      window.DocFlow.PDF?.prevPage?.();
+    });
+    $('#pdfRibbonNextBtn')?.addEventListener('click', () => {
+      window.DocFlow.PDF?.nextPage?.();
+    });
+    $('#pdfRibbonFirstPageBtn')?.addEventListener('click', () => {
+      window.DocFlow.PDF?.jumpToPage?.(1);
+    });
+    $('#pdfRibbonLastPageBtn')?.addEventListener('click', () => {
+      const total = window.DocFlow.PDF?.getTotalPages?.() || 1;
+      window.DocFlow.PDF?.jumpToPage?.(total);
+    });
+    $('#pdfRibbonPageJumpBtn')?.addEventListener('click', () => {
+      const total = window.DocFlow.PDF?.getTotalPages?.() || 1;
+      const current = window.DocFlow.PDF?.getCurrentPage?.() || 1;
+      const target = prompt(`Enter page number (1 to ${total}):`, current);
+      if (target) {
+        const pNum = parseInt(target, 10);
+        if (!isNaN(pNum)) window.DocFlow.PDF?.jumpToPage?.(pNum);
+      }
+    });
+
+    $('#pdfCreateFromImagesBtn')?.addEventListener('click', () => {
+      window.DocFlow.PDF?.openCreatePdfFromImagesModal?.();
+    });
+    $('#pdfRibbonExtractAllBtn')?.addEventListener('click', () => {
+      window.DocFlow.PDF?.extractTextFromPdf?.(true);
+    });
+    $('#pdfRibbonMergeModalBtn')?.addEventListener('click', () => {
+      window.DocFlow.PDF?.openMergeModal?.();
+    });
+
+    // 9. View Panel & Outline Actions
     $('#ribbonOutlineBtn')?.addEventListener('click', () => {
       window.DocFlow.Find?.toggleOutline();
     });
@@ -2209,19 +4914,11 @@
       window.DocFlow.Find?.openFindBar(true);
     });
 
-    // View Office View Mode Buttons (Slide Deck & Excel Gridlines)
-    $('#viewSlideDeckBtn')?.addEventListener('click', () => {
-      const isDeck = document.body.classList.toggle('slide-deck-mode');
-      $('#viewSlideDeckBtn')?.classList.toggle('active', isDeck);
-      showToast(isDeck ? 'Presentation Slide Deck View: ON' : 'Presentation Slide Deck View: OFF', 'info');
-    });
-    $('#viewExcelGridlinesBtn')?.addEventListener('click', () => {
-      const page = $('.editor-page');
-      if (!page) return;
-      const isGrid = page.classList.toggle('excel-gridlines-mode');
-      $('#viewExcelGridlinesBtn')?.classList.toggle('active', isGrid);
-      showToast(isGrid ? 'Excel Gridlines: ON' : 'Excel Gridlines: OFF', 'info');
-    });
+    // Presentation Slide Show Preview
+    $('#viewPresentationPreviewBtn')?.addEventListener('click', startSlideShow);
+    $('#slideshowPrevBtn')?.addEventListener('click', () => showSlideShowIndex(currentSlideShowIdx - 1));
+    $('#slideshowNextBtn')?.addEventListener('click', () => showSlideShowIndex(currentSlideShowIdx + 1));
+    $('#slideshowExitBtn')?.addEventListener('click', exitSlideShow);
 
     // Reading Mode (with mobile exit button)
     const exitReadingMode = () => {
@@ -2280,8 +4977,10 @@
     // 4. Initialize Ribbon, Auto-Save UI & Symbols
     initRibbon();
     initSymbolsModal();
+    initCustomBorderModal();
     initPaintModal();
     initGifModal();
+    setupSlideInteractions();
     updateAutoSaveUI();
 
     // 5. Wire Global Action Buttons
@@ -2304,6 +5003,7 @@
         window.DocFlow.UI.Tabs.activateTab(activeTab);
       }
       window.DocFlow.UI.Tabs.render();
+      setupExcelInteractions();
     }
 
     // 8. Save before window unloads
@@ -2314,6 +5014,7 @@
   }
 
   // Expose methods on DocFlow namespace
+  window.DocFlow.PdfStore = PdfStore;
   window.DocFlow.Recent = Recent;
   window.DocFlow.triggerAutoSaveTimer = triggerAutoSaveTimer;
   window.DocFlow.setFileTabDot = setFileTabDot;
@@ -2322,6 +5023,23 @@
   window.DocFlow.updateTopbar = updateTopbar;
   window.DocFlow.setModified = setModified;
   window.DocFlow.handleTabSave = handleTabSave;
+  window.DocFlow.setupExcelInteractions = setupExcelInteractions;
+  window.DocFlow.jumpToExcelCoord = jumpToExcelCoord;
+  window.DocFlow.startSlideShow = startSlideShow;
+  window.DocFlow.insertPptSlide = insertPptSlide;
+  window.DocFlow.insertChartIntoDocument = insertChartIntoDocument;
+  window.DocFlow.togglePageOrientation = togglePageOrientation;
+  window.DocFlow.togglePageBorders = togglePageBorders;
+  window.DocFlow.setPrintArea = setPrintArea;
+  window.DocFlow.getCurrentActiveSlideIndex = () => currentActiveSlideIndex;
+  window.DocFlow.updatePptSidebar = updatePptSidebar;
+  window.DocFlow.selectPptSlide = selectPptSlide;
+  window.DocFlow.deletePptSlide = deletePptSlide;
+  window.DocFlow.duplicatePptSlide = duplicatePptSlide;
+  window.DocFlow.insertExcelSheetTable = insertExcelSheetTable;
+  window.DocFlow.handleExcelTableAction = handleExcelTableAction;
+  window.DocFlow.applyExcelFormula = applyExcelFormula;
+  window.DocFlow.switchRibbonTab = switchRibbonTab;
   window.DocFlow.initApp = initApp;
 
   // Run when DOM is ready

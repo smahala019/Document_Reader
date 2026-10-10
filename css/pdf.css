@@ -6,9 +6,12 @@
   position: absolute;
   inset: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   display: none;
   padding: 0 0 80px;
   z-index: 1;
+  background: var(--bg-primary);
+  -webkit-overflow-scrolling: touch;
 }
 
 .pdf-wrap.visible {
@@ -18,27 +21,33 @@
 .pdf-controls {
   position: sticky;
   top: 0;
-  z-index: 20;
+  z-index: 30;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
-  padding: 8px 12px;
+  padding: 8px 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 10px;
   flex-wrap: wrap;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.pdf-controls button {
+.pdf-ctrl-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdf-controls button:not(.pdf-ctrl-btn) {
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   color: var(--text-primary);
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
@@ -46,29 +55,59 @@
   font-family: inherit;
 }
 
-.pdf-controls button:hover {
+.pdf-controls button:not(.pdf-ctrl-btn):hover {
   background: var(--bg-elevated);
   border-color: var(--accent);
   color: var(--accent);
 }
 
 .pdf-controls button:disabled {
-  opacity: 0.3;
-  cursor: default;
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
-.pdf-controls button:disabled:hover {
+.pdf-ctrl-btn {
   background: var(--bg-tertiary);
-  border-color: var(--border);
+  border: 1px solid var(--border);
   color: var(--text-primary);
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.pdf-ctrl-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pdf-ctrl-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.pdf-ctrl-btn.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .pdf-controls .page-info {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--text-secondary);
   min-width: 90px;
   text-align: center;
-  font-weight: 500;
+  font-weight: 600;
+  user-select: none;
 }
 
 .pdf-controls .zoom-info {
@@ -78,42 +117,29 @@
   text-align: center;
 }
 
-.pdf-extract-btn {
-  background: var(--accent-dim) !important;
-  border-color: var(--accent) !important;
-  color: var(--accent) !important;
-  width: auto !important;
-  padding: 0 12px !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  gap: 5px;
-  margin-left: 8px;
-}
-
-.pdf-extract-btn:hover {
-  background: var(--accent) !important;
-  color: #fff !important;
-}
-
 .pdf-pages {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  padding: 16px 0;
+  gap: 20px;
+  padding: 20px 12px;
+  min-height: calc(100vh - 120px);
 }
 
 .pdf-page-wrap {
-  background: #fff;
-  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.25);
-  border-radius: 2px;
+  background: #ffffff;
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
   position: relative;
   overflow: hidden;
   transition: width 0.15s ease, height 0.15s ease;
+  max-width: 100%;
 }
 
 .pdf-page-wrap canvas {
   display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 .pdf-page-num {
@@ -121,11 +147,14 @@
   bottom: 8px;
   right: 12px;
   font-size: 11px;
-  color: #999;
+  color: #64748b;
   font-family: var(--font-ui);
-  background: rgba(255, 255, 255, 0.85);
-  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 2px 7px;
   border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  user-select: none;
+  font-weight: 600;
 }
 
 .pdf-loading {
@@ -144,8 +173,40 @@
 
 @media (max-width: 768px) {
   .pdf-controls {
-    gap: 4px;
+    gap: 6px;
     padding: 6px 8px;
+    justify-content: center;
+  }
+  .pdf-ctrl-btn {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  .pdf-ctrl-btn span {
+    display: inline;
+  }
+  .pdf-controls button:not(.pdf-ctrl-btn) {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+  .pdf-controls .page-info {
+    font-size: 11.5px;
+    min-width: 75px;
+  }
+  .pdf-pages {
+    padding: 12px 6px;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pdf-ctrl-btn span {
+    display: none;
+  }
+  .pdf-ctrl-btn {
+    padding: 0 8px;
   }
 }
 

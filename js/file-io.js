@@ -80,6 +80,9 @@
         await window.DocFlow.PDF.loadPdfTab(tab);
         window.DocFlow.UI.Tabs.render();
         window.DocFlow.UI.Tabs.save();
+        if (window.DocFlow?.Recent) {
+          window.DocFlow.Recent.add({ name, type: 'PDF', mode: 'view', pdfData: arrayBuffer });
+        }
       } catch (err) {
         console.error(err);
         if (err && err.name === 'PasswordException') {
@@ -530,7 +533,7 @@
         dateNF: 'yyyy-mm-dd'
       });
 
-      let html = `<p style="margin-bottom:12px;"><strong><i class="fas fa-file-excel" style="color:#16a34a;"></i> ${escHtml(filename)}</strong> — ${wb.SheetNames.length} sheet(s)</p>`;
+      let html = `<p style="margin-bottom:12px;color:var(--text-primary);"><strong style="color:var(--text-primary);"><i class="fas fa-file-excel" style="color:#16a34a;margin-right:6px;"></i>${escHtml(filename)}</strong> — <span style="color:var(--text-muted);">${wb.SheetNames.length} sheet(s)</span></p>`;
 
       wb.SheetNames.forEach(sheetName => {
         const ws = wb.Sheets[sheetName];
@@ -588,27 +591,46 @@
     }
   }
 
-  // Create Blank 10-col × 30-row Excel Spreadsheet Grid for new files (Bug 6)
-  function createBlankExcelGrid(cols = 10, rows = 30) {
-    let html = `<p style="margin-bottom:12px;"><strong><i class="fas fa-file-excel" style="color:#16a34a;"></i> Spreadsheet Document</strong></p>`;
-    html += `<div class="excel-spreadsheet-container">`;
+  // Parse Excel Coordinate String (e.g. A1, Z50, XFD1048576) into { col, row, colLetter }
+  function parseExcelCoord(coordStr) {
+    if (!coordStr || typeof coordStr !== 'string') return null;
+    const match = coordStr.trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+    if (!match) return null;
+    const colLetters = match[1];
+    const rowNum = parseInt(match[2], 10);
+    if (isNaN(rowNum) || rowNum < 1 || rowNum > 1048576) return null;
+    let colIdx = 0;
+    for (let i = 0; i < colLetters.length; i++) {
+      colIdx = colIdx * 26 + (colLetters.charCodeAt(i) - 64);
+    }
+    if (colIdx < 1 || colIdx > 16384) return null;
+    return { col: colIdx - 1, row: rowNum, colLetter: colLetters };
+  }
+
+  // Create Authentic Excel Spreadsheet Grid with 50 Rows × 50 Columns default (Issue 5)
+  function createBlankExcelGrid(cols = 50, rows = 50) {
+    let html = `<div class="excel-spreadsheet-container" contenteditable="false" data-total-rows="1048576" data-total-cols="16384">`;
     html += `
-      <div class="excel-formula-bar">
-        <span class="excel-fx-badge">fx</span>
-        <input type="text" class="excel-formula-input" placeholder="Select cell to view/edit formula or value">
+      <div class="excel-formula-bar" contenteditable="false">
+        <input type="text" class="excel-coord-box" value="A1" placeholder="Cell" title="Name Box — Type coordinate (e.g. A1, XFD1048576) and press Enter">
+        <span class="excel-fx-badge" contenteditable="false">fx</span>
+        <input type="text" class="excel-formula-input" placeholder="Select cell or enter formula / value">
+        <button type="button" class="excel-jump-btn" data-jump="home" title="Jump to Home Cell A1" style="font-size:11px;padding:2px 8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;">A1</button>
+        <button type="button" class="excel-jump-btn" data-jump="end" title="Jump to End Cell XFD1048576" style="font-size:11px;padding:2px 8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;">End</button>
       </div>
       <div class="excel-sheet-viewport">
         <table class="excel-grid-table">
     `;
-    html += '<thead><tr><th class="excel-corner"></th>';
+    html += '<thead><tr><th class="excel-corner" contenteditable="false"></th>';
     for (let c = 0; c < cols; c++) {
-      html += `<th class="excel-col-hdr">${getExcelColLetter(c)}</th>`;
+      html += `<th class="excel-col-hdr" contenteditable="false">${getExcelColLetter(c)}</th>`;
     }
     html += '</tr></thead><tbody>';
     for (let r = 0; r < rows; r++) {
-      html += `<tr><th class="excel-row-hdr">${r + 1}</th>`;
+      html += `<tr><th class="excel-row-hdr" contenteditable="false">${r + 1}</th>`;
       for (let c = 0; c < cols; c++) {
-        html += `<td contenteditable="true"></td>`;
+        const coord = `${getExcelColLetter(c)}${r + 1}`;
+        html += `<td contenteditable="true" data-coord="${coord}"></td>`;
       }
       html += '</tr>';
     }
@@ -707,13 +729,41 @@
         }
 
         html += `
-          <div class="pptx-slide-card" data-slide="${i + 1}">
-            <div class="pptx-slide-header">
-              <span class="pptx-slide-badge"><i class="fas fa-file-powerpoint"></i> Slide ${i + 1} of ${slideFileNames.length}</span>
+          <div class="pptx-slide-wrapper" style="position:relative;margin:28px auto;max-width:850px;">
+            <div class="slide-quick-action-bar" contenteditable="false">
+              <button class="slide-plus-action-btn" title="Add elements to slide (+)" aria-label="Add elements to slide">
+                <i class="fas fa-plus"></i>
+              </button>
+              <div class="slide-plus-menu" role="menu">
+                <div class="slide-plus-menu-title">Insert Into Slide</div>
+                <button class="slide-plus-menu-item" data-action="rect"><i class="fas fa-vector-square" style="color:#0284c7;"></i> Rectangle Box</button>
+                <button class="slide-plus-menu-item" data-action="nested-rect"><i class="fas fa-layer-group" style="color:#8b5cf6;"></i> Nested Card</button>
+                <button class="slide-plus-menu-item" data-action="bullets"><i class="fas fa-list-ul" style="color:#10b981;"></i> Bullet Points</button>
+                <div class="slide-plus-menu-sep"></div>
+                <div class="slide-plus-menu-title">Shapes</div>
+                <div class="slide-plus-shapes-grid">
+                  <button class="slide-shape-quick-btn" data-shape="circle" title="Circle"><i class="fas fa-circle"></i></button>
+                  <button class="slide-shape-quick-btn" data-shape="star" title="Star"><i class="fas fa-star"></i></button>
+                  <button class="slide-shape-quick-btn" data-shape="arrow-right" title="Arrow"><i class="fas fa-arrow-right"></i></button>
+                  <button class="slide-shape-quick-btn" data-shape="diamond" title="Diamond"><i class="fas fa-diamond"></i></button>
+                </div>
+                <div class="slide-plus-menu-sep"></div>
+                <div class="slide-plus-menu-title">Slide Layout Formats</div>
+                <button class="slide-plus-menu-item" data-action="layout-blank"><i class="fas fa-square" style="color:#94a3b8;"></i> Blank Canvas</button>
+                <button class="slide-plus-menu-item" data-action="layout-split"><i class="fas fa-columns" style="color:#f59e0b;"></i> Split 2 Columns</button>
+                <button class="slide-plus-menu-item" data-action="layout-cards"><i class="fas fa-table-cells-large" style="color:#06b6d4;"></i> 3 Card Blocks</button>
+                <div class="slide-plus-menu-sep"></div>
+                <button class="slide-plus-menu-item slide-plus-next-btn" data-action="add-next-slide"><i class="fas fa-circle-plus" style="color:#ea580c;"></i> Add Next Slide</button>
+              </div>
             </div>
-            <div class="pptx-slide-title" contenteditable="true">${escHtml(slideTitle)}</div>
-            <div class="pptx-slide-body" contenteditable="true">
-              ${bodyHtml}
+            <div class="pptx-slide-card" data-slide="${i + 1}" contenteditable="true" style="aspect-ratio:16/9;width:100%;min-height:360px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;">
+              <div class="pptx-slide-header" contenteditable="false">
+                <span class="pptx-slide-badge"><i class="fas fa-file-powerpoint"></i> Slide ${i + 1} of ${slideFileNames.length}</span>
+              </div>
+              <div class="pptx-slide-title" contenteditable="true">${escHtml(slideTitle)}</div>
+              <div class="pptx-slide-body" contenteditable="true">
+                ${bodyHtml}
+              </div>
             </div>
           </div>
         `;
@@ -740,44 +790,47 @@
   }
 
   function createBlankPresentation() {
+    function slideTpl(idx) {
+      return `
+        <div class="pptx-slide-wrapper" style="position:relative;margin:28px auto;max-width:850px;">
+          <div class="slide-quick-action-bar" contenteditable="false">
+            <button class="slide-plus-action-btn" title="Add elements to slide (+)" aria-label="Add elements to slide">
+              <i class="fas fa-plus"></i>
+            </button>
+            <div class="slide-plus-menu" role="menu">
+              <div class="slide-plus-menu-title">Insert Into Slide</div>
+              <button class="slide-plus-menu-item" data-action="rect"><i class="fas fa-vector-square" style="color:#0284c7;"></i> Rectangle Box</button>
+              <button class="slide-plus-menu-item" data-action="nested-rect"><i class="fas fa-layer-group" style="color:#8b5cf6;"></i> Nested Card</button>
+              <button class="slide-plus-menu-item" data-action="bullets"><i class="fas fa-list-ul" style="color:#10b981;"></i> Bullet Points</button>
+              <div class="slide-plus-menu-sep"></div>
+              <div class="slide-plus-menu-title">Shapes</div>
+              <div class="slide-plus-shapes-grid">
+                <button class="slide-shape-quick-btn" data-shape="circle" title="Circle"><i class="fas fa-circle"></i></button>
+                <button class="slide-shape-quick-btn" data-shape="star" title="Star"><i class="fas fa-star"></i></button>
+                <button class="slide-shape-quick-btn" data-shape="arrow-right" title="Arrow"><i class="fas fa-arrow-right"></i></button>
+                <button class="slide-shape-quick-btn" data-shape="diamond" title="Diamond"><i class="fas fa-diamond"></i></button>
+              </div>
+              <div class="slide-plus-menu-sep"></div>
+              <div class="slide-plus-menu-title">Slide Layout Formats</div>
+              <button class="slide-plus-menu-item" data-action="layout-blank"><i class="fas fa-square" style="color:#94a3b8;"></i> Blank Canvas</button>
+              <button class="slide-plus-menu-item" data-action="layout-split"><i class="fas fa-columns" style="color:#f59e0b;"></i> Split 2 Columns</button>
+              <button class="slide-plus-menu-item" data-action="layout-cards"><i class="fas fa-table-cells-large" style="color:#06b6d4;"></i> 3 Card Blocks</button>
+              <div class="slide-plus-menu-sep"></div>
+              <button class="slide-plus-menu-item slide-plus-next-btn" data-action="add-next-slide"><i class="fas fa-circle-plus" style="color:#ea580c;"></i> Add Next Slide</button>
+            </div>
+          </div>
+          <div class="pptx-slide-card" contenteditable="true" data-slide="${idx}" style="aspect-ratio:16/9;width:100%;min-height:360px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;">
+            <p class="slide-placeholder-text" style="color:var(--text-muted);font-style:italic;margin:0;">Empty slide. Click here or use the "+" button at top-right to add rectangle, shapes, or bullet points...</p>
+          </div>
+        </div>`;
+    }
+
     return `
-      <div style="margin-bottom:14px;"><strong><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Presentation Deck</strong> — 3 slide(s)</div>
+      <div style="margin-bottom:14px;"><strong><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Presentation Deck</strong> — 3 empty slide(s)</div>
       <div class="pptx-container">
-        <div class="pptx-slide-card" data-slide="1">
-          <div class="pptx-slide-header">
-            <span class="pptx-slide-badge"><i class="fas fa-file-powerpoint"></i> Slide 1 of 3</span>
-          </div>
-          <div class="pptx-slide-title" contenteditable="true">Presentation Title</div>
-          <div class="pptx-slide-body" contenteditable="true">
-            <p style="font-size:16px;color:#64748b;">Subtitle or presenter name</p>
-          </div>
-        </div>
-        <div class="pptx-slide-card" data-slide="2">
-          <div class="pptx-slide-header">
-            <span class="pptx-slide-badge"><i class="fas fa-file-powerpoint"></i> Slide 2 of 3</span>
-          </div>
-          <div class="pptx-slide-title" contenteditable="true">Key Agenda & Highlights</div>
-          <div class="pptx-slide-body" contenteditable="true">
-            <ul>
-              <li>Project objectives and core vision</li>
-              <li>Quarterly milestones and delivery schedule</li>
-              <li>Key performance indicators and metrics</li>
-            </ul>
-          </div>
-        </div>
-        <div class="pptx-slide-card" data-slide="3">
-          <div class="pptx-slide-header">
-            <span class="pptx-slide-badge"><i class="fas fa-file-powerpoint"></i> Slide 3 of 3</span>
-          </div>
-          <div class="pptx-slide-title" contenteditable="true">Conclusion & Next Steps</div>
-          <div class="pptx-slide-body" contenteditable="true">
-            <ul>
-              <li>Summary of recommendations</li>
-              <li>Action items assigned to stakeholders</li>
-              <li>Questions and open discussion</li>
-            </ul>
-          </div>
-        </div>
+        ${slideTpl(1)}
+        ${slideTpl(2)}
+        ${slideTpl(3)}
       </div>
       <p><br></p>
     `;
@@ -1120,6 +1173,8 @@ ${cleanHtml}
     exportAsPdf,
     excelToHtml,
     createBlankExcelGrid,
+    parseExcelCoord,
+    getExcelColLetter,
     docxToHtml,
     pptxToHtml,
     createBlankPresentation

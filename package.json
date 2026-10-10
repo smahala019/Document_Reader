@@ -1,0 +1,22 @@
+{
+  "name": "docflow-document-reader-editor",
+  "version": "1.0.0",
+  "description": "DocFlow — Modern Document Reader & Editor",
+  "main": "index.html",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "serve": "node server.js"
+  },
+  "keywords": [
+    "docflow",
+    "document-reader",
+    "docx",
+    "pdf",
+    "xlsx",
+    "pptx",
+    "editor"
+  ],
+  "author": "Sachin",
+  "license": "MIT"
+}

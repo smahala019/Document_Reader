@@ -116,6 +116,7 @@
 
   function insertHtmlAtCursor(html) {
     if (!editor) return;
+    saveSnapshot();
     focusEditor();
     let inserted = false;
     try {
@@ -182,10 +183,83 @@
     showToast('Formatting cleared', 'info');
   }
 
+  // Undo / Redo History Stack (Issue 5: Supports macro operations like slide deletion)
+  const undoStack = [];
+  const redoStack = [];
+
+  function saveSnapshot() {
+    if (!editor) return;
+    undoStack.push({
+      html: editor.innerHTML,
+      slideIdx: window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0
+    });
+    if (undoStack.length > 50) undoStack.shift();
+    redoStack.length = 0;
+  }
+
+  function undo() {
+    if (undoStack.length > 0) {
+      redoStack.push({
+        html: editor.innerHTML,
+        slideIdx: window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0
+      });
+      const state = undoStack.pop();
+      editor.innerHTML = state.html;
+      notifyChange();
+      if (window.DocFlow?.selectPptSlide) {
+        window.DocFlow.selectPptSlide(state.slideIdx);
+      } else if (window.DocFlow?.updatePptSidebar) {
+        window.DocFlow.updatePptSidebar();
+      }
+      return true;
+    }
+    try {
+      return document.execCommand('undo');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function redo() {
+    if (redoStack.length > 0) {
+      undoStack.push({
+        html: editor.innerHTML,
+        slideIdx: window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0
+      });
+      const state = redoStack.pop();
+      editor.innerHTML = state.html;
+      notifyChange();
+      if (window.DocFlow?.selectPptSlide) {
+        window.DocFlow.selectPptSlide(state.slideIdx);
+      } else if (window.DocFlow?.updatePptSidebar) {
+        window.DocFlow.updatePptSidebar();
+      }
+      return true;
+    }
+    try {
+      return document.execCommand('redo');
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Command Execution
   function execCmd(cmd, value = null) {
     if (window.DocFlow.currentMode !== 'edit') return false;
     focusEditor();
+    if (cmd === 'undo') {
+      if (undoStack.length > 0) {
+        undo();
+        updateToolbarState();
+        return true;
+      }
+    } else if (cmd === 'redo') {
+      if (redoStack.length > 0) {
+        redo();
+        updateToolbarState();
+        return true;
+      }
+    }
     try {
       document.execCommand(cmd, false, value);
     } catch (e) {
@@ -532,12 +606,26 @@
     }
   }
 
-  // Insert Horizontal Rule & Blockquote
+  // Insert Horizontal Rule with Full Customization (Issue 4) & Blockquote
   function setupHrAndQuote() {
     ($('#insertHrBtn') || $('#ribbonInsertHrBtn'))?.addEventListener('click', () => {
       if (window.DocFlow.currentMode !== 'edit') return;
-      insertHtmlAtCursor('<hr><p><br></p>');
-      showToast('Horizontal line inserted', 'info');
+      openLineModal();
+    });
+
+    // Line Modal Controls
+    $('#lineWidthSelect')?.addEventListener('change', updateLinePreview);
+    $('#lineHeightSelect')?.addEventListener('change', updateLinePreview);
+    $('#lineStyleSelect')?.addEventListener('change', updateLinePreview);
+    $('#lineAlignSelect')?.addEventListener('change', updateLinePreview);
+    $('#lineColorInput')?.addEventListener('input', updateLinePreview);
+
+    $('#lineCancelBtn')?.addEventListener('click', () => {
+      window.DocFlow.UI?.closeModal('#lineModal');
+    });
+
+    $('#lineInsertBtn')?.addEventListener('click', () => {
+      insertCustomLine();
     });
 
     ($('#insertBlockquoteBtn') || $('#ribbonInsertQuoteBtn'))?.addEventListener('click', () => {
@@ -548,6 +636,48 @@
       insertHtmlAtCursor(`<blockquote>${escHtml(quoteText)}</blockquote><p><br></p>`);
       showToast('Blockquote inserted', 'info');
     });
+  }
+
+  function openLineModal() {
+    window.DocFlow.UI?.openModal('#lineModal');
+    updateLinePreview();
+  }
+
+  function updateLinePreview() {
+    const width = $('#lineWidthSelect')?.value || '100%';
+    const height = $('#lineHeightSelect')?.value || '2px';
+    const style = $('#lineStyleSelect')?.value || 'solid';
+    const align = $('#lineAlignSelect')?.value || 'center';
+    const color = $('#lineColorInput')?.value || '#e2e8f0';
+
+    const hexLabel = $('#lineColorHex');
+    if (hexLabel) hexLabel.textContent = color;
+
+    const preview = $('#linePreviewBox');
+    if (preview) {
+      preview.style.width = width;
+      preview.style.height = height;
+      preview.style.border = 'none';
+      preview.style.borderTop = `${height} ${style} ${color}`;
+      preview.style.margin = align === 'left' ? '0 auto 0 0' : (align === 'right' ? '0 0 0 auto' : '0 auto');
+      preview.style.backgroundColor = style === 'solid' ? color : 'transparent';
+    }
+  }
+
+  function insertCustomLine() {
+    const width = $('#lineWidthSelect')?.value || '100%';
+    const height = $('#lineHeightSelect')?.value || '2px';
+    const style = $('#lineStyleSelect')?.value || 'solid';
+    const align = $('#lineAlignSelect')?.value || 'center';
+    const color = $('#lineColorInput')?.value || '#e2e8f0';
+
+    const marginStyle = align === 'left' ? 'margin: 18px auto 18px 0;' : (align === 'right' ? 'margin: 18px 0 18px auto;' : 'margin: 18px auto;');
+    const hrHtml = `<hr class="doc-custom-line" style="width:${width};height:${height};border:none;border-top:${height} ${style} ${color};background-color:${style === 'solid' ? color : 'transparent'};${marginStyle}"><p><br></p>`;
+
+    insertHtmlAtCursor(hrHtml);
+    window.DocFlow.UI?.closeModal('#lineModal');
+    notifyChange();
+    showToast('Customized line inserted', 'success');
   }
 
   // Set Font Size (Arbitrary number in points/px with no limit)
@@ -763,19 +893,21 @@
     showToast(`Converted to ${mode} case`, 'info');
   }
 
-  // Format Painter (Copy and paste styles)
+  // Format Painter (Copy and paste styles, applicable to selections and new text, double-click resets to default)
   let copiedFormatStyle = null;
+  let isFormatPainterActive = false;
+
   function toggleFormatPainter() {
     if (window.DocFlow.currentMode !== 'edit' || !editor) return;
     const sel = window.getSelection();
-    if (!sel || !sel.rangeCount || sel.isCollapsed) {
-      showToast('Select styled text first to copy formatting', 'info');
-      return;
+    let el = null;
+    if (sel && sel.rangeCount > 0) {
+      const node = sel.anchorNode;
+      el = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
     }
-
-    const node = sel.anchorNode;
-    const el = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
-    if (!el) return;
+    if (!el || el === editor) {
+      el = editor.querySelector('p, h1, h2, h3, span, strong, em') || editor;
+    }
 
     const comp = window.getComputedStyle(el);
     copiedFormatStyle = {
@@ -788,43 +920,162 @@
       textDecoration: comp.textDecoration
     };
 
+    isFormatPainterActive = true;
     const painterBtn = $('#formatPainterBtn');
     painterBtn?.classList.add('active');
+    editor.style.cursor = 'copy';
     document.body.style.cursor = 'copy';
-    showToast('Format copied! Highlight text to apply formatting', 'info');
+    showToast('Format copied! Highlight text or click cursor to type with copied format (double-click painter to reset)', 'info');
+  }
 
-    const handleApply = () => {
-      document.body.style.cursor = '';
-      painterBtn?.classList.remove('active');
-      document.removeEventListener('mouseup', handleApply);
+  function resetFormatPainter() {
+    copiedFormatStyle = null;
+    isFormatPainterActive = false;
+    const painterBtn = $('#formatPainterBtn');
+    painterBtn?.classList.remove('active');
+    if (editor) editor.style.cursor = '';
+    document.body.style.cursor = '';
+    showToast('Format painter reset to normal/default', 'info');
+  }
 
-      setTimeout(() => {
-        const newSel = window.getSelection();
-        if (newSel && newSel.rangeCount && !newSel.isCollapsed && copiedFormatStyle) {
-          const span = document.createElement('span');
-          span.style.fontFamily = copiedFormatStyle.fontFamily;
-          span.style.fontSize = copiedFormatStyle.fontSize;
-          span.style.fontWeight = copiedFormatStyle.fontWeight;
-          span.style.fontStyle = copiedFormatStyle.fontStyle;
-          span.style.color = copiedFormatStyle.color;
-          if (copiedFormatStyle.backgroundColor && copiedFormatStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
-            span.style.backgroundColor = copiedFormatStyle.backgroundColor;
-          }
-          span.style.textDecoration = copiedFormatStyle.textDecoration;
+  function applyFormatPainterToSelection() {
+    if (!isFormatPainterActive || !copiedFormatStyle || !editor) return;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
 
-          const range = newSel.getRangeAt(0);
-          const contents = range.extractContents();
-          span.appendChild(contents);
-          range.insertNode(span);
-          notifyChange();
-          showToast('Formatting applied', 'success');
-        }
-      }, 50);
-    };
+    if (!sel.isCollapsed) {
+      // Highlighted selection: Apply formatting to selected text
+      const span = document.createElement('span');
+      span.style.fontFamily = copiedFormatStyle.fontFamily;
+      span.style.fontSize = copiedFormatStyle.fontSize;
+      span.style.fontWeight = copiedFormatStyle.fontWeight;
+      span.style.fontStyle = copiedFormatStyle.fontStyle;
+      span.style.color = copiedFormatStyle.color;
+      if (copiedFormatStyle.backgroundColor && copiedFormatStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+        span.style.backgroundColor = copiedFormatStyle.backgroundColor;
+      }
+      span.style.textDecoration = copiedFormatStyle.textDecoration;
 
-    setTimeout(() => {
-      document.addEventListener('mouseup', handleApply, { once: true });
-    }, 120);
+      const range = sel.getRangeAt(0);
+      const contents = range.extractContents();
+      span.appendChild(contents);
+      range.insertNode(span);
+      notifyChange();
+      showToast('Formatting applied to selection', 'success');
+    } else {
+      // Collapsed cursor: Apply formatting for next typing
+      const span = document.createElement('span');
+      span.style.fontFamily = copiedFormatStyle.fontFamily;
+      span.style.fontSize = copiedFormatStyle.fontSize;
+      span.style.fontWeight = copiedFormatStyle.fontWeight;
+      span.style.fontStyle = copiedFormatStyle.fontStyle;
+      span.style.color = copiedFormatStyle.color;
+      if (copiedFormatStyle.backgroundColor && copiedFormatStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+        span.style.backgroundColor = copiedFormatStyle.backgroundColor;
+      }
+      span.style.textDecoration = copiedFormatStyle.textDecoration;
+      span.innerHTML = '&#8203;'; // Zero-width space
+
+      const range = sel.getRangeAt(0);
+      range.insertNode(span);
+
+      const newRange = document.createRange();
+      newRange.setStart(span.firstChild, 1);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+      notifyChange();
+      showToast('Format ready for next typing', 'info');
+    }
+  }
+
+  // Sort Selected Lines or Table Rows Alphabetically (Issue 4: Ascending or Descending)
+  function sortSelectedTextOrTable(direction = 'asc') {
+    if (window.DocFlow.currentMode !== 'edit' || !editor) return;
+    const isDesc = direction === 'desc';
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+
+    let node = sel.anchorNode;
+    if (node && node.nodeType === 3) node = node.parentElement;
+    const table = node ? node.closest('table') : null;
+
+    if (table) {
+      // Sort table rows (skip header row if present)
+      const tbody = table.querySelector('tbody') || table;
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      if (rows.length <= 1) {
+        showToast('Table needs 2 or more rows to sort', 'info');
+        return;
+      }
+      // Determine which column index cursor is in
+      const cell = node.closest('td, th');
+      const colIndex = cell ? cell.cellIndex : 0;
+
+      // Filter out header row if in the same table element
+      const headerRow = rows[0].querySelector('th') ? rows[0] : null;
+      const dataRows = headerRow ? rows.slice(1) : rows;
+
+      dataRows.sort((a, b) => {
+        const textA = (a.cells[colIndex]?.textContent || '').trim().toLowerCase();
+        const textB = (b.cells[colIndex]?.textContent || '').trim().toLowerCase();
+        return isDesc
+          ? textB.localeCompare(textA, undefined, { numeric: true })
+          : textA.localeCompare(textB, undefined, { numeric: true });
+      });
+
+      dataRows.forEach(r => tbody.appendChild(r));
+      notifyChange();
+      showToast(`Sorted table rows ${isDesc ? 'Descending (Z to A)' : 'Ascending (A to Z)'} (col ${colIndex + 1})`, 'success');
+      return;
+    }
+
+    if (!sel.isCollapsed && sel.toString().trim()) {
+      const text = sel.toString();
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+      if (lines.length <= 1) {
+        showToast('Select multiple lines to sort', 'info');
+        return;
+      }
+      lines.sort((a, b) => {
+        return isDesc
+          ? b.trim().localeCompare(a.trim(), undefined, { numeric: true })
+          : a.trim().localeCompare(b.trim(), undefined, { numeric: true });
+      });
+      insertHtmlAtCursor(lines.map(l => escHtml(l)).join('<br>'));
+      notifyChange();
+      showToast(`Sorted ${lines.length} lines ${isDesc ? 'Descending (Z to A)' : 'Ascending (A to Z)'}`, 'success');
+      return;
+    }
+
+    showToast('Select lines of text or click inside a table to sort', 'info');
+  }
+
+  // Toggle PowerPoint-Style Text Drop Shadow (Issue 3 replacement)
+  function toggleTextShadow() {
+    if (window.DocFlow.currentMode !== 'edit' || !editor) return;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || sel.isCollapsed) {
+      showToast('Select text first to toggle text shadow', 'info');
+      return;
+    }
+
+    const range = sel.getRangeAt(0);
+    const parentSpan = sel.anchorNode?.parentElement;
+    if (parentSpan && parentSpan.tagName === 'SPAN' && parentSpan.style.textShadow) {
+      parentSpan.style.textShadow = '';
+      notifyChange();
+      showToast('Text shadow removed', 'info');
+      return;
+    }
+
+    const span = document.createElement('span');
+    span.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.45)';
+    const contents = range.extractContents();
+    span.appendChild(contents);
+    range.insertNode(span);
+    notifyChange();
+    showToast('Applied PowerPoint text shadow', 'success');
   }
 
   // Word Wrap Toggle (Notepad style — expands editor page width when unwrapped)
@@ -970,8 +1221,47 @@
 
     // Format Painter & Word Wrap & Column Break
     $('#formatPainterBtn')?.addEventListener('click', toggleFormatPainter);
+    $('#formatPainterBtn')?.addEventListener('dblclick', resetFormatPainter);
     $('#wordWrapBtn')?.addEventListener('click', toggleWordWrap);
     $('#layoutColumnBreakBtn')?.addEventListener('click', insertColumnBreak);
+    $('#popoverColumnBreakItem')?.addEventListener('click', () => {
+      insertColumnBreak();
+      $('#columnsPopover')?.classList.remove('show');
+    });
+
+    // Home Menu Sort Dropdown (Ascending / Descending) (Issue 4)
+    const sortBtn = $('#homeExcelSortBtn');
+    const sortPopover = $('#sortPopover');
+    if (sortBtn && sortPopover) {
+      sortBtn.addEventListener('mousedown', () => saveSelection());
+      sortBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const wasOpen = sortPopover.classList.contains('show');
+        if (window.DocFlow?.UI?.closeAllPopovers) window.DocFlow.UI.closeAllPopovers();
+        if (!wasOpen) {
+          if (window.DocFlow?.UI?.positionPopover) {
+            window.DocFlow.UI.positionPopover(sortBtn, sortPopover);
+          } else {
+            sortPopover.classList.add('show');
+          }
+        }
+      });
+
+      $('#sortAscBtn')?.addEventListener('click', e => {
+        e.stopPropagation();
+        sortPopover.classList.remove('show');
+        restoreSelection();
+        sortSelectedTextOrTable('asc');
+      });
+
+      $('#sortDescBtn')?.addEventListener('click', e => {
+        e.stopPropagation();
+        sortPopover.classList.remove('show');
+        restoreSelection();
+        sortSelectedTextOrTable('desc');
+      });
+    }
+    $('#homePptShadowBtn')?.addEventListener('click', toggleTextShadow);
 
     // Font Family — saves selection on focus and mousedown, restores on change
     const fontFamily = $('#fontFamily');
@@ -1167,6 +1457,7 @@
 
     editor.addEventListener('mouseup', () => {
       saveSelection();
+      applyFormatPainterToSelection();
       updateToolbarState();
       updateCursorPos();
     });
@@ -1195,11 +1486,87 @@
       }
     });
 
-    // Tab key inserts 4 non-breaking spaces
+    // Tab key inserts 4 non-breaking spaces & Contextual Ctrl+A (Issue 5)
     editor.addEventListener('keydown', e => {
       if (e.key === 'Tab') {
         e.preventDefault();
         insertHtmlAtCursor('&nbsp;&nbsp;&nbsp;&nbsp;');
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          let node = sel.getRangeAt(0).commonAncestorContainer;
+          if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+          // 1. If inside an inner sub-container (rectangle, card, title box, content box, table cell, quote)
+          const subContainer = node.closest(
+            '.slide-freeform-rect, .slide-nested-card, .slide-title-box, .slide-content-box, td, th, blockquote, .doc-shape-container'
+          );
+          if (subContainer) {
+            e.preventDefault();
+            e.stopPropagation();
+            const range = document.createRange();
+            range.selectNodeContents(subContainer);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            return;
+          }
+
+          // 2. If inside a PPT slide card / wrapper
+          const slideCard = node.closest('.pptx-slide-card') || node.closest('.pptx-slide-wrapper');
+          if (slideCard) {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetCard = slideCard.classList.contains('pptx-slide-card') ? slideCard : (slideCard.querySelector('.pptx-slide-card') || slideCard);
+            const range = document.createRange();
+            range.selectNodeContents(targetCard);
+            sel.removeAllRanges();
+            sel.addRange(range);
+            return;
+          }
+        }
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          let node = range.commonAncestorContainer;
+          if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+          const slideCard = node.closest('.pptx-slide-card');
+          if (slideCard) {
+            const cardText = slideCard.textContent.trim();
+            const selText = sel.toString().trim();
+            const isFullSelected = (selText && selText === cardText) ||
+              (range.startContainer === slideCard && range.endContainer === slideCard) ||
+              (range.commonAncestorContainer === slideCard && range.startOffset === 0 && range.endOffset >= slideCard.childNodes.length);
+
+            if (isFullSelected || cardText.length <= 1) {
+              e.preventDefault();
+              e.stopPropagation();
+              slideCard.innerHTML = '<p class="slide-placeholder-text" style="color:var(--text-muted);font-style:italic;margin:0;">Click to add content...</p>';
+              const newRange = document.createRange();
+              const p = slideCard.querySelector('.slide-placeholder-text');
+              if (p) {
+                newRange.selectNodeContents(p);
+                newRange.collapse(true);
+              }
+              sel.removeAllRanges();
+              sel.addRange(newRange);
+              notifyChange();
+              return;
+            }
+          }
+        }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+        if (undoStack.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
+        if (redoStack.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          redo();
+        }
       }
     });
 
@@ -1229,6 +1596,9 @@
     insertNodeAtCursor,
     insertHtmlAtCursor,
     execCmd,
+    saveSnapshot,
+    undo,
+    redo,
     updateCounts,
     updateCursorPos,
     updateToolbarState,
@@ -1239,6 +1609,11 @@
     clearFormatting,
     changeTextCase,
     toggleFormatPainter,
+    resetFormatPainter,
+    sortSelectedTextOrTable,
+    toggleTextShadow,
+    openLineModal,
+    insertCustomLine,
     toggleWordWrap,
     insertColumnBreak
   };
