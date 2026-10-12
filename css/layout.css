@@ -1807,8 +1807,7 @@ body.reading-mode .exit-reading-mode-btn {
   .excel-spreadsheet-container {
     width: 100% !important;
     max-width: 100% !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+    overflow: hidden !important;
   }
   .modal-box, .modal {
     max-width: 95vw !important;

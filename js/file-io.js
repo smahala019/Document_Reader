@@ -686,33 +686,104 @@
         const slideXmlStr = await zip.file(slidePath).async('string');
         const xmlDoc = parser.parseFromString(slideXmlStr, 'application/xml');
 
-        // Extract shape text blocks
+        // Extract slide transitions (e.g. fade, push, wipe, split, zoom, fly-in, etc.)
+        let slideTransition = 'none';
+        const transitionNode = xmlDoc.querySelector('p\\:transition, transition');
+        if (transitionNode && transitionNode.firstElementChild) {
+          const tName = transitionNode.firstElementChild.localName || transitionNode.firstElementChild.tagName.replace(/.*:/, '');
+          const knownTransitions = ['fade', 'slide', 'push', 'zoom', 'flip', 'slide-up', 'bounce', 'rotate', 'wipe', 'blur', 'cube', 'split', 'flash', 'shutter', 'door', 'fly-in', 'fall'];
+          if (knownTransitions.includes(tName.toLowerCase())) {
+            slideTransition = tName.toLowerCase();
+          } else if (tName === 'wheel' || tName === 'circle') {
+            slideTransition = 'rotate';
+          } else if (tName === 'comb' || tName === 'blinds') {
+            slideTransition = 'split';
+          } else {
+            slideTransition = 'fade';
+          }
+        }
+
+        // Extract slide background color
+        let slideBgColor = '';
+        const bgNode = xmlDoc.querySelector('p\\:bg, bg, p\\:bgPr, bgPr');
+        if (bgNode) {
+          const srgbClr = bgNode.querySelector('a\\:srgbClr, srgbClr');
+          if (srgbClr && srgbClr.getAttribute('val')) {
+            slideBgColor = '#' + srgbClr.getAttribute('val');
+          }
+        }
+
+        // Extract animation info
+        let hasAnimation = false;
+        const timingNode = xmlDoc.querySelector('p\\:timing, timing');
+        if (timingNode) {
+          hasAnimation = true;
+        }
+
+        // Extract shape text blocks with rich formatting preservation
         const shapes = xmlDoc.querySelectorAll('p\\:sp, sp');
         let slideTitle = '';
-        const bodyParagraphs = [];
+        const bodyBlocks = [];
 
         shapes.forEach(shape => {
           const ph = shape.querySelector('p\\:ph, ph');
           const isTitle = ph && (ph.getAttribute('type') === 'title' || ph.getAttribute('type') === 'ctrTitle');
 
           const paras = shape.querySelectorAll('a\\:p, p');
-          const textRuns = [];
+          const paraHtmls = [];
+
           paras.forEach(p => {
-            const texts = Array.from(p.querySelectorAll('a\\:t, t')).map(t => t.textContent.trim()).filter(Boolean);
-            if (texts.length) {
-              textRuns.push(texts.join(' '));
+            const pPr = p.querySelector('a\\:pPr, pPr');
+            const algn = pPr ? (pPr.getAttribute('algn') || 'l') : 'l';
+            let textAlign = 'left';
+            if (algn === 'ctr') textAlign = 'center';
+            else if (algn === 'r') textAlign = 'right';
+            else if (algn === 'just') textAlign = 'justify';
+
+            const runs = p.querySelectorAll('a\\:r, r, a\\:fld, fld');
+            let pContent = '';
+
+            runs.forEach(r => {
+              const textNode = r.querySelector('a\\:t, t');
+              if (!textNode || !textNode.textContent) return;
+              const text = textNode.textContent;
+              const rPr = r.querySelector('a\\:rPr, rPr');
+
+              const styles = [];
+              if (rPr) {
+                if (rPr.getAttribute('b') === '1' || rPr.getAttribute('b') === 'true') styles.push('font-weight:bold');
+                if (rPr.getAttribute('i') === '1' || rPr.getAttribute('i') === 'true') styles.push('font-style:italic');
+                if (rPr.getAttribute('u') === 'sng' || rPr.getAttribute('u') === '1') styles.push('text-decoration:underline');
+                const sz = rPr.getAttribute('sz');
+                if (sz) styles.push(`font-size:${Math.round(parseInt(sz, 10) / 100)}pt`);
+                const srgb = rPr.querySelector('a\\:srgbClr, srgbClr');
+                if (srgb && srgb.getAttribute('val')) styles.push(`color:#${srgb.getAttribute('val')}`);
+                const latin = rPr.querySelector('a\\:latin, latin');
+                if (latin && latin.getAttribute('typeface')) styles.push(`font-family:'${latin.getAttribute('typeface')}', sans-serif`);
+              }
+
+              if (styles.length) {
+                pContent += `<span style="${styles.join(';')}">${escHtml(text)}</span>`;
+              } else {
+                pContent += escHtml(text);
+              }
+            });
+
+            if (pContent.trim()) {
+              paraHtmls.push(`<div style="text-align:${textAlign};margin:4px 0;">${pContent}</div>`);
             }
           });
 
-          if (textRuns.length) {
-            if ((isTitle || !slideTitle) && textRuns.length <= 2) {
+          if (paraHtmls.length) {
+            const plainText = paraHtmls.map(h => h.replace(/<[^>]+>/g, '').trim()).join(' ');
+            if ((isTitle || !slideTitle) && plainText.length <= 120) {
               if (!slideTitle) {
-                slideTitle = textRuns.join(' ');
+                slideTitle = plainText;
               } else {
-                bodyParagraphs.push(...textRuns);
+                bodyBlocks.push(...paraHtmls);
               }
             } else {
-              bodyParagraphs.push(...textRuns);
+              bodyBlocks.push(...paraHtmls);
             }
           }
         });
@@ -722,14 +793,17 @@
         }
 
         let bodyHtml = '';
-        if (bodyParagraphs.length) {
-          bodyHtml = '<ul>' + bodyParagraphs.map(p => `<li>${escHtml(p)}</li>`).join('') + '</ul>';
+        if (bodyBlocks.length) {
+          bodyHtml = bodyBlocks.join('');
         } else {
           bodyHtml = '<p style="color:#94a3b8;font-style:italic;">Empty slide content</p>';
         }
 
+        const bgStyle = slideBgColor ? `background:${slideBgColor};` : 'background:var(--bg-secondary);';
+        const animAttr = hasAnimation ? ' data-animation="fade-in"' : '';
+
         html += `
-          <div class="pptx-slide-wrapper" style="position:relative;margin:28px auto;max-width:850px;">
+          <div class="pptx-slide-wrapper" data-transition="${slideTransition}" style="position:relative;margin:28px auto;max-width:850px;">
             <div class="slide-quick-action-bar" contenteditable="false">
               <button class="slide-plus-action-btn" title="Add elements to slide (+)" aria-label="Add elements to slide">
                 <i class="fas fa-plus"></i>
@@ -756,7 +830,7 @@
                 <button class="slide-plus-menu-item slide-plus-next-btn" data-action="add-next-slide"><i class="fas fa-circle-plus" style="color:#ea580c;"></i> Add Next Slide</button>
               </div>
             </div>
-            <div class="pptx-slide-card" data-slide="${i + 1}" contenteditable="true" style="aspect-ratio:16/9;width:100%;min-height:360px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;">
+            <div class="pptx-slide-card"${animAttr} data-slide="${i + 1}" contenteditable="true" style="aspect-ratio:16/9;width:100%;min-height:480px;height:auto !important;${bgStyle}border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;word-break:break-word;overflow-wrap:break-word;display:flex;flex-direction:column;">
               <div class="pptx-slide-header" contenteditable="false">
                 <span class="pptx-slide-badge"><i class="fas fa-file-powerpoint"></i> Slide ${i + 1} of ${slideFileNames.length}</span>
               </div>
@@ -824,16 +898,7 @@
           </div>
         </div>`;
     }
-
-    return `
-      <div style="margin-bottom:14px;"><strong><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Presentation Deck</strong> — 3 empty slide(s)</div>
-      <div class="pptx-container">
-        ${slideTpl(1)}
-        ${slideTpl(2)}
-        ${slideTpl(3)}
-      </div>
-      <p><br></p>
-    `;
+    return '';
   }
 
   function basicMarkdownToHtml(md) {

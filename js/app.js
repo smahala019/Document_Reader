@@ -1925,7 +1925,33 @@
     }
   }
 
-  function createEmptySlideHtml(layout = 'blank') {
+  function createEmptySlideHtml(layout = 'blank', inheritSource = null) {
+    if (!inheritSource) {
+      const slides = Array.from(document.querySelectorAll('#editor .pptx-slide-wrapper'));
+      if (slides.length > 0) {
+        inheritSource = slides[currentActiveSlideIndex] || slides[slides.length - 1];
+      }
+    }
+
+    let inheritedTransition = 'none';
+    let inheritedBg = 'background:var(--bg-secondary);';
+    let inheritedColor = '';
+    let inheritedFont = '';
+    let inheritedThemeAttr = '';
+
+    if (inheritSource) {
+      const wrapper = inheritSource.closest('.pptx-slide-wrapper') || inheritSource;
+      inheritedTransition = wrapper.getAttribute('data-transition') || 'none';
+      const card = wrapper.querySelector('.pptx-slide-card') || wrapper;
+      if (card) {
+        if (card.dataset.theme) inheritedThemeAttr = ` data-theme="${card.dataset.theme}"`;
+        if (card.style.background) inheritedBg = `background:${card.style.background};`;
+        else if (card.style.backgroundColor) inheritedBg = `background-color:${card.style.backgroundColor};`;
+        if (card.style.color) inheritedColor = `color:${card.style.color};`;
+        if (card.style.fontFamily) inheritedFont = `font-family:${card.style.fontFamily};`;
+      }
+    }
+
     let bodyContent = `<p class="slide-placeholder-text" style="color:var(--text-muted);font-style:italic;margin:0;">Empty slide. Click here or use the "+" button at top-right to add rectangle, shapes, or bullet points...</p>`;
     if (layout === 'title') {
       bodyContent = `<div class="slide-title-box" contenteditable="true" style="font-size:32px;font-weight:700;color:var(--text-primary);text-align:center;padding:24px 16px 8px;min-height:50px;">Presentation Title</div><div class="slide-content-box" contenteditable="true" style="font-size:18px;color:var(--text-muted);text-align:center;padding:8px 16px;min-height:36px;">Subtitle / Presenter Name</div>`;
@@ -1938,7 +1964,7 @@
     }
 
     return `
-      <div class="pptx-slide-wrapper" style="position:relative;margin:28px auto;max-width:850px;">
+      <div class="pptx-slide-wrapper" data-transition="${inheritedTransition}" style="position:relative;margin:28px auto;max-width:850px;">
         <div class="slide-quick-action-bar" contenteditable="false">
           <button class="slide-plus-action-btn" title="Add elements to slide (+)" aria-label="Add elements to slide">
             <i class="fas fa-plus"></i>
@@ -1968,7 +1994,7 @@
             <button class="slide-plus-menu-item slide-plus-next-btn" data-action="add-next-slide"><i class="fas fa-circle-plus" style="color:#ea580c;"></i> Add Next Slide</button>
           </div>
         </div>
-        <div class="pptx-slide-card" contenteditable="true" style="aspect-ratio:16/9;width:100%;min-height:360px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;">
+        <div class="pptx-slide-card"${inheritedThemeAttr} contenteditable="true" style="aspect-ratio:16/9;width:100%;min-height:480px;height:auto !important;${inheritedBg}${inheritedColor}${inheritedFont}border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;word-break:break-word;overflow-wrap:break-word;display:flex;flex-direction:column;">
           ${bodyContent}
         </div>
       </div><p><br></p>`;
@@ -2002,11 +2028,11 @@
       const topWrapper = parentWrapper.closest('.pptx-slide-wrapper') || parentWrapper;
       const slidesList = Array.from(document.querySelectorAll('#editor .pptx-slide-wrapper'));
       const curIdx = slidesList.indexOf(topWrapper);
-      topWrapper.insertAdjacentHTML('afterend', createEmptySlideHtml(layout));
+      topWrapper.insertAdjacentHTML('afterend', createEmptySlideHtml(layout, topWrapper));
       window.DocFlow.Editor?.notifyChange();
       updatePptSidebar();
       selectPptSlide(curIdx >= 0 ? curIdx + 1 : currentActiveSlideIndex + 1);
-      showToast('New Presentation Slide added', 'success');
+      showToast('New Presentation Slide added (inherited theme & layout)', 'success');
     } else if (isNested && parentWrapper) {
       const card = parentWrapper.querySelector('.pptx-slide-card') || parentWrapper;
       clearSlidePlaceholder(card);
@@ -2020,12 +2046,12 @@
     } else {
       const editor = $('#editor');
       if (editor) {
-        editor.insertAdjacentHTML('beforeend', createEmptySlideHtml(layout));
+        editor.insertAdjacentHTML('beforeend', createEmptySlideHtml(layout, parentWrapper));
         window.DocFlow.Editor?.notifyChange();
         updatePptSidebar();
         const count = editor.querySelectorAll('.pptx-slide-wrapper').length;
         selectPptSlide(Math.max(0, count - 1));
-        showToast('Presentation slide inserted', 'success');
+        showToast('Presentation slide inserted (inherited theme)', 'success');
       }
     }
   }
@@ -2189,7 +2215,7 @@
       document.addEventListener('mouseup', onMouseUp);
     });
 
-    // Add Slide button on PPT Sidebar (Issue 3: Shows dropdown and performs layout insertion)
+    // Add Slide button on PPT Sidebar (Issue 1: Shows dropdown safely on top of editor)
     const pptSidebarAddBtn = $('#pptxSidebarAddBtn');
     const pptSidebarAddPopover = $('#pptxSidebarAddPopover');
     if (pptSidebarAddBtn) {
@@ -2197,7 +2223,15 @@
         e.preventDefault();
         e.stopPropagation();
         if (pptSidebarAddPopover) {
-          pptSidebarAddPopover.classList.toggle('show');
+          if (pptSidebarAddPopover.classList.contains('show')) {
+            pptSidebarAddPopover.classList.remove('show');
+          } else {
+            if (window.DocFlow?.UI?.positionPopover) {
+              window.DocFlow.UI.positionPopover(pptSidebarAddBtn, pptSidebarAddPopover);
+            } else {
+              pptSidebarAddPopover.classList.add('show');
+            }
+          }
         } else {
           insertPptSlide(false);
         }
@@ -2323,11 +2357,30 @@
   }
 
   function getActiveTableCell() {
+    if (window._activeExcelCell && document.body.contains(window._activeExcelCell)) {
+      return window._activeExcelCell;
+    }
+    const selected = document.querySelector('.excel-spreadsheet-container td.excel-cell-selected');
+    if (selected) {
+      window._activeExcelCell = selected;
+      return selected;
+    }
     const sel = window.getSelection();
-    if (!sel || !sel.rangeCount) return null;
-    let node = sel.getRangeAt(0).commonAncestorContainer;
-    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-    return node.closest('td, th');
+    if (sel && sel.rangeCount) {
+      let node = sel.getRangeAt(0).commonAncestorContainer;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+      const cell = node?.closest('td, th');
+      if (cell) {
+        if (cell.tagName === 'TD') window._activeExcelCell = cell;
+        return cell;
+      }
+    }
+    const firstCell = document.querySelector('.excel-spreadsheet-container tbody td');
+    if (firstCell) {
+      window._activeExcelCell = firstCell;
+      return firstCell;
+    }
+    return null;
   }
 
   function getExcelColLetter(index) {
@@ -2604,63 +2657,114 @@
   }
 
   function applyExcelFormula(funcName) {
-    const cell = getActiveTableCell();
+    let cell = getActiveTableCell();
+    const table = cell ? cell.closest('table') : (document.querySelector('.excel-grid-table') || document.querySelector('#editor table'));
+    if (!table) {
+      showToast('Click a spreadsheet cell to calculate formula', 'info');
+      return;
+    }
+    if (!cell) {
+      cell = table.querySelector('td.excel-cell-selected') || table.querySelector('tbody td');
+    }
     if (!cell) {
       showToast('Click a spreadsheet cell to calculate formula', 'info');
       return;
     }
-    const table = cell.closest('table');
-    if (!table) return;
 
-    const colIdx = cell.cellIndex;
-    const nums = [];
-    Array.from(table.rows).forEach(r => {
-      const c = r.cells[colIdx];
-      if (c && c !== cell) {
+    const selectedCells = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+    let nums = [];
+    let targetCell = cell;
+
+    if (selectedCells.length > 1) {
+      selectedCells.forEach(c => {
         const val = parseFloat(c.textContent.replace(/[^0-9.-]/g, ''));
         if (!isNaN(val)) nums.push(val);
+      });
+      const lastSelected = selectedCells[selectedCells.length - 1];
+      const lastTr = lastSelected.closest('tr');
+      const nextTr = lastTr?.nextElementSibling;
+      if (nextTr && nextTr.children[lastSelected.cellIndex]) {
+        targetCell = nextTr.children[lastSelected.cellIndex];
+      } else {
+        targetCell = lastSelected;
       }
-    });
+    } else {
+      const curRowIdx = cell.closest('tr')?.rowIndex || 0;
+      const colIdx = cell.cellIndex;
+      const rows = Array.from(table.rows);
+      for (let r = 1; r < curRowIdx; r++) {
+        const c = rows[r]?.cells[colIdx];
+        if (c && c !== cell) {
+          const val = parseFloat(c.textContent.replace(/[^0-9.-]/g, ''));
+          if (!isNaN(val)) nums.push(val);
+        }
+      }
+      if (nums.length === 0) {
+        const tr = cell.closest('tr');
+        if (tr) {
+          for (let c = 1; c < colIdx; c++) {
+            const cellLeft = tr.cells[c];
+            if (cellLeft && cellLeft !== cell) {
+              const val = parseFloat(cellLeft.textContent.replace(/[^0-9.-]/g, ''));
+              if (!isNaN(val)) nums.push(val);
+            }
+          }
+        }
+      }
+      if (nums.length === 0) {
+        rows.forEach(r => {
+          const c = r.cells[colIdx];
+          if (c && c !== cell) {
+            const val = parseFloat(c.textContent.replace(/[^0-9.-]/g, ''));
+            if (!isNaN(val)) nums.push(val);
+          }
+        });
+      }
+    }
 
     let result = 0;
     if (nums.length === 0) {
-      cell.textContent = `= ${funcName}()`;
+      targetCell.textContent = `=${funcName}()`;
+      window._activeExcelCell = targetCell;
+      const fi = $('#excelFormulaInput');
+      if (fi) fi.value = targetCell.textContent;
       window.DocFlow.Editor?.notifyChange();
-      restoreCellFocus(cell);
+      restoreCellFocus(targetCell);
+      showToast(`Inserted =${funcName}() formula into cell`, 'info');
       return;
     }
 
     if (funcName === 'SUM') result = nums.reduce((a, b) => a + b, 0);
-    else if (funcName === 'AVERAGE') result = (nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2);
+    else if (funcName === 'AVERAGE') result = Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2));
     else if (funcName === 'COUNT') result = nums.length;
     else if (funcName === 'MAX') result = Math.max(...nums);
     else if (funcName === 'MIN') result = Math.min(...nums);
     else if (funcName === 'MEDIAN') {
       const sorted = [...nums].sort((a, b) => a - b);
       const mid = Math.floor(sorted.length / 2);
-      result = sorted.length % 2 !== 0 ? sorted[mid] : ((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2);
+      result = sorted.length % 2 !== 0 ? sorted[mid] : Number(((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2));
     } else if (funcName === 'PRODUCT') {
       result = nums.reduce((a, b) => a * b, 1);
     } else if (funcName === 'COUNTA') {
-      let countA = 0;
-      Array.from(table.rows).forEach(r => {
-        const c = r.cells[colIdx];
-        if (c && c !== cell && c.textContent.trim().length > 0) countA++;
-      });
-      result = countA;
+      result = nums.length;
     } else if (funcName === 'STDEV') {
       const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
       const variance = nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (nums.length > 1 ? nums.length - 1 : 1);
-      result = Math.sqrt(variance).toFixed(2);
+      result = Number(Math.sqrt(variance).toFixed(2));
     } else if (funcName === 'ROUND') {
       result = Math.round(nums[nums.length - 1] || nums[0] || 0);
     }
 
-    cell.textContent = String(result);
-    cell.style.fontWeight = 'bold';
+    targetCell.textContent = String(result);
+    targetCell.style.fontWeight = 'bold';
+    window._activeExcelCell = targetCell;
+    const fi = $('#excelFormulaInput');
+    if (fi) fi.value = String(result);
+    const cb = document.querySelector('.excel-coord-box');
+    if (cb && targetCell.dataset.coord) cb.value = targetCell.dataset.coord;
     window.DocFlow.Editor?.notifyChange();
     showToast(`Formula ${funcName} calculated: ${result}`, 'success');
-    restoreCellFocus(cell);
+    restoreCellFocus(targetCell);
   }
 
   // Visual Chart Generator (Issue 5: 9 Chart Types with Corner Resize & Drag)
@@ -3147,6 +3251,8 @@
     const container = editor.querySelector('.excel-spreadsheet-container');
     if (!container) return;
 
+    $('#editorWrap')?.classList.add('is-excel-mode');
+
     // Issue 7 & 9: Lock editor canvas so whole sheet cannot be deleted by freeform selection
     editor.contentEditable = 'false';
     container.contentEditable = 'false';
@@ -3238,10 +3344,16 @@
               table.querySelectorAll('td.excel-cell-selected').forEach(c => {
                 c.classList.remove('excel-cell-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
               });
-              table.querySelectorAll('tr.excel-row-selected, th.excel-col-selected').forEach(el => el.classList.remove('excel-row-selected', 'excel-col-selected'));
+              table.querySelectorAll('tr.excel-row-selected, th.excel-row-selected, th.excel-col-selected, td.excel-row-selected, td.excel-col-selected').forEach(el => {
+                el.classList.remove('excel-row-selected', 'excel-col-selected');
+              });
             }
             const isSelected = tr.classList.toggle('excel-row-selected');
-            tr.querySelectorAll('td').forEach(td => td.classList.toggle('excel-cell-selected', isSelected));
+            rowHdr.classList.toggle('excel-row-selected', isSelected);
+            tr.querySelectorAll('td').forEach(td => {
+              td.classList.toggle('excel-cell-selected', isSelected);
+              td.classList.toggle('excel-row-selected', isSelected);
+            });
             const firstTd = tr.querySelector('td');
             if (firstTd && isSelected) {
               firstTd.focus();
@@ -3261,12 +3373,17 @@
             table.querySelectorAll('td.excel-cell-selected').forEach(c => {
               c.classList.remove('excel-cell-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
             });
-            table.querySelectorAll('tr.excel-row-selected, th.excel-col-selected').forEach(el => el.classList.remove('excel-row-selected', 'excel-col-selected'));
+            table.querySelectorAll('tr.excel-row-selected, th.excel-row-selected, th.excel-col-selected, td.excel-row-selected, td.excel-col-selected').forEach(el => {
+              el.classList.remove('excel-row-selected', 'excel-col-selected');
+            });
           }
           const isSelected = colHdr.classList.toggle('excel-col-selected');
           table.querySelectorAll('tbody tr').forEach(row => {
             const cell = row.children[idx];
-            if (cell && cell.tagName === 'TD') cell.classList.toggle('excel-cell-selected', isSelected);
+            if (cell && cell.tagName === 'TD') {
+              cell.classList.toggle('excel-cell-selected', isSelected);
+              cell.classList.toggle('excel-col-selected', isSelected);
+            }
           });
           const firstTd = table.querySelector(`tbody tr td:nth-child(${idx + 1})`);
           if (firstTd && isSelected) {
@@ -3457,6 +3574,134 @@
 
     if (!container._deletionProtected) {
       container._deletionProtected = true;
+
+      const getSelectedExcelCells = () => {
+        const table = container.querySelector('.excel-grid-table');
+        if (!table) return [];
+        const cells = Array.from(table.querySelectorAll('td.excel-cell-selected, tr.excel-row-selected td, td.excel-col-selected'));
+        if (cells.length > 0) return Array.from(new Set(cells));
+        if (window._activeExcelCell && document.body.contains(window._activeExcelCell)) return [window._activeExcelCell];
+        return [];
+      };
+
+      const copySelectedToClipboard = async () => {
+        const table = container.querySelector('.excel-grid-table');
+        if (!table) return '';
+        const cells = getSelectedExcelCells();
+        if (cells.length === 0) return '';
+
+        let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+        cells.forEach(c => {
+          const r = c.closest('tr')?.rowIndex || 0;
+          const col = c.cellIndex;
+          if (r < minR) minR = r;
+          if (r > maxR) maxR = r;
+          if (col < minC) minC = col;
+          if (col > maxC) maxC = col;
+        });
+
+        const rows = [];
+        for (let r = minR; r <= maxR; r++) {
+          const rowCells = [];
+          const tr = table.rows[r];
+          for (let c = minC; c <= maxC; c++) {
+            const cell = tr?.cells[c];
+            rowCells.push((cell && cell.tagName === 'TD') ? cell.textContent.trim() : '');
+          }
+          rows.push(rowCells.join('\t'));
+        }
+        const tsv = rows.join('\n');
+        try {
+          await navigator.clipboard.writeText(tsv);
+        } catch (_) {
+          const ta = document.createElement('textarea');
+          ta.value = tsv;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+        }
+        return tsv;
+      };
+
+      const pasteFromClipboard = async (textData = null) => {
+        const table = container.querySelector('.excel-grid-table');
+        if (!table) return;
+        let tsv = textData;
+        if (tsv === null) {
+          try {
+            tsv = await navigator.clipboard.readText();
+          } catch (_) {
+            return;
+          }
+        }
+        if (!tsv || typeof tsv !== 'string') return;
+
+        let startCell = window._activeExcelCell;
+        if (!startCell || !document.body.contains(startCell)) {
+          startCell = table.querySelector('td.excel-cell-selected') || table.querySelector('tbody td');
+        }
+        if (!startCell) return;
+
+        const startR = startCell.closest('tr')?.rowIndex || 1;
+        const startC = startCell.cellIndex;
+        const lines = tsv.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+
+        lines.forEach((line, rOffset) => {
+          if (!line && rOffset === lines.length - 1) return;
+          const cols = line.split('\t');
+          const targetRow = table.rows[startR + rOffset];
+          if (targetRow) {
+            cols.forEach((val, cOffset) => {
+              const targetTd = targetRow.cells[startC + cOffset];
+              if (targetTd && targetTd.tagName === 'TD') {
+                targetTd.textContent = val.trim();
+              }
+            });
+          }
+        });
+
+        if (formulaInput && window._activeExcelCell) {
+          formulaInput.value = window._activeExcelCell.textContent || '';
+        }
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Pasted clipboard data into spreadsheet', 'success');
+      };
+
+      container.addEventListener('copy', e => {
+        if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+        const cells = getSelectedExcelCells();
+        if (cells.length > 0) {
+          e.preventDefault();
+          copySelectedToClipboard().then(() => showToast(`Copied ${cells.length} cells`, 'info'));
+        }
+      });
+
+      container.addEventListener('cut', e => {
+        if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+        const cells = getSelectedExcelCells();
+        if (cells.length > 0) {
+          e.preventDefault();
+          copySelectedToClipboard().then(() => {
+            cells.forEach(c => { c.textContent = ''; });
+            if (formulaInput && window._activeExcelCell) formulaInput.value = '';
+            window.DocFlow.Editor?.notifyChange();
+            showToast(`Cut ${cells.length} cells`, 'info');
+          });
+        }
+      });
+
+      container.addEventListener('paste', e => {
+        if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+        const clipData = e.clipboardData?.getData('text/plain');
+        if (clipData && (clipData.includes('\t') || clipData.includes('\n'))) {
+          e.preventDefault();
+          pasteFromClipboard(clipData);
+        }
+      });
+
       container.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
           if (document.activeElement === formulaInput || document.activeElement === coordBox) {
@@ -3505,8 +3750,39 @@
             });
             showToast('Spreadsheet content area selected (Excel perimeter border)', 'info');
           }
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+          if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          const cells = getSelectedExcelCells();
+          if (cells.length > 0) {
+            e.preventDefault();
+            copySelectedToClipboard().then(() => showToast(`Copied ${cells.length} cells`, 'info'));
+          }
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X')) {
+          if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          const cells = getSelectedExcelCells();
+          if (cells.length > 0) {
+            e.preventDefault();
+            copySelectedToClipboard().then(() => {
+              cells.forEach(c => { c.textContent = ''; });
+              if (formulaInput && window._activeExcelCell) formulaInput.value = '';
+              window.DocFlow.Editor?.notifyChange();
+              showToast(`Cut ${cells.length} cells`, 'info');
+            });
+          }
+        } else if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
+          if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          e.preventDefault();
+          pasteFromClipboard();
         } else if (e.key === 'Backspace' || e.key === 'Delete') {
-          if (window._activeExcelCell && document.activeElement === window._activeExcelCell) {
+          if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          const cells = getSelectedExcelCells();
+          if (cells.length > 1 || (cells.length === 1 && document.activeElement !== cells[0])) {
+            e.preventDefault();
+            cells.forEach(c => { c.textContent = ''; });
+            if (formulaInput && window._activeExcelCell) formulaInput.value = '';
+            window.DocFlow.Editor?.notifyChange();
+            showToast(`Cleared ${cells.length} cells`, 'info');
+          } else if (window._activeExcelCell && document.activeElement === window._activeExcelCell) {
             setTimeout(() => {
               if (formulaInput) formulaInput.value = window._activeExcelCell.textContent || '';
               window.DocFlow.Editor?.notifyChange();
@@ -3682,11 +3958,21 @@
       insertPptSlide(true);
     });
 
-    // 3. Insert Panel (Date, Symbol, Checklist, Note, Paint)
     $('#ribbonInsertDateBtn')?.addEventListener('click', () => {
       if (window.DocFlow.currentMode !== 'edit') return;
       const now = new Date();
       const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const cell = getActiveTableCell();
+      if (cell && cell.tagName === 'TD') {
+        cell.textContent = dateStr;
+        window._activeExcelCell = cell;
+        const fi = $('#excelFormulaInput');
+        if (fi) fi.value = dateStr;
+        window.DocFlow.Editor?.notifyChange();
+        showToast('Inserted current date into cell', 'success');
+        restoreCellFocus(cell);
+        return;
+      }
       window.DocFlow.Editor?.insertHtmlAtCursor(dateStr + ' ');
       showToast('Inserted current date', 'info');
     });
@@ -4125,6 +4411,7 @@
           !e.target.closest('#pptLayoutDropdownWrap') &&
           !e.target.closest('#pptBgImageDropdownWrap') &&
           !e.target.closest('#pptTransitionDropdownWrap') &&
+          !e.target.closest('#pptAnimationDropdownWrap') &&
           !e.target.closest('#excelFormulaDropdownWrap') &&
           !e.target.closest('#excelBorderDropdownWrap') &&
           !e.target.closest('#pptSlideDropdownWrap') &&
@@ -4146,6 +4433,7 @@
         $('#pptLayoutPopover')?.classList.remove('show');
         $('#pptBgImagePopover')?.classList.remove('show');
         $('#pptTransitionPopover')?.classList.remove('show');
+        $('#pptAnimationPopover')?.classList.remove('show');
         $('#excelFormulaPopover')?.classList.remove('show');
         $('#excelBorderPopover')?.classList.remove('show');
         $('#pptSlidePopover')?.classList.remove('show');
@@ -4572,7 +4860,7 @@
       window.DocFlow.Editor?.notifyChange();
     });
 
-    // Slide Transitions (Issue 3: Expanded transitions & animations)
+    // Slide Transitions (Issue 3 & issue2: Expanded transitions & animations)
     $('#pptTransitionBtn')?.addEventListener('click', e => {
       e.stopPropagation();
       const pop = $('#pptTransitionPopover');
@@ -4591,7 +4879,8 @@
           const card = curSlide.querySelector('.pptx-slide-card') || curSlide;
           card.classList.remove(
             'anim-ppt-fade', 'anim-ppt-slide', 'anim-ppt-push', 'anim-ppt-zoom', 'anim-ppt-flip',
-            'anim-ppt-slide-up', 'anim-ppt-bounce', 'anim-ppt-rotate', 'anim-ppt-wipe', 'anim-ppt-blur', 'anim-ppt-cube'
+            'anim-ppt-slide-up', 'anim-ppt-bounce', 'anim-ppt-rotate', 'anim-ppt-wipe', 'anim-ppt-blur', 'anim-ppt-cube',
+            'anim-ppt-split', 'anim-ppt-flash', 'anim-ppt-shutter', 'anim-ppt-door', 'anim-ppt-fly-in', 'anim-ppt-fall'
           );
           if (trans && trans !== 'none') {
             void card.offsetWidth;
@@ -4602,6 +4891,55 @@
         item.classList.add('active');
         showToast(`Slide transition applied: ${trans}`, 'success');
         $('#pptTransitionPopover')?.classList.remove('show');
+      });
+    });
+
+    // Slide Element Animations (issue2.txt)
+    $('#pptAnimationBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pptAnimationPopover');
+      const btn = $('#pptAnimationBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+
+    $$('#pptAnimationPopover .spacing-opt-item[data-animation]').forEach(item => {
+      item.addEventListener('click', () => {
+        const anim = item.dataset.animation;
+        const sel = window.getSelection();
+        let targetEl = null;
+        if (sel && sel.rangeCount && !sel.isCollapsed) {
+          let node = sel.getRangeAt(0).commonAncestorContainer;
+          if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+          targetEl = node.closest('.pptx-slide-title, .pptx-slide-body, .slide-title-box, .slide-content-box, .slide-nested-card, .docflow-shape-wrapper, p, h1, h2, h3, div');
+        }
+        if (!targetEl) {
+          const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+          const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+          targetEl = curSlide?.querySelector('.pptx-slide-title') || curSlide?.querySelector('.pptx-slide-card') || curSlide;
+        }
+
+        if (targetEl) {
+          targetEl.classList.remove(
+            'anim-fade-in', 'anim-fly-in', 'anim-zoom-in', 'anim-bounce-in',
+            'anim-pulse', 'anim-shimmer', 'anim-spin', 'anim-fade-out', 'anim-zoom-out'
+          );
+          if (anim && anim !== 'none') {
+            void targetEl.offsetWidth;
+            targetEl.classList.add(`anim-${anim}`);
+            targetEl.dataset.animation = anim;
+          } else {
+            delete targetEl.dataset.animation;
+          }
+          window.DocFlow.Editor?.notifyChange();
+          showToast(`Animation applied: ${anim}`, 'success');
+        } else {
+          showToast('Select an element or slide to apply animation', 'info');
+        }
+
+        $$('#pptAnimationPopover .spacing-opt-item').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        $('#pptAnimationPopover')?.classList.remove('show');
       });
     });
 

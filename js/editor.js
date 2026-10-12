@@ -116,6 +116,31 @@
 
   function insertHtmlAtCursor(html) {
     if (!editor) return;
+    const activeCell = (window._activeExcelCell && document.body.contains(window._activeExcelCell))
+      ? window._activeExcelCell
+      : null;
+    if (activeCell) {
+      saveSnapshot();
+      activeCell.focus();
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const textToInsert = (temp.textContent || temp.innerText || html).trim();
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount && activeCell.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        try {
+          document.execCommand('insertText', false, textToInsert);
+        } catch (_) {
+          activeCell.textContent = (activeCell.textContent ? activeCell.textContent + ' ' : '') + textToInsert;
+        }
+      } else {
+        activeCell.textContent = textToInsert;
+      }
+      const formulaInput = document.getElementById('excelFormulaInput');
+      if (formulaInput) formulaInput.value = activeCell.textContent;
+      notifyChange();
+      return activeCell;
+    }
+
     saveSnapshot();
     focusEditor();
     let inserted = false;

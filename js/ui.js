@@ -244,8 +244,10 @@
         if (editor) {
           if (isExcelOrCsv) {
             editor.classList.add('excel-view-mode');
+            if (editorWrap) editorWrap.classList.add('is-excel-mode');
           } else {
             editor.classList.remove('excel-view-mode');
+            if (editorWrap) editorWrap.classList.remove('is-excel-mode');
           }
 
           // Link Excel formula bar with table cells & setup interactions

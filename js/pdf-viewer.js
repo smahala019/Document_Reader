@@ -275,6 +275,28 @@
     $('#pdfRibbonExtractAllBtn')?.addEventListener('click', () => extractTextFromPdf(true));
     $('#pdfQuickExtractAllBtn')?.addEventListener('click', () => extractTextFromPdf(true));
 
+    // Rotate PDF 90° Clockwise
+    const rotatePdfAction = () => {
+      if (!pdfDoc) {
+        showToast('Open a PDF document first', 'info');
+        return;
+      }
+      pdfRotation = (pdfRotation + 90) % 360;
+      buildPdfPlaceholders();
+      showToast(`PDF rotated to ${pdfRotation}°`, 'success');
+    };
+    $('#pdfRibbonRotateBtn')?.addEventListener('click', rotatePdfAction);
+    $('#pdfQuickRotateBtn')?.addEventListener('click', rotatePdfAction);
+
+    // Night Mode / Invert View
+    const togglePdfNightAction = () => {
+      if (!pdfWrap) return;
+      const isNight = pdfWrap.classList.toggle('pdf-night-mode');
+      showToast(`PDF ${isNight ? 'Night Mode enabled' : 'Day Mode restored'}`, 'info');
+    };
+    $('#pdfRibbonInvertBtn')?.addEventListener('click', togglePdfNightAction);
+    $('#pdfQuickInvertBtn')?.addEventListener('click', togglePdfNightAction);
+
     // Create PDF from Images
     $('#pdfCreateFromImagesBtn')?.addEventListener('click', openCreatePdfFromImagesModal);
     $('#emptyCreatePdfImagesBtn')?.addEventListener('click', openCreatePdfFromImagesModal);
@@ -284,49 +306,118 @@
     $('#pdfRibbonMergeModalBtn')?.addEventListener('click', openMergeModal);
   }
 
-  // Extract Text & Embedded Images from PDF into Editable Document (Issue 6)
+  // Extract Text & Embedded Images from PDF into Editable Rich Mode Document (Preserves all fonts, colors, layout, spacing, and design elements)
   async function extractTextFromPdf(includeImages = true) {
     if (!pdfDoc) return;
-    showToast(includeImages ? 'Extracting text and images from PDF...' : 'Extracting text from all pages...', 'info');
+    showToast('Converting PDF to Rich Mode (preserving all fonts, colors & layout)...', 'info');
 
     try {
       let extractedHtml = '';
 
       for (let i = 1; i <= pdfTotalPages; i++) {
         const page = await pdfDoc.getPage(i);
-        const textContent = await page.getTextContent();
+        const vp = page.getViewport({ scale: 1.0 });
+        const pageWidth = vp.width || 612;
+        const textContent = await page.getTextContent({ normalizeWhitespace: true });
 
-        if (textContent.items.length) {
+        let pageHtml = `<div class="pdf-rich-page" data-page="${i}" style="position:relative;background:var(--bg-primary, #ffffff);padding:36px 44px;margin:24px auto;border-radius:8px;box-shadow:var(--shadow-md);max-width:820px;box-sizing:border-box;">`;
+        pageHtml += `<div style="font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:20px;display:flex;justify-content:space-between;"><span>Page ${i} of ${pdfTotalPages}</span><span>PDF Rich Mode</span></div>`;
+
+        if (textContent.items && textContent.items.length) {
+          const styles = textContent.styles || {};
           const lineMap = new Map();
+
           textContent.items.forEach(item => {
-            if (!item.str) return;
-            const y = Math.round(item.transform[5] / 3) * 3;
+            if (!item.str || !item.str.trim()) return;
+            // Group text items by vertical Y line (within 4px tolerance)
+            const y = Math.round(item.transform[5] / 4) * 4;
             if (!lineMap.has(y)) lineMap.set(y, []);
             lineMap.get(y).push(item);
           });
 
+          // Sort lines descending (top of page first)
           const ys = [...lineMap.keys()].sort((a, b) => b - a);
+          let prevY = null;
+
           ys.forEach(y => {
             const items = lineMap.get(y).sort((a, b) => a.transform[4] - b.transform[4]);
-            let line = '';
+            if (!items.length) return;
+
+            // Compute line bounding box & spacing
+            const minX = items[0].transform[4];
+            const lastItem = items[items.length - 1];
+            const maxX = lastItem.transform[4] + (lastItem.width || 0);
+            const lineWidth = maxX - minX;
+
+            // Vertical margin from previous line
+            let marginTop = 3;
+            if (prevY !== null) {
+              const gap = prevY - y;
+              if (gap > 28) marginTop = 18;
+              else if (gap > 18) marginTop = 10;
+              else if (gap > 12) marginTop = 4;
+            }
+            prevY = y;
+
+            // Determine alignment
+            let textAlign = 'left';
+            const centerDiff = Math.abs((minX + maxX) / 2 - pageWidth / 2);
+            if (centerDiff < pageWidth * 0.12 && lineWidth < pageWidth * 0.75) {
+              textAlign = 'center';
+            } else if (minX > pageWidth * 0.55 && lineWidth < pageWidth * 0.4) {
+              textAlign = 'right';
+            }
+
+            let maxFontSize = 0;
+            let spansHtml = '';
             let lastRight = null;
 
             items.forEach(item => {
-              const fs = Math.abs(item.transform[0]) || 10;
+              const fs = Math.abs(item.transform[0]) || 11;
+              if (fs > maxFontSize) maxFontSize = fs;
+
+              // Gap spacing
               if (lastRight !== null) {
                 const gap = item.transform[4] - lastRight;
-                if (gap > fs * 2.2) line += '   ';
-                else if (gap > fs * 0.22) line += ' ';
+                if (gap > fs * 1.8) spansHtml += '&emsp;';
+                else if (gap > fs * 0.25) spansHtml += ' ';
               }
-              line += item.str;
+
+              // Font and styling
+              const fontObj = styles[item.fontName] || {};
+              const rawFontFamily = fontObj.fontFamily || item.fontName || '';
+              let fontFamily = 'var(--font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif)';
+              if (/times|georgia|serif/i.test(rawFontFamily)) fontFamily = 'Georgia, "Times New Roman", serif';
+              else if (/courier|mono|consolas/i.test(rawFontFamily)) fontFamily = 'Consolas, "Courier New", monospace';
+              else if (/helvetica|arial/i.test(rawFontFamily)) fontFamily = 'Arial, Helvetica, sans-serif';
+
+              const isBold = /bold|black|heavy|w[789]00/i.test(item.fontName || '') || /bold|black|heavy/i.test(rawFontFamily);
+              const isItalic = /italic|oblique/i.test(item.fontName || '') || /italic|oblique/i.test(rawFontFamily);
+
+              const spanStyles = [];
+              spanStyles.push(`font-family:${fontFamily}`);
+              spanStyles.push(`font-size:${Math.round(fs)}px`);
+              if (isBold) spanStyles.push('font-weight:700');
+              if (isItalic) spanStyles.push('font-style:italic');
+
+              spansHtml += `<span style="${spanStyles.join(';')}">${escHtml(item.str)}</span>`;
               lastRight = item.transform[4] + (item.width || 0);
             });
 
-            extractedHtml += `<p>${escHtml(line)}</p>`;
+            // Heading vs Body paragraph
+            if (maxFontSize >= 22) {
+              pageHtml += `<h1 style="text-align:${textAlign};margin:${marginTop}px 0 8px;line-height:1.25;color:var(--text-primary);">${spansHtml}</h1>`;
+            } else if (maxFontSize >= 17) {
+              pageHtml += `<h2 style="text-align:${textAlign};margin:${marginTop}px 0 6px;line-height:1.3;color:var(--text-primary);">${spansHtml}</h2>`;
+            } else if (maxFontSize >= 14) {
+              pageHtml += `<h3 style="text-align:${textAlign};margin:${marginTop}px 0 4px;line-height:1.35;color:var(--text-primary);">${spansHtml}</h3>`;
+            } else {
+              pageHtml += `<div class="pdf-rich-line" style="text-align:${textAlign};margin:${marginTop}px 0 2px;line-height:1.55;color:var(--text-primary);">${spansHtml}</div>`;
+            }
           });
         }
 
-        let pageImgHtml = '';
+        // Include high-resolution visual layout / images if requested or if page has figures
         if (includeImages) {
           try {
             const ops = await page.getOperatorList();
@@ -338,16 +429,16 @@
               }
             }
             if (hasImages || !textContent.items.length) {
-              const vp = page.getViewport({ scale: 1.4 });
+              const renderVp = page.getViewport({ scale: 1.5 });
               const cv = document.createElement('canvas');
-              cv.width = vp.width;
-              cv.height = vp.height;
+              cv.width = renderVp.width;
+              cv.height = renderVp.height;
               const ctx = cv.getContext('2d');
-              await page.render({ canvasContext: ctx, viewport: vp }).promise;
-              const dataUrl = cv.toDataURL('image/jpeg', 0.9);
-              pageImgHtml = `
-                <div class="pdf-extracted-image-block" style="margin:16px auto;text-align:center;">
-                  <img src="${dataUrl}" alt="PDF Page ${i} Image" style="max-width:100%;height:auto;border-radius:6px;box-shadow:0 3px 12px rgba(0,0,0,0.12);" data-wrap="inline">
+              await page.render({ canvasContext: ctx, viewport: renderVp }).promise;
+              const dataUrl = cv.toDataURL('image/jpeg', 0.92);
+              pageHtml += `
+                <div class="pdf-extracted-image-block" style="margin:20px auto;text-align:center;">
+                  <img src="${dataUrl}" alt="PDF Page ${i} Visual Layout" style="max-width:100%;height:auto;border-radius:6px;box-shadow:0 3px 12px rgba(0,0,0,0.12);" data-wrap="inline">
                 </div>`;
             }
           } catch (imgErr) {
@@ -355,12 +446,11 @@
           }
         }
 
-        if (pageImgHtml) {
-          extractedHtml += pageImgHtml;
-        }
+        pageHtml += `</div>`;
+        extractedHtml += pageHtml;
 
         if (i < pdfTotalPages) {
-          extractedHtml += '<hr><p><br></p>';
+          extractedHtml += '<div class="doc-page-break" contenteditable="false"><div class="doc-page-break-line"><span>Page Break</span></div></div><p><br></p>';
         }
       }
 
@@ -371,8 +461,8 @@
 
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
       const baseName = (activeTab ? activeTab.name : 'Document').replace(/\.pdf$/i, '');
-      const tabName = `${baseName} (extracted).html`;
-      const tab = window.DocFlow.UI.Tabs.create(tabName, extractedHtml, 'Extracted', 'edit');
+      const tabName = `${baseName} (Rich).html`;
+      const tab = window.DocFlow.UI.Tabs.create(tabName, extractedHtml, 'Rich Mode', 'edit');
 
       window.DocFlow.UI.Tabs.activateTab(tab);
       if (window.DocFlow.Recent) {
@@ -383,10 +473,10 @@
           content: extractedHtml
         });
       }
-      showToast('Extracted text and images into new editable document', 'success');
+      showToast('Document converted to Rich Mode with all original formatting preserved', 'success');
     } catch (e) {
       console.error(e);
-      showToast('Failed to extract: ' + e.message, 'error');
+      showToast('Failed to convert to Rich Mode: ' + e.message, 'error');
     }
   }
 

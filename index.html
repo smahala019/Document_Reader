@@ -778,7 +778,7 @@
         </div>
       </div>
 
-      <!-- Slide Transitions -->
+      <!-- Slide Transitions & Element Animations -->
       <div class="ribbon-group">
         <div class="ribbon-row">
           <div class="bullet-dropdown-wrap" id="pptTransitionDropdownWrap">
@@ -799,6 +799,30 @@
               <div class="spacing-opt-item" data-transition="wipe"><i class="fas fa-brush" style="margin-right:6px;color:#6366f1;"></i> Wipe Left</div>
               <div class="spacing-opt-item" data-transition="blur"><i class="fas fa-eye-slash" style="margin-right:6px;color:#14b8a6;"></i> Blur In</div>
               <div class="spacing-opt-item" data-transition="cube"><i class="fas fa-cube" style="margin-right:6px;color:#eab308;"></i> 3D Cube</div>
+              <div class="spacing-opt-item" data-transition="split"><i class="fas fa-arrows-split-up-and-left" style="margin-right:6px;color:#3b82f6;"></i> Split Doors</div>
+              <div class="spacing-opt-item" data-transition="flash"><i class="fas fa-bolt" style="margin-right:6px;color:#eab308;"></i> Camera Flash</div>
+              <div class="spacing-opt-item" data-transition="shutter"><i class="fas fa-camera" style="margin-right:6px;color:#ec4899;"></i> Shutter</div>
+              <div class="spacing-opt-item" data-transition="door"><i class="fas fa-door-open" style="margin-right:6px;color:#10b981;"></i> Door Swing</div>
+              <div class="spacing-opt-item" data-transition="fly-in"><i class="fas fa-paper-plane" style="margin-right:6px;color:#8b5cf6;"></i> Fly In</div>
+              <div class="spacing-opt-item" data-transition="fall"><i class="fas fa-caret-down" style="margin-right:6px;color:#ef4444;"></i> Fall Over</div>
+            </div>
+          </div>
+          <div class="bullet-dropdown-wrap" id="pptAnimationDropdownWrap">
+            <button class="fmt-btn with-text" id="pptAnimationBtn" title="Element Animations (Apply to selected text, box, shape or slide)">
+              <i class="fas fa-film" style="color:#f59e0b;"></i><span>Animation</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptAnimationPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Element Animations</div>
+              <div class="spacing-opt-item active" data-animation="none"><i class="fas fa-ban" style="margin-right:6px;color:#94a3b8;"></i> None</div>
+              <div class="spacing-opt-item" data-animation="fade-in"><i class="fas fa-eye" style="margin-right:6px;color:#3b82f6;"></i> Fade In</div>
+              <div class="spacing-opt-item" data-animation="fly-in"><i class="fas fa-plane-departure" style="margin-right:6px;color:#10b981;"></i> Fly In</div>
+              <div class="spacing-opt-item" data-animation="zoom-in"><i class="fas fa-magnifying-glass-plus" style="margin-right:6px;color:#f59e0b;"></i> Zoom In</div>
+              <div class="spacing-opt-item" data-animation="bounce-in"><i class="fas fa-volleyball" style="margin-right:6px;color:#ec4899;"></i> Bounce In</div>
+              <div class="spacing-opt-item" data-animation="pulse"><i class="fas fa-heart-pulse" style="margin-right:6px;color:#ef4444;"></i> Pulse (Emphasis)</div>
+              <div class="spacing-opt-item" data-animation="shimmer"><i class="fas fa-wand-magic" style="margin-right:6px;color:#8b5cf6;"></i> Shimmer (Emphasis)</div>
+              <div class="spacing-opt-item" data-animation="spin"><i class="fas fa-arrows-rotate" style="margin-right:6px;color:#06b6d4;"></i> Spin (360°)</div>
+              <div class="spacing-opt-item" data-animation="fade-out"><i class="fas fa-eye-slash" style="margin-right:6px;color:#64748b;"></i> Fade Out (Exit)</div>
+              <div class="spacing-opt-item" data-animation="zoom-out"><i class="fas fa-magnifying-glass-minus" style="margin-right:6px;color:#6b7280;"></i> Zoom Out (Exit)</div>
             </div>
           </div>
         </div>
@@ -919,6 +943,13 @@
           <button class="fmt-btn with-text" id="pdfRibbonMergeModalBtn" title="Merge Multiple PDF Files Together"><i class="fas fa-object-group" style="color:#8b5cf6;"></i> Merge PDFs</button>
         </div>
       </div>
+      <!-- PDF View & Page Tools -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pdfRibbonRotateBtn" title="Rotate PDF Page 90° Clockwise"><i class="fas fa-rotate-right" style="color:#0284c7;"></i> Rotate 90°</button>
+          <button class="fmt-btn with-text" id="pdfRibbonInvertBtn" title="Invert Colors / Night Reading Mode for PDF"><i class="fas fa-circle-half-stroke" style="color:#a855f7;"></i> Night Mode</button>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1008,6 +1039,9 @@
         <span class="page-info" id="pdfPageInfo">Page 1 / 1</span>
         <button id="pdfNext" title="Next Page" aria-label="Next page"><i class="fas fa-chevron-right"></i></button>
         <div class="tool-sep" style="height:18px;"></div>
+        <button class="pdf-ctrl-btn" id="pdfQuickRotateBtn" title="Rotate PDF Page 90° Clockwise"><i class="fas fa-rotate-right" style="color:#0284c7;"></i> <span>Rotate 90°</span></button>
+        <button class="pdf-ctrl-btn" id="pdfQuickInvertBtn" title="Toggle Night / Invert Eye-Care View"><i class="fas fa-circle-half-stroke" style="color:#a855f7;"></i> <span>Night Mode</span></button>
+        <div class="tool-sep" style="height:18px;"></div>
         <button class="pdf-ctrl-btn" id="pdfQuickCreateImgBtn" title="Create PDF from Single or Multiple Images"><i class="fas fa-file-image" style="color:#ea580c;"></i> <span>Images to PDF</span></button>
         <button class="pdf-ctrl-btn" id="pdfExtractBtn" title="Extract text into an editable document"><i class="fas fa-pen-to-square" style="color:var(--accent);"></i> <span>Extract Text</span></button>
         <button class="pdf-ctrl-btn primary" id="pdfQuickExtractAllBtn" title="Extract Text & Embedded Images in Visual Layout"><i class="fas fa-file-export"></i> <span>Extract Rich</span></button>
@@ -1023,7 +1057,7 @@
         <div class="pptx-sidebar-title"><i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Slides (<span id="pptxSlideCount">0</span>)</div>
         <div class="pptx-sidebar-add-wrap" style="position:relative;">
           <button class="pptx-sidebar-add-btn" id="pptxSidebarAddBtn" title="Add New Slide"><i class="fas fa-plus"></i></button>
-          <div class="spacing-popover" id="pptxSidebarAddPopover" role="menu" style="position:absolute;right:0;top:100%;margin-top:4px;z-index:999;min-width:170px;">
+          <div class="spacing-popover" id="pptxSidebarAddPopover" role="menu" style="min-width:170px;">
             <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Add Slide Layout</div>
             <div class="spacing-opt-item" data-ppt-layout="title"><i class="fas fa-heading" style="margin-right:6px;color:#2563eb;"></i> Title Slide</div>
             <div class="spacing-opt-item" data-ppt-layout="title-box"><i class="fas fa-table-cells-large" style="margin-right:6px;color:#ea580c;"></i> Title & Box</div>

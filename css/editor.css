@@ -762,14 +762,32 @@ td.excel-cell-selected {
   outline-offset: -1px;
 }
 
-tr.excel-row-selected td {
+/* Excel Row and Column Full Selection Highlighting */
+tr.excel-row-selected th.excel-row-hdr,
+th.excel-row-selected {
+  background: #16a34a !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+tr.excel-row-selected td,
+td.excel-row-selected {
   background: rgba(22, 163, 74, 0.16) !important;
 }
 
-td.excel-col-selected, th.excel-col-selected, th.excel-row-selected {
-  background: rgba(22, 163, 74, 0.28) !important;
-  color: #16a34a !important;
+th.excel-col-selected {
+  background: #16a34a !important;
+  color: #ffffff !important;
   font-weight: 700 !important;
+}
+
+td.excel-col-selected {
+  background: rgba(22, 163, 74, 0.16) !important;
+}
+
+/* Excel Cell Active and Multi-Selection */
+td.excel-cell-selected {
+  background: rgba(22, 163, 74, 0.16) !important;
 }
 
 /* Excel Ctrl+A Perimeter Border Highlighting (Issue 4) */
@@ -786,36 +804,50 @@ td.excel-sel-right {
   border-right: 2.5px solid #16a34a !important;
 }
 
-.excel-spreadsheet-container {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+/* Eliminate unnecessary blank space & double scrollbars in Excel mode (Issue 4) */
+.editor-wrap:has(.excel-spreadsheet-container),
+.editor-wrap.is-excel-mode {
+  padding: 0 !important;
+  overflow: hidden !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
-/* Eliminate unnecessary blank space & double scrollbars in Excel mode (Issue 4) */
 .editor-page:has(.excel-spreadsheet-container),
 .editor-page.excel-view-mode {
   padding: 0 !important;
   min-height: auto !important;
   margin: 0 !important;
   width: 100% !important;
+  height: 100% !important;
   max-width: 100% !important;
   box-shadow: none !important;
   border-radius: 0 !important;
   background: transparent !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
-/* Sticky Formula Bar — Never disappears when scrolling (Issue 4) */
+.excel-spreadsheet-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-primary, #ffffff);
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+  flex: 1 1 auto;
+}
+
+/* Sticky Formula Bar — Never disappears when scrolling to last row (Issue 4) */
 .excel-formula-bar {
   position: sticky;
   top: 0;
-  z-index: 15;
+  z-index: 25;
   display: flex;
   align-items: center;
   background: #f8fafc;
@@ -854,10 +886,18 @@ td.excel-sel-right {
 }
 
 .excel-sheet-viewport {
-  overflow: auto;
-  flex: 1;
-  max-height: calc(100vh - 170px);
+  overflow: auto !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding-bottom: 0 !important;
   -webkit-overflow-scrolling: touch;
+}
+
+.excel-grid-table {
+  margin-bottom: 0 !important;
 }
 
 /* Multi-Column Layout (With visible dividing line in between columns) */
@@ -1216,19 +1256,33 @@ body.slide-deck-mode .pptx-slide-card {
   animation: dropIn 0.15s ease;
 }
 
-/* PPT Slide Boundaries & Freeform Drag Adjustment (Issue 5) */
+/* PPT Slide Boundaries & Dynamic Auto-Expansion (Issue 1) */
 .pptx-slide-wrapper {
   overflow: visible !important;
+  position: relative;
 }
 .pptx-slide-card {
+  height: auto !important;
+  min-height: 480px !important;
   overflow: visible !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
 }
 .slide-freeform-rect,
 .slide-nested-card,
 .slide-title-box,
-.slide-content-box {
+.slide-content-box,
+.pptx-slide-title,
+.pptx-slide-body {
   position: relative;
   cursor: default;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 .slide-freeform-rect:hover,
 .slide-nested-card:hover,
@@ -1236,6 +1290,10 @@ body.slide-deck-mode .pptx-slide-card {
 .slide-content-box:hover {
   outline: 1.5px dashed var(--accent);
   outline-offset: 2px;
+}
+
+#pptxSidebarAddPopover {
+  z-index: 99999 !important;
 }
 
 /* PPT Slide Sidebar (Microsoft PowerPoint style thumbnail deck - Issue 5) */
@@ -1495,10 +1553,16 @@ body.slide-deck-mode .pptx-slide-card {
   border-radius: 12px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
   padding: 28px 36px;
-  min-height: 260px;
+  min-height: 480px;
+  height: auto !important;
   position: relative;
   transition: box-shadow 0.2s ease;
   color: var(--text-primary);
+  display: flex !important;
+  flex-direction: column !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  box-sizing: border-box !important;
 }
 
 .pptx-slide-card:hover {
@@ -2248,6 +2312,103 @@ body.df-focus-mode .tab-bar:hover {
 .pptx-slide-wrapper[data-transition="cube"] .pptx-slide-card {
   animation: pptCube3D 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes pptSplitDoors {
+  from { opacity: 0; transform: scaleX(0.2); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+@keyframes pptFlash {
+  0% { opacity: 0; filter: brightness(3); }
+  50% { opacity: 1; filter: brightness(1.8); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+@keyframes pptShutter {
+  from { opacity: 0; clip-path: inset(45% 0 45% 0); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+@keyframes pptDoor {
+  from { opacity: 0; transform: perspective(1200px) rotateY(-80deg); transform-origin: left center; }
+  to { opacity: 1; transform: perspective(1200px) rotateY(0deg); transform-origin: left center; }
+}
+@keyframes pptFlyIn {
+  from { opacity: 0; transform: translate3d(-100px, 100px, 0) scale(0.8); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes pptFall {
+  from { opacity: 0; transform: translateY(-80px) rotate(-6deg); }
+  to { opacity: 1; transform: translateY(0) rotate(0deg); }
+}
+
+.pptx-slide-wrapper[data-transition="split"] .pptx-slide-card {
+  animation: pptSplitDoors 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.pptx-slide-wrapper[data-transition="flash"] .pptx-slide-card {
+  animation: pptFlash 0.5s ease-out forwards;
+}
+.pptx-slide-wrapper[data-transition="shutter"] .pptx-slide-card {
+  animation: pptShutter 0.45s ease-out forwards;
+}
+.pptx-slide-wrapper[data-transition="door"] .pptx-slide-card {
+  animation: pptDoor 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.pptx-slide-wrapper[data-transition="fly-in"] .pptx-slide-card {
+  animation: pptFlyIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.pptx-slide-wrapper[data-transition="fall"] .pptx-slide-card {
+  animation: pptFall 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* PPT Element Animations */
+@keyframes elemFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes elemFlyIn {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes elemZoomIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes elemBounceIn {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { opacity: 1; transform: scale(1.08); }
+  70% { transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes elemPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes elemShimmer {
+  0% { filter: brightness(1); }
+  50% { filter: brightness(1.6) drop-shadow(0 0 10px rgba(59, 130, 246, 0.6)); }
+  100% { filter: brightness(1); }
+}
+@keyframes elemSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes elemFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0.2; }
+}
+@keyframes elemZoomOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0.2; transform: scale(0.6); }
+}
+
+.anim-fade-in, [data-animation="fade-in"] { animation: elemFadeIn 0.5s ease-out forwards; }
+.anim-fly-in, [data-animation="fly-in"] { animation: elemFlyIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-zoom-in, [data-animation="zoom-in"] { animation: elemZoomIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.anim-bounce-in, [data-animation="bounce-in"] { animation: elemBounceIn 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+.anim-pulse, [data-animation="pulse"] { animation: elemPulse 0.6s ease-in-out; }
+.anim-shimmer, [data-animation="shimmer"] { animation: elemShimmer 0.7s ease-in-out; }
+.anim-spin, [data-animation="spin"] { animation: elemSpin 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.anim-fade-out, [data-animation="fade-out"] { animation: elemFadeOut 0.5s ease-out forwards; }
+.anim-zoom-out, [data-animation="zoom-out"] { animation: elemZoomOut 0.45s ease-out forwards; }
 
 /* Hide Slide Numbers when toggled */
 .editor-page.hide-slide-badges .pptx-slide-badge,
