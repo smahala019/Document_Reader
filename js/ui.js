@@ -20,42 +20,79 @@
       .replace(/'/g, '&#39;');
   }
 
-  // Toast Notification System (capped at 5 to prevent infinite stacking, deduplicated to prevent spam)
+  // Toast Notification System (Issue 5: max 3 visible at once, dismisses previous top toast on new one)
   let lastToastMsg = '';
   let lastToastTime = 0;
 
   function showToast(message, type = 'info') {
+    if (!message) return;
     const now = Date.now();
-    if (message === lastToastMsg && (now - lastToastTime) < 1500) {
-      return; // Deduplicate repeated toast
+    if (message === lastToastMsg && (now - lastToastTime) < 300) {
+      return; // Ignore rapid spam
     }
     lastToastMsg = message;
     lastToastTime = now;
 
-    const container = $('#toastContainer');
-    if (!container) return;
+    let container = $('#toastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'toastContainer';
+      container.className = 'toast-container';
+      container.setAttribute('aria-live', 'polite');
+      document.body.appendChild(container);
+    }
 
-    while (container.children.length >= 5) {
-      container.removeChild(container.firstElementChild);
+    // Ensure that only 3 toast notifications are visible at a time (Issue 5).
+    // When a new notification appears, automatically close the previous top notification before displaying the new one.
+    const activeToasts = Array.from(container.querySelectorAll('.toast:not(.toast-closing)'));
+    while (activeToasts.length >= 3) {
+      const topToast = activeToasts.shift();
+      if (topToast) {
+        topToast.classList.remove('show');
+        topToast.classList.add('toast-closing');
+        setTimeout(() => {
+          if (topToast.parentNode) topToast.remove();
+        }, 280);
+      }
     }
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     const icons = {
-      success: 'fa-check-circle',
-      error: 'fa-exclamation-circle',
+      success: 'fa-circle-check',
+      error: 'fa-circle-exclamation',
       warning: 'fa-triangle-exclamation',
-      info: 'fa-info-circle'
+      info: 'fa-circle-info'
     };
-    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i><span>${escHtml(message)}</span>`;
-    container.appendChild(toast);
+    toast.innerHTML = `
+      <i class="fas ${icons[type] || icons.info} toast-icon"></i>
+      <span class="toast-msg">${escHtml(message)}</span>
+      <button class="toast-close-btn" type="button" aria-label="Dismiss">&times;</button>
+    `;
 
+    const closeBtn = toast.querySelector('.toast-close-btn');
+    const dismiss = () => {
+      toast.classList.remove('show');
+      toast.classList.add('toast-closing');
+      setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+      }, 280);
+    };
+    if (closeBtn) {
+      closeBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        dismiss();
+      });
+    }
+
+    container.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('show'));
 
+    // Ensure notification remains visible long enough to read (4s for info/success, 5s for warnings/errors)
+    const duration = (type === 'error' || type === 'warning') ? 5000 : 4000;
     setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 350);
-    }, 3500);
+      if (toast.parentNode) dismiss();
+    }, duration);
   }
 
   // Theme Management
@@ -237,6 +274,7 @@
         const editorWrap = $('#editorWrap');
         if (editor) editor.innerHTML = tab.content;
         if (editorWrap) editorWrap.scrollTop = tab.scroll || 0;
+        window.DocFlow?.Editor?.resetHistoryForTab?.(tab.content);
 
         // Auto-adjust editor canvas for Excel / CSV mode (Bug 6)
         const isExcelOrCsv = (tab.name && (tab.name.endsWith('.xlsx') || tab.name.endsWith('.xls') || tab.name.endsWith('.csv'))) ||
@@ -299,6 +337,10 @@
             window.DocFlow?.switchRibbonTab?.('ppt');
           } else if (tab.name && (tab.name.toLowerCase().endsWith('.xlsx') || tab.name.toLowerCase().endsWith('.xls'))) {
             window.DocFlow?.switchRibbonTab?.('excel');
+          } else if (tab.name && (tab.name.toLowerCase().endsWith('.md') || tab.name.toLowerCase().endsWith('.markdown'))) {
+            window.DocFlow?.switchRibbonTab?.('md');
+          } else if (tab.name && (tab.name.toLowerCase().endsWith('.html') || tab.name.toLowerCase().endsWith('.htm'))) {
+            window.DocFlow?.switchRibbonTab?.('html');
           }
         });
       } else if (tab.type === 'pdf') {
@@ -344,8 +386,17 @@
 
       if (this.list.length === 0) {
         this.activeId = null;
+        const edWrap = document.getElementById('editorWrap');
+        const ed = document.getElementById('editor');
+        if (edWrap) edWrap.classList.remove('is-excel-mode');
+        if (ed) {
+          ed.classList.remove('excel-view-mode', 'is-pptx-deck');
+          ed.innerHTML = '';
+          ed.contentEditable = 'true';
+        }
         if (window.DocFlow) {
           window.DocFlow.switchMode('empty');
+          window.DocFlow?.switchRibbonTab?.('home');
           $('#fileNameDisplay').textContent = 'DocFlow';
           $('#fileTypeInfo').textContent = 'No file';
           window.DocFlow.setModified(false);
@@ -364,6 +415,7 @@
 
       this.render();
       this.save();
+      showToast(`Closed "${tab.name}"`, 'info');
     },
 
     rename(id) {
@@ -527,22 +579,35 @@
   // Floating Popover Positioner (Guarantees popovers float on top of editor with z-index 99999)
   function positionPopover(trigger, popover) {
     if (!trigger || !popover) return;
+    // Issue 5: Ensure only one dropdown menu can be open at a time across all toolbars
+    const wasOpen = popover.classList.contains('show');
+    closeAllPopovers();
+    if (wasOpen) return;
+
     const rect = trigger.getBoundingClientRect();
     popover.style.position = 'fixed';
     popover.style.zIndex = '99999';
     popover.classList.add('show');
 
-    // Smart vertical positioning
-    if (rect.bottom + 220 > window.innerHeight && rect.top > 220) {
-      popover.style.top = Math.max(8, rect.top - popover.offsetHeight - 4) + 'px';
-      popover.style.maxHeight = (rect.top - 16) + 'px';
+    // Smart vertical positioning with mobile containment (Bug 6)
+    const isMobile = window.innerWidth <= 768;
+    const maxAllowedHeight = isMobile
+      ? Math.min(250, Math.floor(window.innerHeight * 0.45))
+      : Math.min(360, Math.floor(window.innerHeight * 0.7));
+
+    popover.style.maxHeight = maxAllowedHeight + 'px';
+    popover.style.overflowY = 'auto';
+
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+
+    if (spaceBelow < maxAllowedHeight && spaceAbove > spaceBelow) {
+      popover.style.top = Math.max(8, rect.top - Math.min(popover.offsetHeight || maxAllowedHeight, spaceAbove) - 4) + 'px';
     } else {
       popover.style.top = (rect.bottom + 4) + 'px';
-      popover.style.maxHeight = 'calc(100vh - ' + (rect.bottom + 16) + 'px)';
     }
 
-    popover.style.overflowY = 'auto';
-    const popoverWidth = popover.offsetWidth || 230;
+    const popoverWidth = popover.offsetWidth || (isMobile ? 240 : 260);
     let left = rect.left;
     if (left + popoverWidth > window.innerWidth - 10) {
       left = window.innerWidth - popoverWidth - 10;
@@ -552,8 +617,9 @@
   }
 
   function closeAllPopovers() {
-    document.querySelectorAll('.margin-popover.show, .bullet-popover.show, .spacing-popover.show, .tab-menu-dropdown.show, .dropdown.show, .df-popover.show').forEach(p => {
-      p.classList.remove('show');
+    // Issue 5: Close all dropdowns & popovers across all toolbars and views
+    document.querySelectorAll('.margin-popover.show, .bullet-popover.show, .spacing-popover.show, .tab-menu-dropdown.show, .dropdown.show, .dropdown-menu.show, .df-popover.show, #saveDropdown.show, .slide-plus-menu.open').forEach(p => {
+      p.classList.remove('show', 'open');
     });
   }
 
@@ -562,7 +628,8 @@
     if (!e.target.closest('.tab-more-btn') && !e.target.closest('.tab-menu-dropdown') &&
         !e.target.closest('.bullet-dropdown-wrap') && !e.target.closest('.margin-popover') &&
         !e.target.closest('.spacing-popover') && !e.target.closest('.dropdown') &&
-        !e.target.closest('#ribbonSaveDropdownBtn')) {
+        !e.target.closest('.dropdown-menu') && !e.target.closest('#ribbonSaveDropdownBtn') &&
+        !e.target.closest('.slide-plus-menu') && !e.target.closest('.slide-plus-action-btn')) {
       closeAllPopovers();
     }
   });
@@ -628,6 +695,10 @@
     closeAllPopovers();
     handleRibbonResize();
   });
+
+  // Global shortcuts
+  window.showToast = showToast;
+  window.closeAllPopovers = closeAllPopovers;
 
   // Export to namespace
   window.DocFlow = window.DocFlow || {};

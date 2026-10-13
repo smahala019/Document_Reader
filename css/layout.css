@@ -545,6 +545,9 @@
   z-index: 1000 !important;
   display: none;
   min-width: 150px;
+  max-height: min(280px, 50vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   animation: dropIn 0.15s ease;
 }
 
@@ -1478,6 +1481,19 @@
   font-weight: 600;
 }
 
+/* Issue 8: Remove only Line, Column, Word Count, and Char Count for Excel & PPT files */
+body.is-excel-file #wordCountItem,
+body.is-excel-file #charCountItem,
+body.is-excel-file #lineInfoWrap,
+body.is-ppt-file #wordCountItem,
+body.is-ppt-file #charCountItem,
+body.is-ppt-file #lineInfoWrap,
+body.is-excel-or-ppt-file #wordCountItem,
+body.is-excel-or-ppt-file #charCountItem,
+body.is-excel-or-ppt-file #lineInfoWrap {
+  display: none !important;
+}
+
 .status-credit {
   font-size: 10px;
   color: var(--text-secondary);
@@ -1814,6 +1830,69 @@ body.reading-mode .exit-reading-mode-btn {
     max-height: 90vh !important;
     overflow-y: auto !important;
     padding: 16px 14px !important;
+  }
+
+  /* Small-height & scrollable dropdown menus on mobile (Bug 6) */
+  .spacing-popover,
+  .bullet-popover,
+  .margin-popover,
+  .dropdown-menu,
+  .tab-menu-dropdown,
+  #mdFormatPopover,
+  #htmlFormatPopover,
+  #excelSelectMultiplePopover,
+  #pptNewSlidePopover,
+  #pptSlideThemePopover,
+  #pptTransitionPopover,
+  #pptAnimationPopover,
+  #pptBgImagePopover {
+    max-height: min(240px, 42vh) !important;
+    max-width: calc(100vw - 20px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  /* Responsive Ribbon & Action Buttons (Bug 6) */
+  .fmt-btn.with-text {
+    font-size: 11px !important;
+    padding: 3px 6px !important;
+    white-space: nowrap !important;
+  }
+  .fmt-btn.with-text i {
+    font-size: 11px !important;
+  }
+  .ribbon-bar {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .ribbon-tabs {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .ribbon-panel.active {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+  }
+  .ribbon-group {
+    flex-shrink: 0 !important;
+  }
+
+  /* Responsive Code Preview Modal (Bugs 1, 2, 6) */
+  #codePreviewModal .modal {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    height: 90vh !important;
+    max-height: 90vh !important;
+    padding: 12px 10px !important;
+  }
+  #previewModalTitle {
+    font-size: 13px !important;
+  }
+  .preview-device-pills {
+    display: none !important;
   }
 }
 

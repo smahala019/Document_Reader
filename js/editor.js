@@ -208,64 +208,140 @@
     showToast('Formatting cleared', 'info');
   }
 
-  // Undo / Redo History Stack (Issue 5: Supports macro operations like slide deletion)
+  // Universal Undo / Redo History Stack (Bug 4)
   const undoStack = [];
   const redoStack = [];
+  let isUndoRedoing = false;
+  let snapshotTimer = null;
 
-  function saveSnapshot() {
-    if (!editor) return;
-    undoStack.push({
+  function getCurrentDocState() {
+    if (!editor) return null;
+    return {
       html: editor.innerHTML,
       slideIdx: window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0
-    });
-    if (undoStack.length > 50) undoStack.shift();
-    redoStack.length = 0;
+    };
+  }
+
+  function saveSnapshot(force = false) {
+    if (!editor || isUndoRedoing) return;
+    const currentState = getCurrentDocState();
+    if (!currentState) return;
+
+    const lastState = undoStack[undoStack.length - 1];
+    // Don't push duplicate state unless forced
+    if (!force && lastState && lastState.html === currentState.html && lastState.slideIdx === currentState.slideIdx) {
+      return;
+    }
+
+    undoStack.push(currentState);
+    if (undoStack.length > 60) undoStack.shift();
+    redoStack.length = 0; // Clear redo on new action
+    updateUndoRedoUI();
+  }
+
+  function debouncedSnapshot(delay = 450) {
+    if (isUndoRedoing) return;
+    clearTimeout(snapshotTimer);
+    snapshotTimer = setTimeout(() => {
+      saveSnapshot();
+    }, delay);
   }
 
   function undo() {
-    if (undoStack.length > 0) {
-      redoStack.push({
-        html: editor.innerHTML,
-        slideIdx: window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0
-      });
-      const state = undoStack.pop();
-      editor.innerHTML = state.html;
-      notifyChange();
-      if (window.DocFlow?.selectPptSlide) {
-        window.DocFlow.selectPptSlide(state.slideIdx);
-      } else if (window.DocFlow?.updatePptSidebar) {
-        window.DocFlow.updatePptSidebar();
-      }
-      return true;
+    // If in PDF view mode, handle PDF undo
+    if (window.DocFlow?.currentMode === 'view' && window.DocFlow?.PDF?.undoPdf) {
+      return window.DocFlow.PDF.undoPdf();
     }
-    try {
-      return document.execCommand('undo');
-    } catch (e) {
+    if (window.DocFlow.currentMode !== 'edit' && window.DocFlow.currentMode !== 'empty') return false;
+
+    if (undoStack.length > 1) {
+      isUndoRedoing = true;
+      // Pop current state and push to redo stack
+      const current = undoStack.pop();
+      redoStack.push(current);
+
+      const targetState = undoStack[undoStack.length - 1];
+      if (targetState && editor) {
+        editor.innerHTML = targetState.html;
+        notifyChange();
+        if (window.DocFlow?.isPptxDocument?.()) {
+          if (window.DocFlow.selectPptSlide) window.DocFlow.selectPptSlide(targetState.slideIdx);
+          else if (window.DocFlow.updatePptSidebar) window.DocFlow.updatePptSidebar();
+        } else if (window.DocFlow?.setupExcelInteractions) {
+          window.DocFlow.setupExcelInteractions();
+        }
+      }
+      isUndoRedoing = false;
+      updateToolbarState();
+      updateUndoRedoUI();
+      showToast('Undo performed', 'info');
+      return true;
+    } else {
+      showToast('Nothing to undo', 'info');
       return false;
     }
   }
 
   function redo() {
-    if (redoStack.length > 0) {
-      undoStack.push({
-        html: editor.innerHTML,
-        slideIdx: window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0
-      });
-      const state = redoStack.pop();
-      editor.innerHTML = state.html;
-      notifyChange();
-      if (window.DocFlow?.selectPptSlide) {
-        window.DocFlow.selectPptSlide(state.slideIdx);
-      } else if (window.DocFlow?.updatePptSidebar) {
-        window.DocFlow.updatePptSidebar();
-      }
-      return true;
+    // If in PDF view mode, handle PDF redo
+    if (window.DocFlow?.currentMode === 'view' && window.DocFlow?.PDF?.redoPdf) {
+      return window.DocFlow.PDF.redoPdf();
     }
-    try {
-      return document.execCommand('redo');
-    } catch (e) {
+    if (window.DocFlow.currentMode !== 'edit' && window.DocFlow.currentMode !== 'empty') return false;
+
+    if (redoStack.length > 0) {
+      isUndoRedoing = true;
+      const state = redoStack.pop();
+      undoStack.push(state);
+
+      if (state && editor) {
+        editor.innerHTML = state.html;
+        notifyChange();
+        if (window.DocFlow?.isPptxDocument?.()) {
+          if (window.DocFlow.selectPptSlide) window.DocFlow.selectPptSlide(state.slideIdx);
+          else if (window.DocFlow.updatePptSidebar) window.DocFlow.updatePptSidebar();
+        } else if (window.DocFlow?.setupExcelInteractions) {
+          window.DocFlow.setupExcelInteractions();
+        }
+      }
+      isUndoRedoing = false;
+      updateToolbarState();
+      updateUndoRedoUI();
+      showToast('Redo performed', 'info');
+      return true;
+    } else {
+      showToast('Nothing to redo', 'info');
       return false;
     }
+  }
+
+  function updateUndoRedoUI() {
+    const btnUndo = $('#btnUndo');
+    const btnRedo = $('#btnRedo');
+    if (btnUndo) {
+      const canUndo = (window.DocFlow?.currentMode === 'view')
+        ? (window.DocFlow?.PDF?.canUndoPdf?.() || false)
+        : (undoStack.length > 1);
+      btnUndo.classList.toggle('disabled', !canUndo);
+      btnUndo.style.opacity = canUndo ? '1' : '0.45';
+    }
+    if (btnRedo) {
+      const canRedo = (window.DocFlow?.currentMode === 'view')
+        ? (window.DocFlow?.PDF?.canRedoPdf?.() || false)
+        : (redoStack.length > 0);
+      btnRedo.classList.toggle('disabled', !canRedo);
+      btnRedo.style.opacity = canRedo ? '1' : '0.45';
+    }
+  }
+
+  function resetHistoryForTab(content = '', slideIdx = 0) {
+    undoStack.length = 0;
+    redoStack.length = 0;
+    undoStack.push({
+      html: content || (editor ? editor.innerHTML : ''),
+      slideIdx: slideIdx || 0
+    });
+    updateUndoRedoUI();
   }
 
   // Command Execution
@@ -273,18 +349,16 @@
     if (window.DocFlow.currentMode !== 'edit') return false;
     focusEditor();
     if (cmd === 'undo') {
-      if (undoStack.length > 0) {
-        undo();
-        updateToolbarState();
-        return true;
-      }
+      undo();
+      updateToolbarState();
+      return true;
     } else if (cmd === 'redo') {
-      if (redoStack.length > 0) {
-        redo();
-        updateToolbarState();
-        return true;
-      }
+      redo();
+      updateToolbarState();
+      return true;
     }
+    // Save snapshot before executing formatting command
+    saveSnapshot();
     try {
       document.execCommand(cmd, false, value);
     } catch (e) {
@@ -292,6 +366,7 @@
     }
     updateToolbarState();
     notifyChange();
+    saveSnapshot();
     return true;
   }
 
@@ -1478,6 +1553,7 @@
     editor.addEventListener('input', () => {
       saveSelection();
       notifyChange();
+      debouncedSnapshot();
     });
 
     editor.addEventListener('mouseup', () => {
@@ -1580,18 +1656,25 @@
             }
           }
         }
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
-        if (undoStack.length > 0) {
-          e.preventDefault();
-          e.stopPropagation();
-          undo();
+      }
+    });
+
+    // Global Keydown Handler for Ctrl+Z and Ctrl+Y (Universal across all documents - Bug 4)
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
+          return; // Allow native form input undo
         }
+        e.preventDefault();
+        e.stopPropagation();
+        undo();
       } else if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
-        if (redoStack.length > 0) {
-          e.preventDefault();
-          e.stopPropagation();
-          redo();
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
+          return; // Allow native form input redo
         }
+        e.preventDefault();
+        e.stopPropagation();
+        redo();
       }
     });
 
@@ -1622,6 +1705,9 @@
     insertHtmlAtCursor,
     execCmd,
     saveSnapshot,
+    debouncedSnapshot,
+    resetHistoryForTab,
+    updateUndoRedoUI,
     undo,
     redo,
     updateCounts,

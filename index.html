@@ -16,6 +16,8 @@
   
   <!-- JSZip for PowerPoint (.pptx) & Word (.docx) decompression -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Marked.js for High-Fidelity Markdown Live Previews -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 
   <!-- Modular Stylesheets -->
   <link rel="stylesheet" href="css/style.css">
@@ -79,7 +81,7 @@
        ====================================================================== -->
   <div class="ribbon-container" id="ribbonContainer" aria-label="Microsoft Word Style Ribbon">
     
-    <!-- Ribbon Menu Bar (Tabs: File, Home, Insert, Layout, View, PPT, Excel) -->
+    <!-- Ribbon Menu Bar (Tabs: File, Home, Insert, Layout, View, PPT, Excel, PDF, MD, HTML) -->
     <nav class="ribbon-menu-bar" role="tablist">
       <button class="ribbon-tab-btn" data-ribbon="file" role="tab" aria-selected="false">File</button>
       <button class="ribbon-tab-btn active" data-ribbon="home" role="tab" aria-selected="true">Home</button>
@@ -89,6 +91,8 @@
       <button class="ribbon-tab-btn" data-ribbon="ppt" role="tab" aria-selected="false"><i class="fas fa-file-powerpoint" style="color:#ea580c;margin-right:4px;"></i>PPT</button>
       <button class="ribbon-tab-btn" data-ribbon="excel" role="tab" aria-selected="false"><i class="fas fa-file-excel" style="color:#16a34a;margin-right:4px;"></i>Excel</button>
       <button class="ribbon-tab-btn" data-ribbon="pdf" role="tab" aria-selected="false"><i class="fas fa-file-pdf" style="color:#ef4444;margin-right:4px;"></i>PDF</button>
+      <button class="ribbon-tab-btn" data-ribbon="md" role="tab" aria-selected="false"><i class="fab fa-markdown" style="color:#0284c7;margin-right:4px;"></i>MD</button>
+      <button class="ribbon-tab-btn" data-ribbon="html" role="tab" aria-selected="false"><i class="fab fa-html5" style="color:#ea580c;margin-right:4px;"></i>HTML</button>
     </nav>
 
     <!-- 1. FILE RIBBON PANEL -->
@@ -774,6 +778,7 @@
           <input type="file" id="pptBgFileInput" accept="image/*" style="display:none;">
         </div>
         <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pptAutoFitBtn" title="Auto-Fit Text to Slide Boundaries (Shrinks text to fit)"><i class="fas fa-compress-alt" style="color:#f59e0b;"></i> Auto-Fit</button>
           <button class="fmt-btn with-text" id="pptNotesBtn" title="Toggle Presentation Speaker Notes"><i class="fas fa-comment-dots" style="color:#0284c7;"></i> Notes</button>
         </div>
       </div>
@@ -805,6 +810,12 @@
               <div class="spacing-opt-item" data-transition="door"><i class="fas fa-door-open" style="margin-right:6px;color:#10b981;"></i> Door Swing</div>
               <div class="spacing-opt-item" data-transition="fly-in"><i class="fas fa-paper-plane" style="margin-right:6px;color:#8b5cf6;"></i> Fly In</div>
               <div class="spacing-opt-item" data-transition="fall"><i class="fas fa-caret-down" style="margin-right:6px;color:#ef4444;"></i> Fall Over</div>
+              <div class="spacing-opt-item" data-transition="curtains"><i class="fas fa-person-booth" style="margin-right:6px;color:#a855f7;"></i> Curtains Open</div>
+              <div class="spacing-opt-item" data-transition="dissolve"><i class="fas fa-braille" style="margin-right:6px;color:#06b6d4;"></i> Pixel Dissolve</div>
+              <div class="spacing-opt-item" data-transition="origami"><i class="fas fa-dove" style="margin-right:6px;color:#10b981;"></i> Origami Fold</div>
+              <div class="spacing-opt-item" data-transition="vortex"><i class="fas fa-tornado" style="margin-right:6px;color:#f59e0b;"></i> Vortex Swirl</div>
+              <div class="spacing-opt-item" data-transition="switch"><i class="fas fa-repeat" style="margin-right:6px;color:#ec4899;"></i> 3D Switch</div>
+              <div class="spacing-opt-item" data-transition="ripple"><i class="fas fa-water" style="margin-right:6px;color:#0284c7;"></i> Water Ripple</div>
             </div>
           </div>
           <div class="bullet-dropdown-wrap" id="pptAnimationDropdownWrap">
@@ -821,6 +832,12 @@
               <div class="spacing-opt-item" data-animation="pulse"><i class="fas fa-heart-pulse" style="margin-right:6px;color:#ef4444;"></i> Pulse (Emphasis)</div>
               <div class="spacing-opt-item" data-animation="shimmer"><i class="fas fa-wand-magic" style="margin-right:6px;color:#8b5cf6;"></i> Shimmer (Emphasis)</div>
               <div class="spacing-opt-item" data-animation="spin"><i class="fas fa-arrows-rotate" style="margin-right:6px;color:#06b6d4;"></i> Spin (360°)</div>
+              <div class="spacing-opt-item" data-animation="swing"><i class="fas fa-bell" style="margin-right:6px;color:#a855f7;"></i> Swing</div>
+              <div class="spacing-opt-item" data-animation="wobble"><i class="fas fa-shuffle" style="margin-right:6px;color:#f97316;"></i> Wobble</div>
+              <div class="spacing-opt-item" data-animation="rubber-band"><i class="fas fa-expand-alt" style="margin-right:6px;color:#10b981;"></i> Rubber Band</div>
+              <div class="spacing-opt-item" data-animation="flip-in"><i class="fas fa-rotate" style="margin-right:6px;color:#06b6d4;"></i> 3D Flip In</div>
+              <div class="spacing-opt-item" data-animation="slide-in-right"><i class="fas fa-arrow-left" style="margin-right:6px;color:#3b82f6;"></i> Slide In Right</div>
+              <div class="spacing-opt-item" data-animation="slide-in-left"><i class="fas fa-arrow-right" style="margin-right:6px;color:#ec4899;"></i> Slide In Left</div>
               <div class="spacing-opt-item" data-animation="fade-out"><i class="fas fa-eye-slash" style="margin-right:6px;color:#64748b;"></i> Fade Out (Exit)</div>
               <div class="spacing-opt-item" data-animation="zoom-out"><i class="fas fa-magnifying-glass-minus" style="margin-right:6px;color:#6b7280;"></i> Zoom Out (Exit)</div>
             </div>
@@ -861,6 +878,44 @@
           <button class="fmt-btn with-text" id="excelAddColLeftBtn" title="Insert Column Left"><i class="fas fa-circle-arrow-left" style="color:#0284c7;"></i> Col Left</button>
           <button class="fmt-btn with-text" id="excelAddColRightBtn" title="Insert Column Right"><i class="fas fa-circle-arrow-right" style="color:#0284c7;"></i> Col Right</button>
           <button class="fmt-btn with-text" id="excelDelColBtn" title="Delete Current Column"><i class="fas fa-trash-can" style="color:#ef4444;"></i> Del Col</button>
+        </div>
+      </div>
+
+      <!-- Selection Management (Issue 2) -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="excelSelectRowBtn" title="Select Row at cursor position">
+            <i class="fas fa-arrows-left-right-to-line" style="color:#16a34a;"></i> Select Row
+          </button>
+          <button class="fmt-btn with-text" id="excelSelectColBtn" title="Select Column at cursor position">
+            <i class="fas fa-arrows-up-down-to-line" style="color:#0284c7;"></i> Select Column
+          </button>
+          <button class="fmt-btn with-text" id="excelDeselectBtn" title="Deselect Current Rows/Columns (Clear Selection)">
+            <i class="fas fa-xmark" style="color:#ef4444;"></i> Deselect
+          </button>
+        </div>
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="excelSelectMultipleDropdownWrap">
+            <button class="fmt-btn with-text" id="excelSelectMultipleBtn" title="Select Multiple Rows or Columns">
+              <i class="fas fa-object-group" style="color:#8b5cf6;"></i><span>Select Multiple</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="excelSelectMultiplePopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Select Multiple</div>
+              <div class="spacing-opt-item" id="excelSelectMultipleRowsOpt">
+                <i class="fas fa-bars" style="margin-right:6px;color:#16a34a;"></i> Row
+              </div>
+              <div class="spacing-opt-item" id="excelSelectMultipleColsOpt">
+                <i class="fas fa-table-columns" style="margin-right:6px;color:#0284c7;"></i> Column
+              </div>
+              <div class="spacing-opt-item" id="excelSelectMultipleBothOpt">
+                <i class="fas fa-table-cells" style="margin-right:6px;color:#8b5cf6;"></i> Both (Row & Column)
+              </div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div class="spacing-opt-item" id="excelDeselectOpt" style="color:var(--danger,#ef4444);">
+                <i class="fas fa-ban" style="margin-right:6px;color:#ef4444;"></i> Deselect All
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -948,6 +1003,168 @@
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="pdfRibbonRotateBtn" title="Rotate PDF Page 90° Clockwise"><i class="fas fa-rotate-right" style="color:#0284c7;"></i> Rotate 90°</button>
           <button class="fmt-btn with-text" id="pdfRibbonInvertBtn" title="Invert Colors / Night Reading Mode for PDF"><i class="fas fa-circle-half-stroke" style="color:#a855f7;"></i> Night Mode</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. MARKDOWN RIBBON PANEL (MD Tools & Live Preview) -->
+    <div class="ribbon-panel" id="ribbonPanelMd" role="tabpanel">
+      <!-- Consolidated Markdown Elements Dropdown Menu (Scrollable container with small height and all element/tag buttons inside) -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="mdFormatDropdownWrap">
+            <button class="fmt-btn with-text" id="mdFormatMenuBtn" title="Markdown Content & Formatting Elements Dropdown">
+              <i class="fab fa-markdown" style="color:#0284c7;"></i><span>Insert & Format</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="mdFormatPopover" role="menu" style="min-width:250px;max-height:260px;overflow-y:auto;">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Headings</div>
+              <div class="spacing-opt-item" data-md-action="h1"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">#</strong> Heading 1 (H1)</div>
+              <div class="spacing-opt-item" data-md-action="h2"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">##</strong> Heading 2 (H2)</div>
+              <div class="spacing-opt-item" data-md-action="h3"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">###</strong> Heading 3 (H3)</div>
+              <div class="spacing-opt-item" data-md-action="h4"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">####</strong> Heading 4 (H4)</div>
+              <div class="spacing-opt-item" data-md-action="h5"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">#####</strong> Heading 5 (H5)</div>
+              <div class="spacing-opt-item" data-md-action="h6"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">######</strong> Heading 6 (H6)</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Text Styling & Marks</div>
+              <div class="spacing-opt-item" data-md-action="bold"><i class="fas fa-bold" style="color:#0284c7;margin-right:8px;"></i> Bold (**text**)</div>
+              <div class="spacing-opt-item" data-md-action="italic"><i class="fas fa-italic" style="color:#06b6d4;margin-right:8px;"></i> Italic (*text*)</div>
+              <div class="spacing-opt-item" data-md-action="strike"><i class="fas fa-strikethrough" style="color:#ef4444;margin-right:8px;"></i> Strikethrough (~~text~~)</div>
+              <div class="spacing-opt-item" data-md-action="mark"><i class="fas fa-highlighter" style="color:#eab308;margin-right:8px;"></i> Highlight (==text==)</div>
+              <div class="spacing-opt-item" data-md-action="sub"><i class="fas fa-subscript" style="color:#8b5cf6;margin-right:8px;"></i> Subscript (~text~)</div>
+              <div class="spacing-opt-item" data-md-action="sup"><i class="fas fa-superscript" style="color:#ec4899;margin-right:8px;"></i> Superscript (^text^)</div>
+              <div class="spacing-opt-item" data-md-action="kbd"><i class="fas fa-keyboard" style="color:#64748b;margin-right:8px;"></i> Keyboard Key (&lt;kbd&gt;)</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Code, Math & Diagrams</div>
+              <div class="spacing-opt-item" data-md-action="codeblock"><i class="fas fa-file-code" style="color:#8b5cf6;margin-right:8px;"></i> Code Block (```)</div>
+              <div class="spacing-opt-item" data-md-action="inlinecode"><i class="fas fa-code" style="color:#06b6d4;margin-right:8px;"></i> Inline Code (`)</div>
+              <div class="spacing-opt-item" data-md-action="math"><i class="fas fa-square-root-variable" style="color:#ec4899;margin-right:8px;"></i> Math LaTeX Block ($$)</div>
+              <div class="spacing-opt-item" data-md-action="mermaid"><i class="fas fa-diagram-project" style="color:#10b981;margin-right:8px;"></i> Mermaid Diagram</div>
+              <div class="spacing-opt-item" data-md-action="quote"><i class="fas fa-quote-left" style="color:#f59e0b;margin-right:8px;"></i> Blockquote (&gt;)</div>
+              <div class="spacing-opt-item" data-md-action="callout"><i class="fas fa-circle-info" style="color:#3b82f6;margin-right:8px;"></i> Callout / Note Box</div>
+              <div class="spacing-opt-item" data-md-action="details"><i class="fas fa-chevron-down" style="color:#8b5cf6;margin-right:8px;"></i> Collapsible Details</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Lists & Checkboxes</div>
+              <div class="spacing-opt-item" data-md-action="ul"><i class="fas fa-list-ul" style="color:#10b981;margin-right:8px;"></i> Bulleted List (-)</div>
+              <div class="spacing-opt-item" data-md-action="ol"><i class="fas fa-list-ol" style="color:#10b981;margin-right:8px;"></i> Numbered List (1.)</div>
+              <div class="spacing-opt-item" data-md-action="task"><i class="fas fa-square-check" style="color:#8b5cf6;margin-right:8px;"></i> Task Checkbox (- [ ])</div>
+              <div class="spacing-opt-item" data-md-action="deflist"><i class="fas fa-bars-staggered" style="color:#0284c7;margin-right:8px;"></i> Definition List (: )</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Tables, Links & Structure</div>
+              <div class="spacing-opt-item" data-md-action="table"><i class="fas fa-table" style="color:#2563eb;margin-right:8px;"></i> Markdown Table (|)</div>
+              <div class="spacing-opt-item" data-md-action="align-table"><i class="fas fa-table-cells" style="color:#06b6d4;margin-right:8px;"></i> Align & Format Table</div>
+              <div class="spacing-opt-item" data-md-action="link"><i class="fas fa-link" style="color:#0284c7;margin-right:8px;"></i> Hyperlink ([text](url))</div>
+              <div class="spacing-opt-item" data-md-action="image"><i class="fas fa-image" style="color:#ea580c;margin-right:8px;"></i> Image (![alt](url))</div>
+              <div class="spacing-opt-item" data-md-action="footnote"><i class="fas fa-asterisk" style="color:#eab308;margin-right:8px;"></i> Footnote Reference ([^1])</div>
+              <div class="spacing-opt-item" data-md-action="badge"><i class="fas fa-shield" style="color:#10b981;margin-right:8px;"></i> Status Shield Badge</div>
+              <div class="spacing-opt-item" data-md-action="hr"><i class="fas fa-minus" style="color:#64748b;margin-right:8px;"></i> Horizontal Rule (---)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unique Markdown Productivity Tools (No Duplicates Anywhere) -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="mdStatsBtn" title="Markdown Statistics (Words, Characters, Estimated Reading Time)"><i class="fas fa-chart-simple" style="color:#0284c7;"></i> MD Stats</button>
+          <button class="fmt-btn with-text" id="mdBeautifyBtn" title="Clean, Normalize & Beautify Markdown Content"><i class="fas fa-wand-magic-sparkles" style="color:#8b5cf6;"></i> Clean MD</button>
+          <button class="fmt-btn with-text" id="mdLintBtn" title="Audit Markdown Syntax, Broken Links & Heading Jumps"><i class="fas fa-spell-check" style="color:#10b981;"></i> MD Lint</button>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="mdCopyHtmlBtn" title="Compile Markdown & Copy Formatted HTML to Clipboard"><i class="fas fa-copy" style="color:#10b981;"></i> Copy HTML</button>
+          <button class="fmt-btn with-text" id="mdHtmlToMdBtn" title="Convert HTML Markup to Clean Markdown Syntax"><i class="fas fa-right-left" style="color:#f59e0b;"></i> HTML to MD</button>
+          <button class="fmt-btn with-text" id="mdTocGenBtn" title="Auto-Generate Table of Contents from Headings"><i class="fas fa-list-check" style="color:#ea580c;"></i> Auto TOC</button>
+        </div>
+      </div>
+
+      <!-- Live Preview -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="mdPreviewBtn" title="Toggle Live Rendered Markdown Preview" style="background:rgba(2,132,199,0.15);border:1px solid #0284c7;color:#0284c7;font-weight:600;">
+            <i class="fas fa-eye" style="color:#0284c7;"></i> MD Preview
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. HTML RIBBON PANEL (HTML Tools & Live Preview) -->
+    <div class="ribbon-panel" id="ribbonPanelHtml" role="tabpanel">
+      <!-- Consolidated HTML Elements Dropdown Menu (Scrollable container with small height and all elements & templates inside) -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="htmlFormatDropdownWrap">
+            <button class="fmt-btn with-text" id="htmlFormatMenuBtn" title="Insert HTML Elements & Templates Dropdown">
+              <i class="fab fa-html5" style="color:#ea580c;"></i><span>Insert Elements</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="htmlFormatPopover" role="menu" style="min-width:250px;max-height:260px;overflow-y:auto;">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Templates & Page Layouts</div>
+              <div class="spacing-opt-item" data-html-action="boilerplate"><i class="fab fa-html5" style="color:#ea580c;margin-right:8px;"></i> HTML5 Boilerplate Template</div>
+              <div class="spacing-opt-item" data-html-action="meta-tags"><i class="fas fa-tags" style="color:#0284c7;margin-right:8px;"></i> Meta Tags (SEO & Social)</div>
+              <div class="spacing-opt-item" data-html-action="css-layout"><i class="fas fa-table-cells-large" style="color:#8b5cf6;margin-right:8px;"></i> Flex/Grid Responsive Layout</div>
+              <div class="spacing-opt-item" data-html-action="media-embed"><i class="fas fa-photo-film" style="color:#ec4899;margin-right:8px;"></i> Responsive Media Embed</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Headings & Text</div>
+              <div class="spacing-opt-item" data-html-action="h1"><strong style="color:#ea580c;margin-right:8px;">H1</strong> &lt;h1&gt; Main Heading</div>
+              <div class="spacing-opt-item" data-html-action="h2"><strong style="color:#ea580c;margin-right:8px;">H2</strong> &lt;h2&gt; Sub Heading</div>
+              <div class="spacing-opt-item" data-html-action="h3"><strong style="color:#ea580c;margin-right:8px;">H3</strong> &lt;h3&gt; Section Heading</div>
+              <div class="spacing-opt-item" data-html-action="h4"><strong style="color:#ea580c;margin-right:8px;">H4</strong> &lt;h4&gt; Sub-section Heading</div>
+              <div class="spacing-opt-item" data-html-action="p"><i class="fas fa-paragraph" style="color:#0284c7;margin-right:8px;"></i> &lt;p&gt; Paragraph</div>
+              <div class="spacing-opt-item" data-html-action="span"><i class="fas fa-font" style="color:#64748b;margin-right:8px;"></i> &lt;span&gt; Text Span</div>
+              <div class="spacing-opt-item" data-html-action="strong"><i class="fas fa-bold" style="color:#0284c7;margin-right:8px;"></i> &lt;strong&gt; Bold Text</div>
+              <div class="spacing-opt-item" data-html-action="em"><i class="fas fa-italic" style="color:#06b6d4;margin-right:8px;"></i> &lt;em&gt; Emphasis</div>
+              <div class="spacing-opt-item" data-html-action="mark"><i class="fas fa-highlighter" style="color:#eab308;margin-right:8px;"></i> &lt;mark&gt; Highlight</div>
+              <div class="spacing-opt-item" data-html-action="blockquote"><i class="fas fa-quote-left" style="color:#f59e0b;margin-right:8px;"></i> &lt;blockquote&gt; Quote</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Structure & Containers</div>
+              <div class="spacing-opt-item" data-html-action="div"><i class="fas fa-square" style="color:#0284c7;margin-right:8px;"></i> &lt;div&gt; Container</div>
+              <div class="spacing-opt-item" data-html-action="section"><i class="fas fa-layer-group" style="color:#8b5cf6;margin-right:8px;"></i> &lt;section&gt; Section</div>
+              <div class="spacing-opt-item" data-html-action="article"><i class="fas fa-newspaper" style="color:#10b981;margin-right:8px;"></i> &lt;article&gt; Article</div>
+              <div class="spacing-opt-item" data-html-action="header"><i class="fas fa-window-maximize" style="color:#f59e0b;margin-right:8px;"></i> &lt;header&gt; Header</div>
+              <div class="spacing-opt-item" data-html-action="footer"><i class="fas fa-window-minimize" style="color:#64748b;margin-right:8px;"></i> &lt;footer&gt; Footer</div>
+              <div class="spacing-opt-item" data-html-action="nav"><i class="fas fa-compass" style="color:#0284c7;margin-right:8px;"></i> &lt;nav&gt; Navigation</div>
+              <div class="spacing-opt-item" data-html-action="main"><i class="fas fa-chalkboard" style="color:#10b981;margin-right:8px;"></i> &lt;main&gt; Main Area</div>
+              <div class="spacing-opt-item" data-html-action="code"><i class="fas fa-code" style="color:#ec4899;margin-right:8px;"></i> &lt;pre&gt;&lt;code&gt; Block</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Forms & Inputs</div>
+              <div class="spacing-opt-item" data-html-action="form"><i class="fas fa-table-list" style="color:#3b82f6;margin-right:8px;"></i> &lt;form&gt; Form Block</div>
+              <div class="spacing-opt-item" data-html-action="input"><i class="fas fa-keyboard" style="color:#06b6d4;margin-right:8px;"></i> &lt;input&gt; Form Input</div>
+              <div class="spacing-opt-item" data-html-action="button"><i class="fas fa-toggle-on" style="color:#10b981;margin-right:8px;"></i> &lt;button&gt; Button</div>
+              <div class="spacing-opt-item" data-html-action="textarea"><i class="fas fa-align-left" style="color:#a855f7;margin-right:8px;"></i> &lt;textarea&gt; Multi-line</div>
+              <div class="spacing-opt-item" data-html-action="select"><i class="fas fa-square-caret-down" style="color:#f59e0b;margin-right:8px;"></i> &lt;select&gt; Dropdown</div>
+              <div class="spacing-opt-item" data-html-action="label"><i class="fas fa-tag" style="color:#64748b;margin-right:8px;"></i> &lt;label&gt; Form Label</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Tables, Lists & Media</div>
+              <div class="spacing-opt-item" data-html-action="table"><i class="fas fa-table" style="color:#16a34a;margin-right:8px;"></i> &lt;table&gt; Table Grid</div>
+              <div class="spacing-opt-item" data-html-action="link"><i class="fas fa-link" style="color:#0284c7;margin-right:8px;"></i> &lt;a href=""&gt; Hyperlink</div>
+              <div class="spacing-opt-item" data-html-action="image"><i class="fas fa-image" style="color:#ea580c;margin-right:8px;"></i> &lt;img src=""&gt; Image</div>
+              <div class="spacing-opt-item" data-html-action="video"><i class="fas fa-video" style="color:#ec4899;margin-right:8px;"></i> &lt;video&gt; Video Player</div>
+              <div class="spacing-opt-item" data-html-action="audio"><i class="fas fa-headphones" style="color:#8b5cf6;margin-right:8px;"></i> &lt;audio&gt; Audio Player</div>
+              <div class="spacing-opt-item" data-html-action="ul"><i class="fas fa-list-ul" style="color:#10b981;margin-right:8px;"></i> &lt;ul&gt;&lt;li&gt; Unordered List</div>
+              <div class="spacing-opt-item" data-html-action="ol"><i class="fas fa-list-ol" style="color:#0284c7;margin-right:8px;"></i> &lt;ol&gt;&lt;li&gt; Ordered List</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unique HTML Productivity & Analysis Tools (No Duplicates Anywhere) -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="htmlFormatBtn" title="Format & Indent HTML Code Cleanly"><i class="fas fa-code-merge" style="color:#10b981;"></i> Format Code</button>
+          <button class="fmt-btn with-text" id="htmlMinifyBtn" title="Minify & Compact HTML Code"><i class="fas fa-file-zipper" style="color:#f59e0b;"></i> Minify HTML</button>
+          <button class="fmt-btn with-text" id="htmlInspectorBtn" title="Inspect DOM Structure, Element Counts & Image Tags"><i class="fas fa-magnifying-glass-chart" style="color:#06b6d4;"></i> DOM Inspector</button>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="htmlValidateBtn" title="Validate HTML Syntax & Check Tag Nesting"><i class="fas fa-circle-check" style="color:#0284c7;"></i> Validate HTML</button>
+          <button class="fmt-btn with-text" id="htmlEntitiesBtn" title="Quick Insert Common HTML Entities (&copy;, &euro;, &bull;, etc.)"><i class="fas fa-code" style="color:#8b5cf6;"></i> HTML Entities</button>
+          <button class="fmt-btn with-text" id="htmlExtractAssetsBtn" title="Extract Embedded CSS and JS Script Blocks"><i class="fas fa-cubes" style="color:#ec4899;"></i> Extract Assets</button>
+        </div>
+      </div>
+
+      <!-- Live Web Page Preview -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="htmlPreviewBtn" title="Preview Single-File HTML, CSS, JS in Real Time" style="background:rgba(22,163,74,0.15);border:1px solid #16a34a;color:#16a34a;font-weight:600;">
+            <i class="fas fa-play" style="color:#16a34a;"></i> HTML Preview
+          </button>
         </div>
       </div>
     </div>
@@ -2003,6 +2220,41 @@
     </div>
   </div>
 
+  <!-- Live Preview Modal for HTML & Markdown (Issue 3) -->
+  <div class="modal-overlay" id="codePreviewModal" role="dialog" aria-modal="true" aria-label="Document Code Preview">
+    <div class="modal" style="width:960px;max-width:96vw;height:88vh;max-height:88vh;display:flex;flex-direction:column;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+            <i id="previewModalIcon" class="fas fa-play" style="color:#16a34a;"></i>
+            <span id="previewModalTitle">HTML Live Preview</span>
+          </h3>
+          <div class="preview-device-pills" style="display:flex;gap:4px;">
+            <button class="fmt-btn active" id="previewDesktopBtn" title="Desktop View (100%)"><i class="fas fa-desktop"></i></button>
+            <button class="fmt-btn" id="previewTabletBtn" title="Tablet View (768px)"><i class="fas fa-tablet-screen-button"></i></button>
+            <button class="fmt-btn" id="previewMobileBtn" title="Mobile View (375px)"><i class="fas fa-mobile-screen-button"></i></button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="fmt-btn with-text" id="previewOpenNewTabBtn" title="Open Preview in New Browser Tab"><i class="fas fa-arrow-up-right-from-square"></i> New Tab</button>
+          <button class="modal-close-icon" id="codePreviewCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <!-- Informative single-file notice banner for HTML preview (Issue 3) -->
+      <div id="htmlPreviewNoticeBanner" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;padding:8px 12px;border-radius:6px;font-size:12px;margin-bottom:10px;align-items:center;gap:8px;flex-shrink:0;">
+        <i class="fas fa-circle-info" style="color:#3b82f6;"></i>
+        <span><strong>Note:</strong> Please insert HTML, CSS, and JS in a single file to preview.</span>
+      </div>
+
+      <!-- Preview Canvas Viewport -->
+      <div id="previewFrameContainer" style="flex:1;min-height:0;width:100%;margin:0 auto;background:#ffffff;border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;transition:max-width 0.25s ease;">
+        <iframe id="codePreviewIframe" sandbox="allow-scripts allow-modals allow-forms allow-same-origin" style="width:100%;height:100%;border:none;background:#ffffff;"></iframe>
+        <div id="mdPreviewRenderedArea" class="markdown-rendered-view" style="display:none;width:100%;height:100%;overflow-y:auto;padding:24px 32px;box-sizing:border-box;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
@@ -2017,7 +2269,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
   <!-- React 18 & Official Excalidraw Studio Engine -->
   <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>

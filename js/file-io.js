@@ -81,7 +81,7 @@
         window.DocFlow.UI.Tabs.render();
         window.DocFlow.UI.Tabs.save();
         if (window.DocFlow?.Recent) {
-          window.DocFlow.Recent.add({ name, type: 'PDF', mode: 'view', pdfData: arrayBuffer });
+          window.DocFlow.Recent.add({ name, type: 'PDF', mode: 'view', pdfData: arrayBuffer, size: file.size });
         }
       } catch (err) {
         console.error(err);
@@ -120,7 +120,7 @@
         fileTypeLabel = 'CSV';
       } else if (ext === 'md' || ext === 'markdown') {
         const mdText = await file.text();
-        content = typeof window.marked !== 'undefined' ? window.marked.parse(mdText) : basicMarkdownToHtml(mdText);
+        content = `<pre class="md-code-view" style="font-family: 'Fira Code', 'Courier New', Consolas, monospace; font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; margin: 0; background: transparent; border: none; padding: 0;">${escHtml(mdText)}</pre>`;
         fileTypeLabel = 'Markdown';
       } else if (ext === 'xlsx' || ext === 'xls') {
         const ab = await file.arrayBuffer();
@@ -142,7 +142,7 @@
     const tab = window.DocFlow.UI.Tabs.create(name, content, fileTypeLabel, 'edit');
     window.DocFlow.UI.Tabs.activateTab(tab);
     if (window.DocFlow && window.DocFlow.Recent) {
-      window.DocFlow.Recent.add({ name, type: fileTypeLabel, content, mode: 'edit' });
+      window.DocFlow.Recent.add({ name, type: fileTypeLabel, content, mode: 'edit', size: file.size });
     }
     showToast(`Successfully opened "${name}"`, 'success');
   }
@@ -490,20 +490,20 @@
       <div class="excel-sheet-viewport">
         <table class="excel-grid-table">
     `;
-    html += '<thead><tr><th class="excel-corner"></th>';
+    html += '<thead><tr><th class="excel-corner" contenteditable="false"></th>';
     for (let c = 0; c < cols; c++) {
-      html += `<th class="excel-col-hdr">${getExcelColLetter(c)}</th>`;
+      html += `<th class="excel-col-hdr" contenteditable="false">${getExcelColLetter(c)}</th>`;
     }
     html += '</tr></thead><tbody>';
     rows.forEach((r, rIdx) => {
-      html += `<tr><th class="excel-row-hdr">${rIdx + 1}</th>`;
+      html += `<tr><th class="excel-row-hdr" contenteditable="false">${rIdx + 1}</th>`;
       for (let c = 0; c < cols; c++) {
         const val = r[c] !== undefined ? r[c] : '';
         html += `<td contenteditable="true">${escHtml(val)}</td>`;
       }
       html += '</tr>';
     });
-    html += '</tbody></table></div></div><p><br></p>';
+    html += '</tbody></table></div></div>';
     return html;
   }
 
@@ -563,15 +563,15 @@
             <table class="excel-grid-table">
         `;
 
-        html += '<thead><tr><th class="excel-corner"></th>';
+        html += '<thead><tr><th class="excel-corner" contenteditable="false"></th>';
         for (let c = 0; c < maxCols; c++) {
-          html += `<th class="excel-col-hdr">${getExcelColLetter(c)}</th>`;
+          html += `<th class="excel-col-hdr" contenteditable="false">${getExcelColLetter(c)}</th>`;
         }
         html += '</tr></thead><tbody>';
 
         for (let r = 0; r < maxDisplayRows; r++) {
           const rowData = (data && data[r]) ? data[r] : [];
-          html += `<tr><th class="excel-row-hdr">${r + 1}</th>`;
+          html += `<tr><th class="excel-row-hdr" contenteditable="false">${r + 1}</th>`;
           for (let c = 0; c < maxCols; c++) {
             const val = (rowData[c] !== undefined && rowData[c] !== null) ? String(rowData[c]) : '';
             html += `<td contenteditable="true">${escHtml(val)}</td>`;
@@ -580,9 +580,9 @@
         }
 
         if (data && data.length > 500) {
-          html += `<tr><th class="excel-row-hdr">...</th><td colspan="${maxCols}" style="text-align:center;color:#888;font-style:italic;">... ${data.length - 500} more rows</td></tr>`;
+          html += `<tr><th class="excel-row-hdr" contenteditable="false">...</th><td colspan="${maxCols}" style="text-align:center;color:#888;font-style:italic;">... ${data.length - 500} more rows</td></tr>`;
         }
-        html += '</tbody></table></div></div><p><br></p>';
+        html += '</tbody></table></div></div>';
       });
 
       return html;
@@ -634,7 +634,7 @@
       }
       html += '</tr>';
     }
-    html += '</tbody></table></div></div><p><br></p>';
+    html += '</tbody></table></div></div>';
     return html;
   }
 
@@ -830,7 +830,7 @@
                 <button class="slide-plus-menu-item slide-plus-next-btn" data-action="add-next-slide"><i class="fas fa-circle-plus" style="color:#ea580c;"></i> Add Next Slide</button>
               </div>
             </div>
-            <div class="pptx-slide-card"${animAttr} data-slide="${i + 1}" contenteditable="true" style="aspect-ratio:16/9;width:100%;min-height:480px;height:auto !important;${bgStyle}border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;word-break:break-word;overflow-wrap:break-word;display:flex;flex-direction:column;">
+            <div class="pptx-slide-card"${animAttr} data-slide="${i + 1}" contenteditable="true" style="aspect-ratio:16/9;width:100%;max-width:850px;height:520px;max-height:520px;overflow:hidden;${bgStyle}border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;word-break:break-word;overflow-wrap:break-word;display:flex;flex-direction:column;">
               <div class="pptx-slide-header" contenteditable="false">
                 <span class="pptx-slide-badge"><i class="fas fa-file-powerpoint"></i> Slide ${i + 1} of ${slideFileNames.length}</span>
               </div>
@@ -893,12 +893,12 @@
               <button class="slide-plus-menu-item slide-plus-next-btn" data-action="add-next-slide"><i class="fas fa-circle-plus" style="color:#ea580c;"></i> Add Next Slide</button>
             </div>
           </div>
-          <div class="pptx-slide-card" contenteditable="true" data-slide="${idx}" style="aspect-ratio:16/9;width:100%;min-height:360px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;">
+          <div class="pptx-slide-card" contenteditable="true" data-slide="${idx}" style="aspect-ratio:16/9;width:100%;max-width:850px;height:520px;max-height:520px;overflow:hidden;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;padding:36px;box-shadow:var(--shadow-md);outline:none;position:relative;box-sizing:border-box;">
             <p class="slide-placeholder-text" style="color:var(--text-muted);font-style:italic;margin:0;">Empty slide. Click here or use the "+" button at top-right to add rectangle, shapes, or bullet points...</p>
           </div>
         </div>`;
     }
-    return '';
+    return slideTpl(1);
   }
 
   function basicMarkdownToHtml(md) {
@@ -954,7 +954,7 @@
 
     const codePre = editor.querySelector('pre.html-code-view');
     if (codePre) {
-      fullDoc = codePre.innerText;
+      fullDoc = codePre.textContent;
     } else {
       const cleanHtml = window.DocFlow.Find.getCleanHtml();
       fullDoc = `<!DOCTYPE html>
@@ -988,7 +988,7 @@ ${cleanHtml}
     window.DocFlow.setModified(false);
     window.DocFlow.UI.Tabs.save();
     if (window.DocFlow && window.DocFlow.Recent) {
-      window.DocFlow.Recent.updateContent(docTitle + '.html', editor.innerHTML);
+      window.DocFlow.Recent.updateContent(docTitle + '.html', fullDoc, new Blob([fullDoc]).size);
     }
     showToast('Saved as HTML', 'success');
   }
@@ -997,11 +997,12 @@ ${cleanHtml}
     const editor = $('#editor');
     if (!editor) return;
     const docTitle = getBaseName();
-    downloadBlob(new Blob([editor.innerText || ''], { type: 'text/plain;charset=utf-8' }), docTitle + '.txt');
+    const txtContent = editor.innerText || '';
+    downloadBlob(new Blob([txtContent], { type: 'text/plain;charset=utf-8' }), docTitle + '.txt');
     window.DocFlow.setModified(false);
     window.DocFlow.UI.Tabs.save();
     if (window.DocFlow && window.DocFlow.Recent) {
-      window.DocFlow.Recent.updateContent(docTitle + '.txt', editor.innerHTML);
+      window.DocFlow.Recent.updateContent(docTitle + '.txt', txtContent, new Blob([txtContent]).size);
     }
     showToast('Saved as Plain Text', 'success');
   }
@@ -1010,32 +1011,36 @@ ${cleanHtml}
     const editor = $('#editor');
     if (!editor) return;
     const docTitle = getBaseName();
-    let md = editor.innerHTML;
+    const mdPre = editor.querySelector('pre.md-code-view');
+    if (mdPre) {
+      md = mdPre.textContent;
+    } else {
+      // Structured HTML to Markdown conversion
+      md = md
+        .replace(/<h1>(.*?)<\/h1>/gi, '# $1\n\n')
+        .replace(/<h2>(.*?)<\/h2>/gi, '## $1\n\n')
+        .replace(/<h3>(.*?)<\/h3>/gi, '### $1\n\n')
+        .replace(/<h4>(.*?)<\/h4>/gi, '#### $1\n\n')
+        .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+        .replace(/<b>(.*?)<\/b>/gi, '**$1**')
+        .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+        .replace(/<i>(.*?)<\/i>/gi, '*$1*')
+        .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)\n')
+        .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)\n')
+        .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+        .replace(/<blockquote>(.*?)<\/blockquote>/gi, '> $1\n\n')
+        .replace(/<hr[^>]*>/gi, '\n---\n\n')
+        .replace(/<p>(.*?)<\/p>/gi, '$1\n\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, '');
+    }
 
-    // Structured HTML to Markdown conversion
-    md = md
-      .replace(/<h1>(.*?)<\/h1>/gi, '# $1\n\n')
-      .replace(/<h2>(.*?)<\/h2>/gi, '## $1\n\n')
-      .replace(/<h3>(.*?)<\/h3>/gi, '### $1\n\n')
-      .replace(/<h4>(.*?)<\/h4>/gi, '#### $1\n\n')
-      .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-      .replace(/<b>(.*?)<\/b>/gi, '**$1**')
-      .replace(/<em>(.*?)<\/em>/gi, '*$1*')
-      .replace(/<i>(.*?)<\/i>/gi, '*$1*')
-      .replace(/<img[^>]*src="([^"]*)"[^>]*alt="([^"]*)"[^>]*>/gi, '![$2]($1)\n')
-      .replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)\n')
-      .replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-      .replace(/<blockquote>(.*?)<\/blockquote>/gi, '> $1\n\n')
-      .replace(/<hr[^>]*>/gi, '\n---\n\n')
-      .replace(/<p>(.*?)<\/p>/gi, '$1\n\n')
-      .replace(/<br\s*\/?>/gi, '\n')
-      .replace(/<[^>]+>/g, '');
-
-    downloadBlob(new Blob([md.trim()], { type: 'text/markdown;charset=utf-8' }), docTitle + '.md');
+    const mdTrimmed = md.trim();
+    downloadBlob(new Blob([mdTrimmed], { type: 'text/markdown;charset=utf-8' }), docTitle + '.md');
     window.DocFlow.setModified(false);
     window.DocFlow.UI.Tabs.save();
     if (window.DocFlow && window.DocFlow.Recent) {
-      window.DocFlow.Recent.updateContent(docTitle + '.md', editor.innerHTML);
+      window.DocFlow.Recent.updateContent(docTitle + '.md', mdTrimmed, new Blob([mdTrimmed]).size);
     }
     showToast('Exported as Markdown', 'success');
   }

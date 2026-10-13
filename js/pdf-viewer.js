@@ -18,6 +18,62 @@
   let pdfRotation = 0;
   let pdfObserver = null;
   let mergeFiles = [];
+  const pdfUndoStack = [];
+  const pdfRedoStack = [];
+
+  function recordPdfState() {
+    if (!pdfDoc) return;
+    const state = { page: pdfCurrentPage, zoom: pdfZoomPct, rotation: pdfRotation };
+    const last = pdfUndoStack[pdfUndoStack.length - 1];
+    if (last && last.page === state.page && last.zoom === state.zoom && last.rotation === state.rotation) return;
+    pdfUndoStack.push(state);
+    if (pdfUndoStack.length > 30) pdfUndoStack.shift();
+    pdfRedoStack.length = 0;
+    window.DocFlow?.Editor?.updateUndoRedoUI?.();
+  }
+
+  function undoPdf() {
+    if (pdfUndoStack.length > 1) {
+      const cur = pdfUndoStack.pop();
+      pdfRedoStack.push(cur);
+      const prev = pdfUndoStack[pdfUndoStack.length - 1];
+      if (prev) {
+        pdfCurrentPage = prev.page;
+        pdfZoomPct = prev.zoom;
+        pdfRotation = prev.rotation;
+        pdfScale = (prev.zoom / 100) * PDF_BASE_SCALE;
+        updatePdfControls();
+        buildPdfPlaceholders();
+        scrollToPage(pdfCurrentPage);
+        window.DocFlow?.Editor?.updateUndoRedoUI?.();
+        showToast(`Undo PDF view (Page ${pdfCurrentPage})`, 'info');
+        return true;
+      }
+    } else {
+      showToast('Nothing to undo in PDF', 'info');
+      return false;
+    }
+  }
+
+  function redoPdf() {
+    if (pdfRedoStack.length > 0) {
+      const next = pdfRedoStack.pop();
+      pdfUndoStack.push(next);
+      pdfCurrentPage = next.page;
+      pdfZoomPct = next.zoom;
+      pdfRotation = next.rotation;
+      pdfScale = (next.zoom / 100) * PDF_BASE_SCALE;
+      updatePdfControls();
+      buildPdfPlaceholders();
+      scrollToPage(pdfCurrentPage);
+      window.DocFlow?.Editor?.updateUndoRedoUI?.();
+      showToast(`Redo PDF view (Page ${pdfCurrentPage})`, 'info');
+      return true;
+    } else {
+      showToast('Nothing to redo in PDF', 'info');
+      return false;
+    }
+  }
 
   const pdfPages = $('#pdfPages');
   const pdfWrap = $('#pdfWrap');
@@ -34,6 +90,8 @@
     if (!tab) return;
     window.DocFlow.updateTopbar(tab);
     window.DocFlow.switchMode('view');
+    pdfUndoStack.length = 0;
+    pdfRedoStack.length = 0;
 
     if (tab.pdfDoc) {
       pdfDoc = tab.pdfDoc;
@@ -43,6 +101,7 @@
       pdfScale = PDF_BASE_SCALE;
       pdfRotation = 0;
       updatePdfControls();
+      recordPdfState();
       await buildPdfPlaceholders();
       return;
     }
@@ -655,6 +714,7 @@
     }
     pdfRotation = (pdfRotation + deg) % 360;
     if (pdfRotation < 0) pdfRotation += 360;
+    recordPdfState();
     rerenderPdf();
     showToast(`Rotated PDF to ${pdfRotation}°`, 'info');
   }
@@ -663,6 +723,7 @@
     if (!pdfDoc) return;
     const target = Math.max(1, Math.min(pdfTotalPages, num));
     pdfCurrentPage = target;
+    recordPdfState();
     updatePdfControls();
     scrollToPage(target);
   }
@@ -671,6 +732,7 @@
     if (!pdfDoc) return;
     pdfZoomPct = Math.max(25, Math.min(400, pct));
     pdfScale = (PDF_BASE_SCALE * pdfZoomPct) / 100;
+    recordPdfState();
     updatePdfControls();
     rerenderPdf();
   }
@@ -689,6 +751,7 @@
       pdfZoomPct = 100;
       pdfScale = PDF_BASE_SCALE;
     }
+    recordPdfState();
     updatePdfControls();
     rerenderPdf();
     showToast(`PDF Fit Mode: ${mode}`, 'info');
@@ -1018,6 +1081,10 @@
     toggleTwoPage,
     downloadCurrentPdf,
     printCurrentPdf,
+    undoPdf,
+    redoPdf,
+    canUndoPdf: () => pdfUndoStack.length > 1,
+    canRedoPdf: () => pdfRedoStack.length > 0,
     nextPage: () => $('#pdfNext')?.click(),
     prevPage: () => $('#pdfPrev')?.click(),
     getTotalPages: () => pdfTotalPages,
