@@ -12,7 +12,9 @@
   <!-- Google Fonts: Diverse Global Typographies with Multi-language Unicode Support (All MS Word Languages) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Caveat:wght@400;600;700&family=Cinzel:wght@500;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@500;700&family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Lato:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Montserrat:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Hebrew:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+Thai:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Oswald:wght@400;600&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;600;700&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Space+Grotesk:wght@300;400;500;600;700;800&family=Ubuntu:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Amiri:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=Caveat:wght@400;600;700&family=Cinzel:wght@500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@500;700&family=Fira+Code:wght@400;500;600&family=Great+Vibes&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Lato:ital,wght@0,400;0,700;1,400&family=Lora:ital,wght@0,400;0,600;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Montserrat:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Hebrew:wght@400;600;700&family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+SC:wght@400;600;700&family=Noto+Sans+Thai:wght@400;600;700&family=Nunito:wght@400;600;700&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&family=Oswald:wght@400;600&family=Outfit:wght@400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700&family=Raleway:wght@400;600;700&family=Roboto:ital,wght@0,400;0,500;0,700;1,400&family=Rubik:wght@400;500;600&family=Source+Sans+3:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Ubuntu:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&family=Manrope:wght@200..800&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=Righteous&family=Syne:wght@400..800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bitter:ital,wght@0,400;0,600;1,400&family=Comfortaa:wght@400;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Inconsolata:wght@400;600;700&family=Kalam:wght@400;700&family=Karla:wght@400;600&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Lobster&family=Noto+Serif:ital,wght@0,400;0,700;1,400&family=Permanent+Marker&family=Rock+Salt&family=Satisfy&family=Shadows+Into+Light&family=Source+Code+Pro:ital,wght@0,400;0,600;1,400&family=Work+Sans:wght@400;600&display=swap" rel="stylesheet">
   
   <!-- JSZip for PowerPoint (.pptx) & Word (.docx) decompression -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -172,35 +174,584 @@
               <div class="spacing-opt-item" data-case="title">Capitalize Each Word</div>
             </div>
           </div>
-          <button class="fmt-btn" id="removeFormatBtn" title="Clear All Formatting (Ctrl+\)" aria-label="Clear All Formatting"><i class="fas fa-eraser"></i></button>
+          <button class="fmt-btn warning-fmt-btn" id="removeFormatBtn" title="Clear All Formatting (Warning: Resets styles) (Ctrl+\)" aria-label="Clear All Formatting" style="color:#d97706;background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.4);"><i class="fas fa-eraser"></i></button>
         </div>
       </div>
 
       <!-- Font Selection & Typography -->
       <div class="ribbon-group">
         <div class="ribbon-row">
-          <select class="fmt-select" id="fontFamily" title="Font Family" aria-label="Font Family" style="width:140px;">
-            <optgroup label="Latin / Western (English, Spanish, French, German)">
-              <option value="Georgia, serif" style="font-family: Georgia, serif;">Georgia</option>
-              <option value="'Times New Roman', serif" style="font-family: 'Times New Roman', serif;">Times New Roman</option>
-              <option value="Garamond, serif" style="font-family: Garamond, serif;">Garamond</option>
-              <option value="Palatino, serif" style="font-family: Palatino, serif;">Palatino</option>
-              <option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
-              <option value="Lora, serif" style="font-family: Lora, serif;">Lora</option>
-              <option value="Cinzel, serif" style="font-family: Cinzel, serif;">Cinzel</option>
+          <!-- Compact Scrollable Font Family Dropdown with Visual Font Preview (Issue 4) -->
+          <div class="bullet-dropdown-wrap" id="fontFamilyDropdownWrap">
+            <button class="fmt-btn with-text" id="fontFamilyBtn" type="button" title="Font Family" aria-label="Font Family">
+              <span id="fontFamilyLabel" style="font-family:Calibri,sans-serif;">Calibri</span>
+              <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="spacing-popover" id="fontFamilyPopover" role="menu">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Modern Sans-Serif</div>
+              <div class="spacing-opt-item font-opt-item active" data-font="Calibri, sans-serif" data-name="Calibri" style="font-family:Calibri,sans-serif;">
+                <span class="font-opt-name" style="font-family:Calibri,sans-serif;">Calibri</span>
+                <span class="font-opt-sample" style="font-family:Calibri,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Aptos', sans-serif" data-name="Aptos" style="font-family:'Aptos',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Aptos',sans-serif;">Aptos</span>
+                <span class="font-opt-sample" style="font-family:'Aptos',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Outfit', sans-serif" data-name="Outfit" style="font-family:'Outfit',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Outfit',sans-serif;">Outfit</span>
+                <span class="font-opt-sample" style="font-family:'Outfit',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Plus Jakarta Sans', sans-serif" data-name="Plus Jakarta Sans" style="font-family:'Plus Jakarta Sans',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Plus Jakarta Sans',sans-serif;">Plus Jakarta Sans</span>
+                <span class="font-opt-sample" style="font-family:'Plus Jakarta Sans',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Syne', sans-serif" data-name="Syne" style="font-family:'Syne',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Syne',sans-serif;">Syne</span>
+                <span class="font-opt-sample" style="font-family:'Syne',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Manrope', sans-serif" data-name="Manrope" style="font-family:'Manrope',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Manrope',sans-serif;">Manrope</span>
+                <span class="font-opt-sample" style="font-family:'Manrope',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'DM Sans', sans-serif" data-name="DM Sans" style="font-family:'DM Sans',sans-serif;">
+                <span class="font-opt-name" style="font-family:'DM Sans',sans-serif;">DM Sans</span>
+                <span class="font-opt-sample" style="font-family:'DM Sans',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Inter, sans-serif" data-name="Inter" style="font-family:Inter,sans-serif;">
+                <span class="font-opt-name" style="font-family:Inter,sans-serif;">Inter</span>
+                <span class="font-opt-sample" style="font-family:Inter,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Roboto, sans-serif" data-name="Roboto" style="font-family:Roboto,sans-serif;">
+                <span class="font-opt-name" style="font-family:Roboto,sans-serif;">Roboto</span>
+                <span class="font-opt-sample" style="font-family:Roboto,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Poppins, sans-serif" data-name="Poppins" style="font-family:Poppins,sans-serif;">
+                <span class="font-opt-name" style="font-family:Poppins,sans-serif;">Poppins</span>
+                <span class="font-opt-sample" style="font-family:Poppins,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Montserrat, sans-serif" data-name="Montserrat" style="font-family:Montserrat,sans-serif;">
+                <span class="font-opt-name" style="font-family:Montserrat,sans-serif;">Montserrat</span>
+                <span class="font-opt-sample" style="font-family:Montserrat,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Work Sans', sans-serif" data-name="Work Sans" style="font-family:'Work Sans',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Work Sans',sans-serif;">Work Sans</span>
+                <span class="font-opt-sample" style="font-family:'Work Sans',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Karla', sans-serif" data-name="Karla" style="font-family:'Karla',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Karla',sans-serif;">Karla</span>
+                <span class="font-opt-sample" style="font-family:'Karla',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Comfortaa', sans-serif" data-name="Comfortaa" style="font-family:'Comfortaa',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Comfortaa',sans-serif;">Comfortaa</span>
+                <span class="font-opt-sample" style="font-family:'Comfortaa',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Open Sans', sans-serif" data-name="Open Sans" style="font-family:'Open Sans',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Open Sans',sans-serif;">Open Sans</span>
+                <span class="font-opt-sample" style="font-family:'Open Sans',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Lato, sans-serif" data-name="Lato" style="font-family:Lato,sans-serif;">
+                <span class="font-opt-name" style="font-family:Lato,sans-serif;">Lato</span>
+                <span class="font-opt-sample" style="font-family:Lato,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Raleway', sans-serif" data-name="Raleway" style="font-family:'Raleway',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Raleway',sans-serif;">Raleway</span>
+                <span class="font-opt-sample" style="font-family:'Raleway',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Nunito', sans-serif" data-name="Nunito" style="font-family:'Nunito',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Nunito',sans-serif;">Nunito</span>
+                <span class="font-opt-sample" style="font-family:'Nunito',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Rubik', sans-serif" data-name="Rubik" style="font-family:'Rubik',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Rubik',sans-serif;">Rubik</span>
+                <span class="font-opt-sample" style="font-family:'Rubik',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Source Sans 3', sans-serif" data-name="Source Sans 3" style="font-family:'Source Sans 3',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Source Sans 3',sans-serif;">Source Sans 3</span>
+                <span class="font-opt-sample" style="font-family:'Source Sans 3',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Space Grotesk', sans-serif" data-name="Space Grotesk" style="font-family:'Space Grotesk',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Space Grotesk',sans-serif;">Space Grotesk</span>
+                <span class="font-opt-sample" style="font-family:'Space Grotesk',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Arial, sans-serif" data-name="Arial" style="font-family:Arial,sans-serif;">
+                <span class="font-opt-name" style="font-family:Arial,sans-serif;">Arial</span>
+                <span class="font-opt-sample" style="font-family:Arial,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe UI', sans-serif" data-name="Segoe UI" style="font-family:'Segoe UI',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Segoe UI',sans-serif;">Segoe UI</span>
+                <span class="font-opt-sample" style="font-family:'Segoe UI',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe UI Variable', sans-serif" data-name="Segoe UI Variable" style="font-family:'Segoe UI Variable',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Segoe UI Variable',sans-serif;">Segoe UI Variable</span>
+                <span class="font-opt-sample" style="font-family:'Segoe UI Variable',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bahnschrift', sans-serif" data-name="Bahnschrift" style="font-family:'Bahnschrift',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Bahnschrift',sans-serif;">Bahnschrift</span>
+                <span class="font-opt-sample" style="font-family:'Bahnschrift',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Century Gothic', sans-serif" data-name="Century Gothic" style="font-family:'Century Gothic',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Century Gothic',sans-serif;">Century Gothic</span>
+                <span class="font-opt-sample" style="font-family:'Century Gothic',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Franklin Gothic Medium', sans-serif" data-name="Franklin Gothic" style="font-family:'Franklin Gothic Medium',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Franklin Gothic Medium',sans-serif;">Franklin Gothic</span>
+                <span class="font-opt-sample" style="font-family:'Franklin Gothic Medium',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Gill Sans', sans-serif" data-name="Gill Sans" style="font-family:'Gill Sans',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Gill Sans',sans-serif;">Gill Sans</span>
+                <span class="font-opt-sample" style="font-family:'Gill Sans',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Lucida Sans', sans-serif" data-name="Lucida Sans" style="font-family:'Lucida Sans',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Lucida Sans',sans-serif;">Lucida Sans</span>
+                <span class="font-opt-sample" style="font-family:'Lucida Sans',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Verdana, sans-serif" data-name="Verdana" style="font-family:Verdana,sans-serif;">
+                <span class="font-opt-name" style="font-family:Verdana,sans-serif;">Verdana</span>
+                <span class="font-opt-sample" style="font-family:Verdana,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Tahoma, sans-serif" data-name="Tahoma" style="font-family:Tahoma,sans-serif;">
+                <span class="font-opt-name" style="font-family:Tahoma,sans-serif;">Tahoma</span>
+                <span class="font-opt-sample" style="font-family:Tahoma,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Trebuchet MS', sans-serif" data-name="Trebuchet MS" style="font-family:'Trebuchet MS',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Trebuchet MS',sans-serif;">Trebuchet MS</span>
+                <span class="font-opt-sample" style="font-family:'Trebuchet MS',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Editorial & Classic Serifs</div>
+              <div class="spacing-opt-item font-opt-item" data-font="Cambria, serif" data-name="Cambria" style="font-family:Cambria,serif;">
+                <span class="font-opt-name" style="font-family:Cambria,serif;">Cambria</span>
+                <span class="font-opt-sample" style="font-family:Cambria,serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Constantia, serif" data-name="Constantia" style="font-family:Constantia,serif;">
+                <span class="font-opt-name" style="font-family:Constantia,serif;">Constantia</span>
+                <span class="font-opt-sample" style="font-family:Constantia,serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Crimson Text', serif" data-name="Crimson Text" style="font-family:'Crimson Text',serif;">
+                <span class="font-opt-name" style="font-family:'Crimson Text',serif;">Crimson Text</span>
+                <span class="font-opt-sample" style="font-family:'Crimson Text',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Libre Baskerville', serif" data-name="Libre Baskerville" style="font-family:'Libre Baskerville',serif;">
+                <span class="font-opt-name" style="font-family:'Libre Baskerville',serif;">Libre Baskerville</span>
+                <span class="font-opt-sample" style="font-family:'Libre Baskerville',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bitter', serif" data-name="Bitter" style="font-family:'Bitter',serif;">
+                <span class="font-opt-name" style="font-family:'Bitter',serif;">Bitter</span>
+                <span class="font-opt-sample" style="font-family:'Bitter',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'DM Serif Display', serif" data-name="DM Serif Display" style="font-family:'DM Serif Display',serif;">
+                <span class="font-opt-name" style="font-family:'DM Serif Display',serif;">DM Serif Display</span>
+                <span class="font-opt-sample" style="font-family:'DM Serif Display',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Newsreader', serif" data-name="Newsreader" style="font-family:'Newsreader',serif;">
+                <span class="font-opt-name" style="font-family:'Newsreader',serif;">Newsreader</span>
+                <span class="font-opt-sample" style="font-family:'Newsreader',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Georgia, serif" data-name="Georgia" style="font-family:Georgia,serif;">
+                <span class="font-opt-name" style="font-family:Georgia,serif;">Georgia</span>
+                <span class="font-opt-sample" style="font-family:Georgia,serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Merriweather', serif" data-name="Merriweather" style="font-family:'Merriweather',serif;">
+                <span class="font-opt-name" style="font-family:'Merriweather',serif;">Merriweather</span>
+                <span class="font-opt-sample" style="font-family:'Merriweather',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Playfair Display', serif" data-name="Playfair Display" style="font-family:'Playfair Display',serif;">
+                <span class="font-opt-name" style="font-family:'Playfair Display',serif;">Playfair Display</span>
+                <span class="font-opt-sample" style="font-family:'Playfair Display',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Cormorant Garamond', serif" data-name="Cormorant Garamond" style="font-family:'Cormorant Garamond',serif;">
+                <span class="font-opt-name" style="font-family:'Cormorant Garamond',serif;">Cormorant Garamond</span>
+                <span class="font-opt-sample" style="font-family:'Cormorant Garamond',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Lora, serif" data-name="Lora" style="font-family:Lora,serif;">
+                <span class="font-opt-name" style="font-family:Lora,serif;">Lora</span>
+                <span class="font-opt-sample" style="font-family:Lora,serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Baskerville', serif" data-name="Baskerville" style="font-family:'Baskerville',serif;">
+                <span class="font-opt-name" style="font-family:'Baskerville',serif;">Baskerville</span>
+                <span class="font-opt-sample" style="font-family:'Baskerville',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bodoni MT', serif" data-name="Bodoni MT" style="font-family:'Bodoni MT',serif;">
+                <span class="font-opt-name" style="font-family:'Bodoni MT',serif;">Bodoni MT</span>
+                <span class="font-opt-sample" style="font-family:'Bodoni MT',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Book Antiqua', serif" data-name="Book Antiqua" style="font-family:'Book Antiqua',serif;">
+                <span class="font-opt-name" style="font-family:'Book Antiqua',serif;">Book Antiqua</span>
+                <span class="font-opt-sample" style="font-family:'Book Antiqua',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Serif', serif" data-name="Noto Serif" style="font-family:'Noto Serif',serif;">
+                <span class="font-opt-name" style="font-family:'Noto Serif',serif;">Noto Serif</span>
+                <span class="font-opt-sample" style="font-family:'Noto Serif',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Times New Roman', serif" data-name="Times New Roman" style="font-family:'Times New Roman',serif;">
+                <span class="font-opt-name" style="font-family:'Times New Roman',serif;">Times New Roman</span>
+                <span class="font-opt-sample" style="font-family:'Times New Roman',serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Garamond, serif" data-name="Garamond" style="font-family:Garamond,serif;">
+                <span class="font-opt-name" style="font-family:Garamond,serif;">Garamond</span>
+                <span class="font-opt-sample" style="font-family:Garamond,serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Palatino, serif" data-name="Palatino" style="font-family:Palatino,serif;">
+                <span class="font-opt-name" style="font-family:Palatino,serif;">Palatino</span>
+                <span class="font-opt-sample" style="font-family:Palatino,serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Cinzel, serif" data-name="Cinzel" style="font-family:Cinzel,serif;">
+                <span class="font-opt-name" style="font-family:Cinzel,serif;">Cinzel</span>
+                <span class="font-opt-sample" style="font-family:Cinzel,serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Display & Headline</div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Righteous', cursive" data-name="Righteous" style="font-family:'Righteous',cursive;">
+                <span class="font-opt-name" style="font-family:'Righteous',cursive;">Righteous</span>
+                <span class="font-opt-sample" style="font-family:'Righteous',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Lobster', cursive" data-name="Lobster" style="font-family:'Lobster',cursive;">
+                <span class="font-opt-name" style="font-family:'Lobster',cursive;">Lobster</span>
+                <span class="font-opt-sample" style="font-family:'Lobster',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Permanent Marker', cursive" data-name="Permanent Marker" style="font-family:'Permanent Marker',cursive;">
+                <span class="font-opt-name" style="font-family:'Permanent Marker',cursive;">Permanent Marker</span>
+                <span class="font-opt-sample" style="font-family:'Permanent Marker',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Oswald', sans-serif" data-name="Oswald" style="font-family:'Oswald',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Oswald',sans-serif;">Oswald</span>
+                <span class="font-opt-sample" style="font-family:'Oswald',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bebas Neue', sans-serif" data-name="Bebas Neue" style="font-family:'Bebas Neue',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Bebas Neue',sans-serif;">Bebas Neue</span>
+                <span class="font-opt-sample" style="font-family:'Bebas Neue',sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Impact, sans-serif" data-name="Impact" style="font-family:Impact,sans-serif;">
+                <span class="font-opt-name" style="font-family:Impact,sans-serif;">Impact</span>
+                <span class="font-opt-sample" style="font-family:Impact,sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Global & Multilingual</div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Amiri', 'Traditional Arabic', serif" data-name="Amiri" style="font-family:'Amiri',serif;">
+                <span class="font-opt-name" style="font-family:'Amiri',serif;">Amiri (العربية)</span>
+                <span class="font-opt-sample" style="font-family:'Amiri',serif;">أبجد 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Traditional Arabic', 'Amiri', serif" data-name="Traditional Arabic" style="font-family:'Traditional Arabic',serif;">
+                <span class="font-opt-name" style="font-family:'Traditional Arabic',serif;">Traditional Arabic</span>
+                <span class="font-opt-sample" style="font-family:'Traditional Arabic',serif;">العربية 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Simplified Arabic', Tahoma, sans-serif" data-name="Simplified Arabic" style="font-family:'Simplified Arabic',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Simplified Arabic',sans-serif;">Simplified Arabic</span>
+                <span class="font-opt-sample" style="font-family:'Simplified Arabic',sans-serif;">العربية 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Devanagari', 'Mangal', sans-serif" data-name="Noto Sans Devanagari" style="font-family:'Noto Sans Devanagari',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Devanagari',sans-serif;">Noto Sans Devanagari</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Devanagari',sans-serif;">हिन्दी १२३</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Mangal', 'Noto Sans Devanagari', sans-serif" data-name="Mangal" style="font-family:'Mangal',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Mangal',sans-serif;">Mangal (Hindi)</span>
+                <span class="font-opt-sample" style="font-family:'Mangal',sans-serif;">हिन्दी 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Aparajita', 'Noto Sans Devanagari', serif" data-name="Aparajita" style="font-family:'Aparajita',serif;">
+                <span class="font-opt-name" style="font-family:'Aparajita',serif;">Aparajita</span>
+                <span class="font-opt-sample" style="font-family:'Aparajita',serif;">हिन्दी 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Kokila', 'Noto Sans Devanagari', sans-serif" data-name="Kokila" style="font-family:'Kokila',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Kokila',sans-serif;">Kokila</span>
+                <span class="font-opt-sample" style="font-family:'Kokila',sans-serif;">हिन्दी 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif" data-name="Simplified Chinese" style="font-family:'Noto Sans SC',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans SC',sans-serif;">Simplified Chinese</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans SC',sans-serif;">简体中文 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'PMingLiU', 'Noto Sans TC', serif" data-name="Traditional Chinese" style="font-family:'PMingLiU',serif;">
+                <span class="font-opt-name" style="font-family:'PMingLiU',serif;">Traditional Chinese</span>
+                <span class="font-opt-sample" style="font-family:'PMingLiU',serif;">繁體中文 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif" data-name="Japanese" style="font-family:'Noto Sans JP',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans JP',sans-serif;">Japanese</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans JP',sans-serif;">日本語 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Malgun Gothic', 'Batang', sans-serif" data-name="Korean" style="font-family:'Malgun Gothic',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Malgun Gothic',sans-serif;">Korean</span>
+                <span class="font-opt-sample" style="font-family:'Malgun Gothic',sans-serif;">한국어 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'PT Sans', Arial, sans-serif" data-name="PT Sans" style="font-family:'PT Sans',sans-serif;">
+                <span class="font-opt-name" style="font-family:'PT Sans',sans-serif;">PT Sans (Русский)</span>
+                <span class="font-opt-sample" style="font-family:'PT Sans',sans-serif;">Аа Бб 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Palatino Linotype', 'Georgia', serif" data-name="Palatino Linotype" style="font-family:'Palatino Linotype',serif;">
+                <span class="font-opt-name" style="font-family:'Palatino Linotype',serif;">Palatino Linotype</span>
+                <span class="font-opt-sample" style="font-family:'Palatino Linotype',serif;">Ελληνικά 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Hebrew', 'David', Arial, sans-serif" data-name="Noto Sans Hebrew" style="font-family:'Noto Sans Hebrew',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Hebrew',sans-serif;">Noto Sans Hebrew</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Hebrew',sans-serif;">עברית 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'David', 'Noto Sans Hebrew', serif" data-name="David" style="font-family:'David',serif;">
+                <span class="font-opt-name" style="font-family:'David',serif;">David (Hebrew)</span>
+                <span class="font-opt-sample" style="font-family:'David',serif;">עברית 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Bengali', 'Vrinda', sans-serif" data-name="Noto Sans Bengali" style="font-family:'Noto Sans Bengali',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Bengali',sans-serif;">Noto Sans Bengali</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Bengali',sans-serif;">বাংলা ১২৩</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Thai', 'Angsana New', sans-serif" data-name="Noto Sans Thai" style="font-family:'Noto Sans Thai',sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Thai',sans-serif;">Noto Sans Thai</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Thai',sans-serif;">ภาษาไทย 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Monospace & Code</div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Cascadia Code', Consolas, monospace" data-name="Cascadia Code" style="font-family:'Cascadia Code',Consolas,monospace;">
+                <span class="font-opt-name" style="font-family:'Cascadia Code',Consolas,monospace;">Cascadia Code</span>
+                <span class="font-opt-sample" style="font-family:'Cascadia Code',Consolas,monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Source Code Pro', monospace" data-name="Source Code Pro" style="font-family:'Source Code Pro',monospace;">
+                <span class="font-opt-name" style="font-family:'Source Code Pro',monospace;">Source Code Pro</span>
+                <span class="font-opt-sample" style="font-family:'Source Code Pro',monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Inconsolata', monospace" data-name="Inconsolata" style="font-family:'Inconsolata',monospace;">
+                <span class="font-opt-name" style="font-family:'Inconsolata',monospace;">Inconsolata</span>
+                <span class="font-opt-sample" style="font-family:'Inconsolata',monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'JetBrains Mono', monospace" data-name="JetBrains Mono" style="font-family:'JetBrains Mono',monospace;">
+                <span class="font-opt-name" style="font-family:'JetBrains Mono',monospace;">JetBrains Mono</span>
+                <span class="font-opt-sample" style="font-family:'JetBrains Mono',monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Fira Code', monospace" data-name="Fira Code" style="font-family:'Fira Code',monospace;">
+                <span class="font-opt-name" style="font-family:'Fira Code',monospace;">Fira Code</span>
+                <span class="font-opt-sample" style="font-family:'Fira Code',monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Space Mono', monospace" data-name="Space Mono" style="font-family:'Space Mono',monospace;">
+                <span class="font-opt-name" style="font-family:'Space Mono',monospace;">Space Mono</span>
+                <span class="font-opt-sample" style="font-family:'Space Mono',monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Courier Prime', monospace" data-name="Courier Prime" style="font-family:'Courier Prime',monospace;">
+                <span class="font-opt-name" style="font-family:'Courier Prime',monospace;">Courier Prime</span>
+                <span class="font-opt-sample" style="font-family:'Courier Prime',monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Courier New', monospace" data-name="Courier New" style="font-family:'Courier New',monospace;">
+                <span class="font-opt-name" style="font-family:'Courier New',monospace;">Courier New</span>
+                <span class="font-opt-sample" style="font-family:'Courier New',monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Consolas, monospace" data-name="Consolas" style="font-family:Consolas,monospace;">
+                <span class="font-opt-name" style="font-family:Consolas,monospace;">Consolas</span>
+                <span class="font-opt-sample" style="font-family:Consolas,monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Handwriting & Cursive</div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Satisfy', cursive" data-name="Satisfy" style="font-family:'Satisfy',cursive;">
+                <span class="font-opt-name" style="font-family:'Satisfy',cursive;">Satisfy</span>
+                <span class="font-opt-sample" style="font-family:'Satisfy',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Rock Salt', cursive" data-name="Rock Salt" style="font-family:'Rock Salt',cursive;">
+                <span class="font-opt-name" style="font-family:'Rock Salt',cursive;">Rock Salt</span>
+                <span class="font-opt-sample" style="font-family:'Rock Salt',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Shadows Into Light', cursive" data-name="Shadows Into Light" style="font-family:'Shadows Into Light',cursive;">
+                <span class="font-opt-name" style="font-family:'Shadows Into Light',cursive;">Shadows Into Light</span>
+                <span class="font-opt-sample" style="font-family:'Shadows Into Light',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Kalam', cursive" data-name="Kalam" style="font-family:'Kalam',cursive;">
+                <span class="font-opt-name" style="font-family:'Kalam',cursive;">Kalam</span>
+                <span class="font-opt-sample" style="font-family:'Kalam',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe Print', cursive" data-name="Segoe Print" style="font-family:'Segoe Print',cursive;">
+                <span class="font-opt-name" style="font-family:'Segoe Print',cursive;">Segoe Print</span>
+                <span class="font-opt-sample" style="font-family:'Segoe Print',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe Script', cursive" data-name="Segoe Script" style="font-family:'Segoe Script',cursive;">
+                <span class="font-opt-name" style="font-family:'Segoe Script',cursive;">Segoe Script</span>
+                <span class="font-opt-sample" style="font-family:'Segoe Script',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Great Vibes', cursive" data-name="Great Vibes" style="font-family:'Great Vibes',cursive;">
+                <span class="font-opt-name" style="font-family:'Great Vibes',cursive;">Great Vibes</span>
+                <span class="font-opt-sample" style="font-family:'Great Vibes',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Alex Brush', cursive" data-name="Alex Brush" style="font-family:'Alex Brush',cursive;">
+                <span class="font-opt-name" style="font-family:'Alex Brush',cursive;">Alex Brush</span>
+                <span class="font-opt-sample" style="font-family:'Alex Brush',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Dancing Script', cursive" data-name="Dancing Script" style="font-family:'Dancing Script',cursive;">
+                <span class="font-opt-name" style="font-family:'Dancing Script',cursive;">Dancing Script</span>
+                <span class="font-opt-sample" style="font-family:'Dancing Script',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Caveat, cursive" data-name="Caveat" style="font-family:Caveat,cursive;">
+                <span class="font-opt-name" style="font-family:Caveat,cursive;">Caveat</span>
+                <span class="font-opt-sample" style="font-family:Caveat,cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Pacifico, cursive" data-name="Pacifico" style="font-family:Pacifico,cursive;">
+                <span class="font-opt-name" style="font-family:Pacifico,cursive;">Pacifico</span>
+                <span class="font-opt-sample" style="font-family:Pacifico,cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Comic Sans MS', cursive" data-name="Comic Sans" style="font-family:'Comic Sans MS',cursive;">
+                <span class="font-opt-name" style="font-family:'Comic Sans MS',cursive;">Comic Sans</span>
+                <span class="font-opt-sample" style="font-family:'Comic Sans MS',cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Synchronized native select for programmatic / legacy access -->
+          <select class="fmt-select" id="fontFamily" title="Font Family" aria-label="Font Family" style="display:none;">
+            <optgroup label="Modern Sans-Serif">
+              <option value="Calibri, sans-serif" style="font-family: Calibri, sans-serif;" selected>Calibri</option>
+              <option value="'Aptos', sans-serif" style="font-family: 'Aptos', sans-serif;">Aptos</option>
+              <option value="'Outfit', sans-serif" style="font-family: 'Outfit', sans-serif;">Outfit</option>
+              <option value="'Plus Jakarta Sans', sans-serif" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</option>
+              <option value="'Syne', sans-serif" style="font-family: 'Syne', sans-serif;">Syne</option>
+              <option value="'Manrope', sans-serif" style="font-family: 'Manrope', sans-serif;">Manrope</option>
+              <option value="'DM Sans', sans-serif" style="font-family: 'DM Sans', sans-serif;">DM Sans</option>
+              <option value="Inter, sans-serif" style="font-family: Inter, sans-serif;">Inter</option>
+              <option value="Roboto, sans-serif" style="font-family: Roboto, sans-serif;">Roboto</option>
+              <option value="Poppins, sans-serif" style="font-family: Poppins, sans-serif;">Poppins</option>
+              <option value="Montserrat, sans-serif" style="font-family: Montserrat, sans-serif;">Montserrat</option>
+              <option value="'Work Sans', sans-serif" style="font-family: 'Work Sans', sans-serif;">Work Sans</option>
+              <option value="'Karla', sans-serif" style="font-family: 'Karla', sans-serif;">Karla</option>
+              <option value="'Comfortaa', sans-serif" style="font-family: 'Comfortaa', sans-serif;">Comfortaa</option>
+              <option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif;">Open Sans</option>
+              <option value="Lato, sans-serif" style="font-family: Lato, sans-serif;">Lato</option>
+              <option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif;">Raleway</option>
+              <option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif;">Nunito</option>
+              <option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif;">Rubik</option>
+              <option value="'Source Sans 3', sans-serif" style="font-family: 'Source Sans 3', sans-serif;">Source Sans 3</option>
+              <option value="'Space Grotesk', sans-serif" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
               <option value="Arial, sans-serif" style="font-family: Arial, sans-serif;">Arial</option>
               <option value="'Segoe UI', sans-serif" style="font-family: 'Segoe UI', sans-serif;">Segoe UI</option>
-              <option value="Calibri, sans-serif" style="font-family: Calibri, sans-serif;">Calibri</option>
+              <option value="'Segoe UI Variable', sans-serif" style="font-family: 'Segoe UI Variable', sans-serif;">Segoe UI Variable</option>
+              <option value="'Bahnschrift', sans-serif" style="font-family: 'Bahnschrift', sans-serif;">Bahnschrift</option>
+              <option value="'Century Gothic', sans-serif" style="font-family: 'Century Gothic', sans-serif;">Century Gothic</option>
+              <option value="'Franklin Gothic Medium', sans-serif" style="font-family: 'Franklin Gothic Medium', sans-serif;">Franklin Gothic</option>
+              <option value="'Gill Sans', sans-serif" style="font-family: 'Gill Sans', sans-serif;">Gill Sans</option>
+              <option value="'Lucida Sans', sans-serif" style="font-family: 'Lucida Sans', sans-serif;">Lucida Sans</option>
               <option value="Verdana, sans-serif" style="font-family: Verdana, sans-serif;">Verdana</option>
               <option value="Tahoma, sans-serif" style="font-family: Tahoma, sans-serif;">Tahoma</option>
               <option value="'Trebuchet MS', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Trebuchet MS</option>
-              <option value="Roboto, sans-serif" style="font-family: Roboto, sans-serif;">Roboto</option>
-              <option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif;">Open Sans</option>
-              <option value="Lato, sans-serif" style="font-family: Lato, sans-serif;">Lato</option>
-              <option value="Montserrat, sans-serif" style="font-family: Montserrat, sans-serif;">Montserrat</option>
-              <option value="Poppins, sans-serif" style="font-family: Poppins, sans-serif;">Poppins</option>
-              <option value="'Space Grotesk', sans-serif" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
-              <option value="Inter, sans-serif" style="font-family: Inter, sans-serif;">Inter</option>
+            </optgroup>
+            <optgroup label="Classic & Editorial Serifs">
+              <option value="Cambria, serif" style="font-family: Cambria, serif;">Cambria</option>
+              <option value="Constantia, serif" style="font-family: Constantia, serif;">Constantia</option>
+              <option value="'Crimson Text', serif" style="font-family: 'Crimson Text', serif;">Crimson Text</option>
+              <option value="'Libre Baskerville', serif" style="font-family: 'Libre Baskerville', serif;">Libre Baskerville</option>
+              <option value="'Bitter', serif" style="font-family: 'Bitter', serif;">Bitter</option>
+              <option value="'DM Serif Display', serif" style="font-family: 'DM Serif Display', serif;">DM Serif Display</option>
+              <option value="'Newsreader', serif" style="font-family: 'Newsreader', serif;">Newsreader</option>
+              <option value="Georgia, serif" style="font-family: Georgia, serif;">Georgia</option>
+              <option value="'Merriweather', serif" style="font-family: 'Merriweather', serif;">Merriweather</option>
+              <option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+              <option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
+              <option value="Lora, serif" style="font-family: Lora, serif;">Lora</option>
+              <option value="'Baskerville', serif" style="font-family: 'Baskerville', serif;">Baskerville</option>
+              <option value="'Bodoni MT', serif" style="font-family: 'Bodoni MT', serif;">Bodoni MT</option>
+              <option value="'Book Antiqua', serif" style="font-family: 'Book Antiqua', serif;">Book Antiqua</option>
+              <option value="'Noto Serif', serif" style="font-family: 'Noto Serif', serif;">Noto Serif</option>
+              <option value="'Times New Roman', serif" style="font-family: 'Times New Roman', serif;">Times New Roman</option>
+              <option value="Garamond, serif" style="font-family: Garamond, serif;">Garamond</option>
+              <option value="Palatino, serif" style="font-family: Palatino, serif;">Palatino</option>
+              <option value="Cinzel, serif" style="font-family: Cinzel, serif;">Cinzel</option>
+            </optgroup>
+            <optgroup label="Display & Headline">
+              <option value="'Righteous', cursive" style="font-family: 'Righteous', cursive;">Righteous</option>
+              <option value="'Lobster', cursive" style="font-family: 'Lobster', cursive;">Lobster</option>
+              <option value="'Permanent Marker', cursive" style="font-family: 'Permanent Marker', cursive;">Permanent Marker</option>
+              <option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif;">Oswald</option>
+              <option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif;">Bebas Neue</option>
+              <option value="Impact, sans-serif" style="font-family: Impact, sans-serif;">Impact</option>
             </optgroup>
             <optgroup label="Arabic, Urdu & Persian (العربية / اردو)">
               <option value="'Amiri', 'Traditional Arabic', serif" style="font-family: 'Amiri', serif;">Amiri (العربية)</option>
@@ -237,16 +788,28 @@
               <option value="'Noto Sans Thai', 'Angsana New', sans-serif" style="font-family: 'Noto Sans Thai', sans-serif;">Noto Sans Thai (ภาษาไทย)</option>
             </optgroup>
             <optgroup label="Monospace & Code">
+              <option value="'Cascadia Code', Consolas, monospace" style="font-family: 'Cascadia Code', Consolas, monospace;">Cascadia Code</option>
+              <option value="'Source Code Pro', monospace" style="font-family: 'Source Code Pro', monospace;">Source Code Pro</option>
+              <option value="'Inconsolata', monospace" style="font-family: 'Inconsolata', monospace;">Inconsolata</option>
+              <option value="'JetBrains Mono', monospace" style="font-family: 'JetBrains Mono', monospace;">JetBrains Mono</option>
               <option value="'Fira Code', monospace" style="font-family: 'Fira Code', monospace;">Fira Code</option>
+              <option value="'Space Mono', monospace" style="font-family: 'Space Mono', monospace;">Space Mono</option>
               <option value="'Courier Prime', monospace" style="font-family: 'Courier Prime', monospace;">Courier Prime</option>
               <option value="'Courier New', monospace" style="font-family: 'Courier New', monospace;">Courier New</option>
               <option value="Consolas, monospace" style="font-family: Consolas, monospace;">Consolas</option>
             </optgroup>
             <optgroup label="Display & Handwriting">
+              <option value="'Satisfy', cursive" style="font-family: 'Satisfy', cursive;">Satisfy</option>
+              <option value="'Rock Salt', cursive" style="font-family: 'Rock Salt', cursive;">Rock Salt</option>
+              <option value="'Shadows Into Light', cursive" style="font-family: 'Shadows Into Light', cursive;">Shadows Into Light</option>
+              <option value="'Kalam', cursive" style="font-family: 'Kalam', cursive;">Kalam</option>
+              <option value="'Segoe Print', cursive" style="font-family: 'Segoe Print', cursive;">Segoe Print</option>
+              <option value="'Segoe Script', cursive" style="font-family: 'Segoe Script', cursive;">Segoe Script</option>
+              <option value="'Great Vibes', cursive" style="font-family: 'Great Vibes', cursive;">Great Vibes</option>
+              <option value="'Alex Brush', cursive" style="font-family: 'Alex Brush', cursive;">Alex Brush</option>
               <option value="'Dancing Script', cursive" style="font-family: 'Dancing Script', cursive;">Dancing Script</option>
               <option value="Caveat, cursive" style="font-family: Caveat, cursive;">Caveat</option>
               <option value="Pacifico, cursive" style="font-family: Pacifico, cursive;">Pacifico</option>
-              <option value="Impact, sans-serif" style="font-family: Impact, sans-serif;">Impact</option>
               <option value="'Comic Sans MS', cursive" style="font-family: 'Comic Sans MS', cursive;">Comic Sans</option>
             </optgroup>
           </select>
@@ -677,16 +1240,19 @@
       </div>
     </div>
 
-    <!-- 5. VIEW RIBBON PANEL (Cleaned up: Removed Web View, Show ¶, Zoom Dropdown; Added Status Bar toggle & True Split Window) -->
+    <!-- 5. VIEW RIBBON PANEL (Problem 3: Replaced Find/Replace with Grammar & Spelling and Protect Doc; Added Comment) -->
     <div class="ribbon-panel" id="ribbonPanelView" role="tabpanel">
-      <!-- Document Views & Outline -->
+      <!-- Document Views, Outline, Comments & Document Security -->
       <div class="ribbon-group">
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="readingModeBtn" title="Toggle Distraction-free Reading Mode"><i class="fas fa-book-open" style="color:#0284c7;"></i> Read Mode</button>
           <button class="fmt-btn with-text" id="ribbonOutlineBtn"><i class="fas fa-list-ul"></i> Outline</button>
+          <button class="fmt-btn with-text" id="viewAddCommentBtn" title="Add Comment to Selected Word or Line"><i class="fas fa-comment-dots" style="color:#f59e0b;"></i> Comment</button>
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="viewToggleStatusbarBtn" title="Show or Hide Status Bar in Editor"><i class="fas fa-window-maximize" style="color:#6366f1;"></i> Status Bar</button>
+          <button class="fmt-btn with-text" id="viewSpellCheckBtn" title="Check Grammar & Spelling in Document"><i class="fas fa-spell-check" style="color:#10b981;"></i> Grammar & Spelling</button>
+          <button class="fmt-btn with-text" id="viewProtectDocBtn" title="Lock & Protect Document with Password/PIN"><i class="fas fa-lock" style="color:#e11d48;"></i> Protect Doc</button>
         </div>
       </div>
 
@@ -778,19 +1344,21 @@
           <input type="file" id="pptBgFileInput" accept="image/*" style="display:none;">
         </div>
         <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pptInsertImageBtn" title="Insert Image onto Current Slide"><i class="fas fa-image" style="color:#0284c7;"></i> Slide Image</button>
+          <input type="file" id="pptImageFileInput" accept="image/*" style="display:none;">
           <button class="fmt-btn with-text" id="pptAutoFitBtn" title="Auto-Fit Text to Slide Boundaries (Shrinks text to fit)"><i class="fas fa-compress-alt" style="color:#f59e0b;"></i> Auto-Fit</button>
           <button class="fmt-btn with-text" id="pptNotesBtn" title="Toggle Presentation Speaker Notes"><i class="fas fa-comment-dots" style="color:#0284c7;"></i> Notes</button>
         </div>
       </div>
 
-      <!-- Slide Transitions & Element Animations -->
+      <!-- Slide Transitions & Element Animations (Problem 2: Added more transitions, animations & duration/timer) -->
       <div class="ribbon-group">
         <div class="ribbon-row">
           <div class="bullet-dropdown-wrap" id="pptTransitionDropdownWrap">
             <button class="fmt-btn with-text" id="pptTransitionBtn" title="Slide Transition Animations">
               <i class="fas fa-wand-magic-sparkles" style="color:#a855f7;"></i><span>Transition</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
             </button>
-            <div class="spacing-popover" id="pptTransitionPopover" role="menu">
+            <div class="spacing-popover" id="pptTransitionPopover" role="menu" style="max-height:260px;overflow-y:auto;overscroll-behavior:contain;min-width:200px;">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Slide Transitions</div>
               <div class="spacing-opt-item active" data-transition="none"><i class="fas fa-check margin-check"></i> None</div>
               <div class="spacing-opt-item" data-transition="fade"><i class="fas fa-circle-notch" style="margin-right:6px;color:#a855f7;"></i> Fade</div>
@@ -816,13 +1384,40 @@
               <div class="spacing-opt-item" data-transition="vortex"><i class="fas fa-tornado" style="margin-right:6px;color:#f59e0b;"></i> Vortex Swirl</div>
               <div class="spacing-opt-item" data-transition="switch"><i class="fas fa-repeat" style="margin-right:6px;color:#ec4899;"></i> 3D Switch</div>
               <div class="spacing-opt-item" data-transition="ripple"><i class="fas fa-water" style="margin-right:6px;color:#0284c7;"></i> Water Ripple</div>
+              <div class="spacing-opt-item" data-transition="glitch"><i class="fas fa-network-wired" style="margin-right:6px;color:#ef4444;"></i> Glitch Shift</div>
+              <div class="spacing-opt-item" data-transition="honeycomb"><i class="fas fa-shapes" style="margin-right:6px;color:#f59e0b;"></i> Honeycomb Hex</div>
+              <div class="spacing-opt-item" data-transition="page-curl"><i class="fas fa-scroll" style="margin-right:6px;color:#8b5cf6;"></i> Page Curl</div>
+              <div class="spacing-opt-item" data-transition="zoom-rotate"><i class="fas fa-rotate-right" style="margin-right:6px;color:#10b981;"></i> Zoom & Spin</div>
+              <div class="spacing-opt-item" data-transition="shimmer-wave"><i class="fas fa-wave-square" style="margin-right:6px;color:#06b6d4;"></i> Shimmer Wave</div>
+              <div class="spacing-opt-item" data-transition="card-flip"><i class="fas fa-layer-group" style="margin-right:6px;color:#3b82f6;"></i> 3D Card Flip</div>
+              <div class="spacing-opt-item" data-transition="kaleidoscope"><i class="fas fa-sun" style="margin-right:6px;color:#eab308;"></i> Kaleidoscope</div>
+              <div class="spacing-opt-item" data-transition="blinds"><i class="fas fa-bars" style="margin-right:6px;color:#0284c7;"></i> Vertical Blinds</div>
+              <div class="spacing-opt-item" data-transition="orbit"><i class="fas fa-circle-notch" style="margin-right:6px;color:#a855f7;"></i> 3D Orbit</div>
+              <div class="spacing-opt-item" data-transition="morph"><i class="fas fa-shapes" style="margin-right:6px;color:#10b981;"></i> Shape Morph</div>
+              <div class="spacing-opt-item" data-transition="box-turn"><i class="fas fa-cube" style="margin-right:6px;color:#ea580c;"></i> 3D Box Turn</div>
+              <div class="spacing-opt-item" data-transition="gallery"><i class="fas fa-images" style="margin-right:6px;color:#f59e0b;"></i> Gallery Push</div>
+              <div class="spacing-opt-item" data-transition="conveyor"><i class="fas fa-right-left" style="margin-right:6px;color:#06b6d4;"></i> Conveyor Belt</div>
+              <div class="spacing-opt-item" data-transition="swirl"><i class="fas fa-dharmachakra" style="margin-right:6px;color:#a855f7;"></i> Swirl In</div>
+              <div class="spacing-opt-item" data-transition="curtain-rise"><i class="fas fa-angles-up" style="margin-right:6px;color:#10b981;"></i> Curtain Rise</div>
+              <div class="spacing-opt-item" data-transition="prism"><i class="fas fa-gem" style="margin-right:6px;color:#06b6d4;"></i> 3D Prism Twist</div>
+              <div class="spacing-opt-item" data-transition="reveal-right"><i class="fas fa-angles-right" style="margin-right:6px;color:#f59e0b;"></i> Reveal Right</div>
+              <div class="spacing-opt-item" data-transition="elastic-scale"><i class="fas fa-maximize" style="margin-right:6px;color:#ec4899;"></i> Elastic Bounce</div>
+              <div class="spacing-opt-item" data-transition="slide-rotate"><i class="fas fa-compact-disc" style="margin-right:6px;color:#3b82f6;"></i> Slide Rotate</div>
+              <div class="spacing-opt-item" data-transition="pan-down"><i class="fas fa-arrow-down-wide-short" style="margin-right:6px;color:#14b8a6;"></i> Pan Down</div>
+              <div class="spacing-opt-item" data-transition="unfold"><i class="fas fa-folder-open" style="margin-right:6px;color:#f97316;"></i> 3D Unfold</div>
+              <div class="spacing-opt-item" data-transition="swing-door"><i class="fas fa-door-closed" style="margin-right:6px;color:#ec4899;"></i> 3D Swing Door</div>
+              <div class="spacing-opt-item" data-transition="float-up"><i class="fas fa-arrow-trend-up" style="margin-right:6px;color:#3b82f6;"></i> Float &amp; Blur Up</div>
+              <div class="spacing-opt-item" data-transition="rotate-zoom-out"><i class="fas fa-arrows-spin" style="margin-right:6px;color:#f59e0b;"></i> Rotate &amp; Zoom Out</div>
+              <div class="spacing-opt-item" data-transition="blinds-horizontal"><i class="fas fa-bars-staggered" style="margin-right:6px;color:#10b981;"></i> Blinds Horizontal</div>
+              <div class="spacing-opt-item" data-transition="expand-circle"><i class="fas fa-circle-dot" style="margin-right:6px;color:#a855f7;"></i> Radial Expand</div>
+              <div class="spacing-opt-item" data-transition="skew-slide"><i class="fas fa-italic" style="margin-right:6px;color:#06b6d4;"></i> Skew Slide In</div>
             </div>
           </div>
           <div class="bullet-dropdown-wrap" id="pptAnimationDropdownWrap">
             <button class="fmt-btn with-text" id="pptAnimationBtn" title="Element Animations (Apply to selected text, box, shape or slide)">
               <i class="fas fa-film" style="color:#f59e0b;"></i><span>Animation</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
             </button>
-            <div class="spacing-popover" id="pptAnimationPopover" role="menu">
+            <div class="spacing-popover" id="pptAnimationPopover" role="menu" style="max-height:260px;overflow-y:auto;overscroll-behavior:contain;min-width:210px;">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Element Animations</div>
               <div class="spacing-opt-item active" data-animation="none"><i class="fas fa-ban" style="margin-right:6px;color:#94a3b8;"></i> None</div>
               <div class="spacing-opt-item" data-animation="fade-in"><i class="fas fa-eye" style="margin-right:6px;color:#3b82f6;"></i> Fade In</div>
@@ -832,14 +1427,67 @@
               <div class="spacing-opt-item" data-animation="pulse"><i class="fas fa-heart-pulse" style="margin-right:6px;color:#ef4444;"></i> Pulse (Emphasis)</div>
               <div class="spacing-opt-item" data-animation="shimmer"><i class="fas fa-wand-magic" style="margin-right:6px;color:#8b5cf6;"></i> Shimmer (Emphasis)</div>
               <div class="spacing-opt-item" data-animation="spin"><i class="fas fa-arrows-rotate" style="margin-right:6px;color:#06b6d4;"></i> Spin (360°)</div>
-              <div class="spacing-opt-item" data-animation="swing"><i class="fas fa-bell" style="margin-right:6px;color:#a855f7;"></i> Swing</div>
-              <div class="spacing-opt-item" data-animation="wobble"><i class="fas fa-shuffle" style="margin-right:6px;color:#f97316;"></i> Wobble</div>
-              <div class="spacing-opt-item" data-animation="rubber-band"><i class="fas fa-expand-alt" style="margin-right:6px;color:#10b981;"></i> Rubber Band</div>
-              <div class="spacing-opt-item" data-animation="flip-in"><i class="fas fa-rotate" style="margin-right:6px;color:#06b6d4;"></i> 3D Flip In</div>
-              <div class="spacing-opt-item" data-animation="slide-in-right"><i class="fas fa-arrow-left" style="margin-right:6px;color:#3b82f6;"></i> Slide In Right</div>
-              <div class="spacing-opt-item" data-animation="slide-in-left"><i class="fas fa-arrow-right" style="margin-right:6px;color:#ec4899;"></i> Slide In Left</div>
+              <div class="spacing-opt-item" data-animation="rubberBand"><i class="fas fa-expand-alt" style="margin-right:6px;color:#10b981;"></i> RubberBand Elastic</div>
+              <div class="spacing-opt-item" data-animation="wobble"><i class="fas fa-shuffle" style="margin-right:6px;color:#f97316;"></i> Wobble Sway</div>
+              <div class="spacing-opt-item" data-animation="swing"><i class="fas fa-bell" style="margin-right:6px;color:#a855f7;"></i> Pendulum Swing</div>
+              <div class="spacing-opt-item" data-animation="flip-in-x"><i class="fas fa-rotate" style="margin-right:6px;color:#06b6d4;"></i> Flip In (X-Axis)</div>
+              <div class="spacing-opt-item" data-animation="zoom-in-down"><i class="fas fa-arrow-down" style="margin-right:6px;color:#3b82f6;"></i> Zoom In Down</div>
+              <div class="spacing-opt-item" data-animation="roll-in"><i class="fas fa-arrows-spin" style="margin-right:6px;color:#eab308;"></i> Roll In</div>
+              <div class="spacing-opt-item" data-animation="heartbeat"><i class="fas fa-heart" style="margin-right:6px;color:#e11d48;"></i> Heartbeat</div>
+              <div class="spacing-opt-item" data-animation="glow"><i class="fas fa-lightbulb" style="margin-right:6px;color:#eab308;"></i> Neon Glow</div>
+              <div class="spacing-opt-item" data-animation="jello"><i class="fas fa-cubes" style="margin-right:6px;color:#14b8a6;"></i> Jello Gelatin</div>
+              <div class="spacing-opt-item" data-animation="tada"><i class="fas fa-bullhorn" style="margin-right:6px;color:#f97316;"></i> Tada Pop</div>
+              <div class="spacing-opt-item" data-animation="float"><i class="fas fa-cloud" style="margin-right:6px;color:#0284c7;"></i> Gentle Float</div>
+              <div class="spacing-opt-item" data-animation="typewriter"><i class="fas fa-keyboard" style="margin-right:6px;color:#6366f1;"></i> Typewriter Reveal</div>
+              <div class="spacing-opt-item" data-animation="blur-fade"><i class="fas fa-smog" style="margin-right:6px;color:#a855f7;"></i> Blur Fade In</div>
+              <div class="spacing-opt-item" data-animation="flash-burst"><i class="fas fa-bolt" style="margin-right:6px;color:#eab308;"></i> Flash Burst</div>
+              <div class="spacing-opt-item" data-animation="headShake"><i class="fas fa-head-side-virus" style="margin-right:6px;color:#ef4444;"></i> Head Shake</div>
+              <div class="spacing-opt-item" data-animation="swing-drop"><i class="fas fa-arrow-down" style="margin-right:6px;color:#10b981;"></i> Swing Drop</div>
+              <div class="spacing-opt-item" data-animation="bounce-drop"><i class="fas fa-basketball" style="margin-right:6px;color:#ea580c;"></i> Bounce Drop</div>
+              <div class="spacing-opt-item" data-animation="blur-zoom"><i class="fas fa-magnifying-glass" style="margin-right:6px;color:#06b6d4;"></i> Blur Zoom In</div>
+              <div class="spacing-opt-item" data-animation="slide-rotate-in"><i class="fas fa-rotate-right" style="margin-right:6px;color:#a855f7;"></i> Slide & Rotate In</div>
+              <div class="spacing-opt-item" data-animation="flip-in-y"><i class="fas fa-arrows-left-right" style="margin-right:6px;color:#3b82f6;"></i> Flip In (Y-Axis)</div>
+              <div class="spacing-opt-item" data-animation="pop-in"><i class="fas fa-circle-dot" style="margin-right:6px;color:#ec4899;"></i> Pop & Snap In</div>
+              <div class="spacing-opt-item" data-animation="tracking-in"><i class="fas fa-text-width" style="margin-right:6px;color:#14b8a6;"></i> Tracking Letters In</div>
               <div class="spacing-opt-item" data-animation="fade-out"><i class="fas fa-eye-slash" style="margin-right:6px;color:#64748b;"></i> Fade Out (Exit)</div>
               <div class="spacing-opt-item" data-animation="zoom-out"><i class="fas fa-magnifying-glass-minus" style="margin-right:6px;color:#6b7280;"></i> Zoom Out (Exit)</div>
+              <div class="spacing-opt-item" data-animation="swing-in-top"><i class="fas fa-arrows-turn-to-dots" style="margin-right:6px;color:#10b981;"></i> 3D Swing In Top</div>
+              <div class="spacing-opt-item" data-animation="bounce-in-right"><i class="fas fa-volleyball" style="margin-right:6px;color:#3b82f6;"></i> Bounce In Right</div>
+              <div class="spacing-opt-item" data-animation="back-in-down"><i class="fas fa-angles-down" style="margin-right:6px;color:#ea580c;"></i> Back In Down</div>
+              <div class="spacing-opt-item" data-animation="lightspeed-in"><i class="fas fa-bolt-lightning" style="margin-right:6px;color:#eab308;"></i> Lightspeed In</div>
+              <div class="spacing-opt-item" data-animation="heart-pop"><i class="fas fa-heart" style="margin-right:6px;color:#ef4444;"></i> Heart Pop Burst</div>
+              <div class="spacing-opt-item" data-animation="slit-in-vertical"><i class="fas fa-table-columns" style="margin-right:6px;color:#a855f7;"></i> Slit In Vertical</div>
+            </div>
+          </div>
+        </div>
+        <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="pptDurationDropdownWrap">
+            <button class="fmt-btn with-text" id="pptDurationBtn" title="Transition & Animation Duration Timers">
+              <i class="fas fa-stopwatch" style="color:#10b981;"></i><span>Timers: T 1.0s | A 1.0s</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptDurationPopover" role="menu" style="min-width:230px;max-height:280px;overflow-y:auto;">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Transition Timer (How long to show)</div>
+              <div class="spacing-opt-item" data-trans-timer="0.3"><i class="fas fa-bolt" style="margin-right:6px;color:#ea580c;"></i> 0.3s (Snappy)</div>
+              <div class="spacing-opt-item" data-trans-timer="0.5"><i class="fas fa-gauge-high" style="margin-right:6px;color:#f59e0b;"></i> 0.5s (Fast)</div>
+              <div class="spacing-opt-item active" data-trans-timer="1.0"><i class="fas fa-check margin-check"></i> 1.0s (Normal)</div>
+              <div class="spacing-opt-item" data-trans-timer="1.5"><i class="fas fa-gauge" style="margin-right:6px;color:#0284c7;"></i> 1.5s (Smooth)</div>
+              <div class="spacing-opt-item" data-trans-timer="2.0"><i class="fas fa-film" style="margin-right:6px;color:#8b5cf6;"></i> 2.0s (Slow)</div>
+              <div class="spacing-opt-item" data-trans-timer="3.0"><i class="fas fa-hourglass" style="margin-right:6px;color:#ec4899;"></i> 3.0s (Cinematic)</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Animation Timer (How long to show)</div>
+              <div class="spacing-opt-item" data-anim-timer="0.5"><i class="fas fa-stopwatch-20" style="margin-right:6px;color:#10b981;"></i> 0.5s (Quick)</div>
+              <div class="spacing-opt-item active" data-anim-timer="1.0"><i class="fas fa-check margin-check"></i> 1.0s (Standard)</div>
+              <div class="spacing-opt-item" data-anim-timer="1.5"><i class="fas fa-stopwatch" style="margin-right:6px;color:#0284c7;"></i> 1.5s (Medium)</div>
+              <div class="spacing-opt-item" data-anim-timer="2.0"><i class="fas fa-hourglass-start" style="margin-right:6px;color:#f59e0b;"></i> 2.0s (Emphasis)</div>
+              <div class="spacing-opt-item" data-anim-timer="3.0"><i class="fas fa-hourglass-half" style="margin-right:6px;color:#ec4899;"></i> 3.0s (Dramatic)</div>
+              <div class="spacing-opt-item" data-anim-timer="4.0"><i class="fas fa-hourglass-end" style="margin-right:6px;color:#8b5cf6;"></i> 4.0s (Slow Motion)</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Slide Show AutoPlay Timer</div>
+              <div class="spacing-opt-item active" data-advance="0"><i class="fas fa-hand" style="margin-right:6px;color:#64748b;"></i> Manual (Click / Key)</div>
+              <div class="spacing-opt-item" data-advance="2"><i class="fas fa-forward" style="margin-right:6px;color:#10b981;"></i> 2 Seconds per slide</div>
+              <div class="spacing-opt-item" data-advance="3"><i class="fas fa-forward" style="margin-right:6px;color:#10b981;"></i> 3 Seconds per slide</div>
+              <div class="spacing-opt-item" data-advance="5"><i class="fas fa-forward" style="margin-right:6px;color:#0284c7;"></i> 5 Seconds per slide</div>
+              <div class="spacing-opt-item" data-advance="10"><i class="fas fa-forward" style="margin-right:6px;color:#8b5cf6;"></i> 10 Seconds per slide</div>
             </div>
           </div>
         </div>
@@ -919,26 +1567,97 @@
         </div>
       </div>
 
-      <!-- Formulas & Math Calculations -->
+      <!-- Formulas & Math Calculations (Problem 1: Added Function button with Excel formulas) -->
       <div class="ribbon-group">
         <div class="ribbon-row">
-          <div class="bullet-dropdown-wrap" id="excelFormulaDropdownWrap">
-            <button class="fmt-btn with-text" id="excelFormulaBtn" title="Spreadsheet Formulas & AutoSum">
-              <strong style="color:#16a34a;font-size:13px;margin-right:2px;">&Sigma;</strong><span>AutoSum</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
+          <div class="bullet-dropdown-wrap" id="excelFunctionDropdownWrap">
+            <button class="fmt-btn with-text" id="excelFunctionBtn" title="Insert Excel Functions & Formulas">
+              <strong style="color:#16a34a;font-size:13px;font-style:italic;margin-right:2px;font-family:serif;">ƒx</strong><span>Function</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
             </button>
-            <div class="spacing-popover" id="excelFormulaPopover" role="menu">
+            <div class="spacing-popover" id="excelFunctionPopover" role="menu" style="min-width:260px;max-height:220px;overflow-y:auto;overscroll-behavior:contain;">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Common Functions</div>
               <div class="spacing-opt-item" data-formula="SUM"><strong style="color:#16a34a;margin-right:6px;">&Sigma;</strong> SUM (Total)</div>
               <div class="spacing-opt-item" data-formula="AVERAGE"><i class="fas fa-chart-line" style="color:#0284c7;margin-right:6px;"></i> AVERAGE (Mean)</div>
               <div class="spacing-opt-item" data-formula="COUNT"><i class="fas fa-hashtag" style="color:#8b5cf6;margin-right:6px;"></i> COUNT (Numbers)</div>
               <div class="spacing-opt-item" data-formula="MAX"><i class="fas fa-arrow-up" style="color:#ea580c;margin-right:6px;"></i> MAX (Maximum)</div>
               <div class="spacing-opt-item" data-formula="MIN"><i class="fas fa-arrow-down" style="color:#06b6d4;margin-right:6px;"></i> MIN (Minimum)</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Statistical & Math</div>
               <div class="spacing-opt-item" data-formula="MEDIAN"><i class="fas fa-divide" style="color:#a855f7;margin-right:6px;"></i> MEDIAN (Middle Value)</div>
               <div class="spacing-opt-item" data-formula="PRODUCT"><i class="fas fa-xmark" style="color:#f59e0b;margin-right:6px;"></i> PRODUCT (Multiply All)</div>
               <div class="spacing-opt-item" data-formula="COUNTA"><i class="fas fa-list-check" style="color:#10b981;margin-right:6px;"></i> COUNTA (Non-Empty)</div>
+              <div class="spacing-opt-item" data-formula="COUNTBLANK"><i class="fas fa-square" style="color:#94a3b8;margin-right:6px;"></i> COUNTBLANK (Empty Cells)</div>
+              <div class="spacing-opt-item" data-formula="AVERAGEA"><i class="fas fa-chart-simple" style="color:#0284c7;margin-right:6px;"></i> AVERAGEA (All Values)</div>
               <div class="spacing-opt-item" data-formula="STDEV"><i class="fas fa-square-root-variable" style="color:#ec4899;margin-right:6px;"></i> STDEV (Std Deviation)</div>
+              <div class="spacing-opt-item" data-formula="VAR"><i class="fas fa-chart-area" style="color:#a855f7;margin-right:6px;"></i> VAR (Variance)</div>
+              <div class="spacing-opt-item" data-formula="MODE"><i class="fas fa-chart-column" style="color:#f97316;margin-right:6px;"></i> MODE (Most Frequent)</div>
               <div class="spacing-opt-item" data-formula="ROUND"><i class="fas fa-circle-notch" style="color:#06b6d4;margin-right:6px;"></i> ROUND (Round Decimals)</div>
+              <div class="spacing-opt-item" data-formula="CEILING"><i class="fas fa-arrow-up-right-dots" style="color:#16a34a;margin-right:6px;"></i> CEILING (Round Up)</div>
+              <div class="spacing-opt-item" data-formula="FLOOR"><i class="fas fa-arrow-down-right-dots" style="color:#64748b;margin-right:6px;"></i> FLOOR (Round Down)</div>
+              <div class="spacing-opt-item" data-formula="ABS"><i class="fas fa-plus-minus" style="color:#10b981;margin-right:6px;"></i> ABS (Absolute Value)</div>
+              <div class="spacing-opt-item" data-formula="SQRT"><i class="fas fa-square-root-variable" style="color:#2563eb;margin-right:6px;"></i> SQRT (Square Root)</div>
+              <div class="spacing-opt-item" data-formula="POWER"><i class="fas fa-superscript" style="color:#ea580c;margin-right:6px;"></i> POWER (Exponential)</div>
+              <div class="spacing-opt-item" data-formula="EXP"><i class="fas fa-e" style="color:#3b82f6;margin-right:6px;"></i> EXP (Natural Exp)</div>
+              <div class="spacing-opt-item" data-formula="LOG"><i class="fas fa-calculator" style="color:#8b5cf6;margin-right:6px;"></i> LOG (Logarithm)</div>
+              <div class="spacing-opt-item" data-formula="LN"><i class="fas fa-wave-square" style="color:#0284c7;margin-right:6px;"></i> LN (Natural Log)</div>
+              <div class="spacing-opt-item" data-formula="SIGN"><i class="fas fa-arrows-split-up-and-left" style="color:#ef4444;margin-right:6px;"></i> SIGN (+1, 0, -1)</div>
+              <div class="spacing-opt-item" data-formula="MOD"><i class="fas fa-percent" style="color:#8b5cf6;margin-right:6px;"></i> MOD (Remainder)</div>
+              <div class="spacing-opt-item" data-formula="QUOTIENT"><i class="fas fa-divide" style="color:#10b981;margin-right:6px;"></i> QUOTIENT (Integer Div)</div>
+              <div class="spacing-opt-item" data-formula="INT"><i class="fas fa-arrow-down-short-wide" style="color:#64748b;margin-right:6px;"></i> INT (Integer Floor)</div>
+              <div class="spacing-opt-item" data-formula="RAND"><i class="fas fa-dice" style="color:#f59e0b;margin-right:6px;"></i> RAND (0 to 1)</div>
+              <div class="spacing-opt-item" data-formula="RANDBETWEEN"><i class="fas fa-dice-d20" style="color:#ec4899;margin-right:6px;"></i> RANDBETWEEN (Random Int)</div>
+              <div class="spacing-opt-item" data-formula="COUNTIF"><i class="fas fa-filter" style="color:#0284c7;margin-right:6px;"></i> COUNTIF (Count Matching)</div>
+              <div class="spacing-opt-item" data-formula="SUMIF"><i class="fas fa-calculator" style="color:#16a34a;margin-right:6px;"></i> SUMIF (Conditional Sum)</div>
+              <div class="spacing-opt-item" data-formula="FACT"><i class="fas fa-exclamation" style="color:#ef4444;margin-right:6px;"></i> FACT (Factorial)</div>
+              <div class="spacing-opt-item" data-formula="GCD"><i class="fas fa-divide" style="color:#2563eb;margin-right:6px;"></i> GCD (Greatest Divisor)</div>
+              <div class="spacing-opt-item" data-formula="LCM"><i class="fas fa-arrows-spin" style="color:#10b981;margin-right:6px;"></i> LCM (Least Multiple)</div>
+              <div class="spacing-opt-item" data-formula="TRUNC"><i class="fas fa-scissors" style="color:#f97316;margin-right:6px;"></i> TRUNC (Truncate Int)</div>
+              <div class="spacing-opt-item" data-formula="PI"><i class="fas fa-circle" style="color:#ec4899;margin-right:6px;"></i> PI (3.14159...)</div>
+              <div class="spacing-opt-item" data-formula="LARGE"><i class="fas fa-arrow-up-wide-short" style="color:#8b5cf6;margin-right:6px;"></i> LARGE (k-th Largest)</div>
+              <div class="spacing-opt-item" data-formula="SMALL"><i class="fas fa-arrow-down-wide-short" style="color:#0284c7;margin-right:6px;"></i> SMALL (k-th Smallest)</div>
+              <div class="spacing-opt-item" data-formula="RANK"><i class="fas fa-ranking-star" style="color:#eab308;margin-right:6px;"></i> RANK (Rank in List)</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Text & Logic</div>
+              <div class="spacing-opt-item" data-formula="CONCAT"><i class="fas fa-link" style="color:#2563eb;margin-right:6px;"></i> CONCAT (Join Text)</div>
+              <div class="spacing-opt-item" data-formula="UPPER"><i class="fas fa-font" style="color:#10b981;margin-right:6px;"></i> UPPER (All Uppercase)</div>
+              <div class="spacing-opt-item" data-formula="LOWER"><i class="fas fa-font" style="color:#64748b;margin-right:6px;font-size:11px;"></i> LOWER (All Lowercase)</div>
+              <div class="spacing-opt-item" data-formula="PROPER"><i class="fas fa-heading" style="color:#a855f7;margin-right:6px;"></i> PROPER (Capitalize)</div>
+              <div class="spacing-opt-item" data-formula="LEN"><i class="fas fa-ruler-horizontal" style="color:#06b6d4;margin-right:6px;"></i> LEN (Text Length)</div>
+              <div class="spacing-opt-item" data-formula="TRIM"><i class="fas fa-crop-simple" style="color:#f59e0b;margin-right:6px;"></i> TRIM (Strip Spaces)</div>
+              <div class="spacing-opt-item" data-formula="REPT"><i class="fas fa-repeat" style="color:#14b8a6;margin-right:6px;"></i> REPT (Repeat String)</div>
+              <div class="spacing-opt-item" data-formula="SUBSTITUTE"><i class="fas fa-right-left" style="color:#6366f1;margin-right:6px;"></i> SUBSTITUTE (Replace)</div>
+              <div class="spacing-opt-item" data-formula="LEFT"><i class="fas fa-arrow-left" style="color:#3b82f6;margin-right:6px;"></i> LEFT (Prefix Chars)</div>
+              <div class="spacing-opt-item" data-formula="RIGHT"><i class="fas fa-arrow-right" style="color:#a855f7;margin-right:6px;"></i> RIGHT (Suffix Chars)</div>
+              <div class="spacing-opt-item" data-formula="CLEAN"><i class="fas fa-broom" style="color:#06b6d4;margin-right:6px;"></i> CLEAN (Strip Non-print)</div>
+              <div class="spacing-opt-item" data-formula="EXACT"><i class="fas fa-equals" style="color:#16a34a;margin-right:6px;"></i> EXACT (Case Compare)</div>
+              <div class="spacing-opt-item" data-formula="REPLACE"><i class="fas fa-pen-to-square" style="color:#ea580c;margin-right:6px;"></i> REPLACE (Pos Replace)</div>
+              <div class="spacing-opt-item" data-formula="T"><i class="fas fa-t" style="color:#8b5cf6;margin-right:6px;"></i> T (Extract Text)</div>
+              <div class="spacing-opt-item" data-formula="IF"><i class="fas fa-code-branch" style="color:#eab308;margin-right:6px;"></i> IF (Conditional)</div>
+              <div class="spacing-opt-item" data-formula="AND"><i class="fas fa-check-double" style="color:#10b981;margin-right:6px;"></i> AND (All True)</div>
+              <div class="spacing-opt-item" data-formula="OR"><i class="fas fa-code-compare" style="color:#0284c7;margin-right:6px;"></i> OR (Any True)</div>
+              <div class="spacing-opt-item" data-formula="XOR"><i class="fas fa-code-fork" style="color:#ec4899;margin-right:6px;"></i> XOR (Exclusive OR)</div>
+              <div class="spacing-opt-item" data-formula="NOT"><i class="fas fa-ban" style="color:#ef4444;margin-right:6px;"></i> NOT (Invert Logic)</div>
+              <div class="spacing-opt-item" data-formula="IFERROR"><i class="fas fa-shield-halved" style="color:#f59e0b;margin-right:6px;"></i> IFERROR (Safe Fallback)</div>
+              <div class="spacing-opt-item" data-formula="ISNUMBER"><i class="fas fa-arrow-down-1-9" style="color:#16a34a;margin-right:6px;"></i> ISNUMBER (Check Number)</div>
+              <div class="spacing-opt-item" data-formula="ISTEXT"><i class="fas fa-align-left" style="color:#0284c7;margin-right:6px;"></i> ISTEXT (Check Text)</div>
+              <div class="spacing-opt-item" data-formula="ISBLANK"><i class="fas fa-square-full" style="color:#94a3b8;margin-right:6px;font-size:10px;"></i> ISBLANK (Check Empty)</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Date & Time</div>
+              <div class="spacing-opt-item" data-formula="NOW"><i class="fas fa-clock" style="color:#0284c7;margin-right:6px;"></i> NOW (Date & Time)</div>
+              <div class="spacing-opt-item" data-formula="TODAY"><i class="fas fa-calendar-day" style="color:#16a34a;margin-right:6px;"></i> TODAY (Current Date)</div>
+              <div class="spacing-opt-item" data-formula="YEAR"><i class="fas fa-calendar" style="color:#ea580c;margin-right:6px;"></i> YEAR (Current Year)</div>
+              <div class="spacing-opt-item" data-formula="MONTH"><i class="fas fa-calendar-week" style="color:#8b5cf6;margin-right:6px;"></i> MONTH (Month Number)</div>
+              <div class="spacing-opt-item" data-formula="DAY"><i class="fas fa-sun" style="color:#f59e0b;margin-right:6px;"></i> DAY (Day of Month)</div>
+              <div class="spacing-opt-item" data-formula="WEEKDAY"><i class="fas fa-calendar-days" style="color:#10b981;margin-right:6px;"></i> WEEKDAY (Day of Week)</div>
+              <div class="spacing-opt-item" data-formula="HOUR"><i class="fas fa-clock-rotate-left" style="color:#3b82f6;margin-right:6px;"></i> HOUR (0-23)</div>
+              <div class="spacing-opt-item" data-formula="MINUTE"><i class="fas fa-stopwatch-20" style="color:#a855f7;margin-right:6px;"></i> MINUTE (0-59)</div>
+              <div class="spacing-opt-item" data-formula="SECOND"><i class="fas fa-stopwatch" style="color:#ef4444;margin-right:6px;"></i> SECOND (0-59)</div>
+              <div class="spacing-opt-item" data-formula="DATE"><i class="fas fa-calendar-plus" style="color:#16a34a;margin-right:6px;"></i> DATE (Year, Month, Day)</div>
+              <div class="spacing-opt-item" data-formula="DAYS"><i class="fas fa-calendar-minus" style="color:#0284c7;margin-right:6px;"></i> DAYS (Days Between)</div>
+              <div class="spacing-opt-item" data-formula="YEARFRAC"><i class="fas fa-percent" style="color:#10b981;margin-right:6px;"></i> YEARFRAC (Year Fraction)</div>
             </div>
           </div>
+          <button class="fmt-btn with-text" id="excelFormulaBtn" title="Spreadsheet AutoSum Total"><strong style="color:#16a34a;font-size:13px;margin-right:2px;">&Sigma;</strong><span>AutoSum</span></button>
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn" id="excelFmtCurrencyBtn" title="Format Currency ($)" aria-label="Currency Format"><i class="fas fa-dollar-sign"></i></button>
@@ -1004,6 +1723,23 @@
           <button class="fmt-btn with-text" id="pdfRibbonRotateBtn" title="Rotate PDF Page 90° Clockwise"><i class="fas fa-rotate-right" style="color:#0284c7;"></i> Rotate 90°</button>
           <button class="fmt-btn with-text" id="pdfRibbonInvertBtn" title="Invert Colors / Night Reading Mode for PDF"><i class="fas fa-circle-half-stroke" style="color:#a855f7;"></i> Night Mode</button>
         </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pdfGrayscaleBtn" title="Toggle High-Contrast Grayscale / B&W Print Reading Mode"><i class="fas fa-print" style="color:#64748b;"></i> Grayscale</button>
+          <button class="fmt-btn with-text" id="pdfExportCurrentPageImgBtn" title="Export Current PDF Page as High-Resolution PNG Image"><i class="fas fa-image" style="color:#10b981;"></i> Save Page PNG</button>
+        </div>
+      </div>
+      <!-- PDF Engineering, Security & Manipulation (Problem 4: 100% Unique PDF Buttons) -->
+      <div class="ribbon-group">
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pdfSplitPagesBtn" title="Extract and Split Selected Pages into a New PDF Document"><i class="fas fa-scissors" style="color:#ef4444;"></i> Split Pages</button>
+          <button class="fmt-btn with-text" id="pdfFlattenBtn" title="Flatten and Lock Interactive PDF Fields & Annotations"><i class="fas fa-layer-group" style="color:#0284c7;"></i> Flatten & Lock</button>
+          <button class="fmt-btn with-text" id="pdfReversePagesBtn" title="Reverse Entire Page Order (1..N to N..1)"><i class="fas fa-arrow-down-up-across-line" style="color:#10b981;"></i> Reverse Pages</button>
+        </div>
+        <div class="ribbon-row">
+          <button class="fmt-btn with-text" id="pdfCompressBtn" title="Optimize and Compress PDF Object Streams"><i class="fas fa-file-zipper" style="color:#f59e0b;"></i> Compress PDF</button>
+          <button class="fmt-btn with-text" id="pdfDeleteCurrentPageBtn" title="Delete Currently Viewed Page from PDF Document"><i class="fas fa-trash-can" style="color:#e11d48;"></i> Delete Page</button>
+          <button class="fmt-btn with-text" id="pdfMetadataBtn" title="Inspect PDF Metadata, Author, Title & Page Properties"><i class="fas fa-circle-info" style="color:#06b6d4;"></i> Doc Info</button>
+        </div>
       </div>
     </div>
 
@@ -1016,7 +1752,7 @@
             <button class="fmt-btn with-text" id="mdFormatMenuBtn" title="Markdown Content & Formatting Elements Dropdown">
               <i class="fab fa-markdown" style="color:#0284c7;"></i><span>Insert & Format</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
             </button>
-            <div class="spacing-popover" id="mdFormatPopover" role="menu" style="min-width:250px;max-height:260px;overflow-y:auto;">
+            <div class="spacing-popover" id="mdFormatPopover" role="menu" style="min-width:260px;max-height:240px;overflow-y:auto;">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Headings</div>
               <div class="spacing-opt-item" data-md-action="h1"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">#</strong> Heading 1 (H1)</div>
               <div class="spacing-opt-item" data-md-action="h2"><strong style="color:#0284c7;margin-right:8px;font-size:12px;">##</strong> Heading 2 (H2)</div>
@@ -1041,12 +1777,15 @@
               <div class="spacing-opt-item" data-md-action="mermaid"><i class="fas fa-diagram-project" style="color:#10b981;margin-right:8px;"></i> Mermaid Diagram</div>
               <div class="spacing-opt-item" data-md-action="quote"><i class="fas fa-quote-left" style="color:#f59e0b;margin-right:8px;"></i> Blockquote (&gt;)</div>
               <div class="spacing-opt-item" data-md-action="callout"><i class="fas fa-circle-info" style="color:#3b82f6;margin-right:8px;"></i> Callout / Note Box</div>
+              <div class="spacing-opt-item" data-md-action="callout-warn"><i class="fas fa-triangle-exclamation" style="color:#ea580c;margin-right:8px;"></i> Callout Warning Box</div>
+              <div class="spacing-opt-item" data-md-action="callout-tip"><i class="fas fa-lightbulb" style="color:#eab308;margin-right:8px;"></i> Callout Tip Box</div>
               <div class="spacing-opt-item" data-md-action="details"><i class="fas fa-chevron-down" style="color:#8b5cf6;margin-right:8px;"></i> Collapsible Details</div>
               <div class="dropdown-sep" style="margin:4px 0;"></div>
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Lists & Checkboxes</div>
               <div class="spacing-opt-item" data-md-action="ul"><i class="fas fa-list-ul" style="color:#10b981;margin-right:8px;"></i> Bulleted List (-)</div>
               <div class="spacing-opt-item" data-md-action="ol"><i class="fas fa-list-ol" style="color:#10b981;margin-right:8px;"></i> Numbered List (1.)</div>
-              <div class="spacing-opt-item" data-md-action="task"><i class="fas fa-square-check" style="color:#8b5cf6;margin-right:8px;"></i> Task Checkbox (- [ ])</div>
+              <div class="spacing-opt-item" data-md-action="task"><i class="fas fa-square-check" style="color:#8b5cf6;margin-right:8px;"></i> Task Todo (- [ ])</div>
+              <div class="spacing-opt-item" data-md-action="task-done"><i class="fas fa-check-double" style="color:#10b981;margin-right:8px;"></i> Completed Task (- [x])</div>
               <div class="spacing-opt-item" data-md-action="deflist"><i class="fas fa-bars-staggered" style="color:#0284c7;margin-right:8px;"></i> Definition List (: )</div>
               <div class="dropdown-sep" style="margin:4px 0;"></div>
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Tables, Links & Structure</div>
@@ -1055,6 +1794,7 @@
               <div class="spacing-opt-item" data-md-action="link"><i class="fas fa-link" style="color:#0284c7;margin-right:8px;"></i> Hyperlink ([text](url))</div>
               <div class="spacing-opt-item" data-md-action="image"><i class="fas fa-image" style="color:#ea580c;margin-right:8px;"></i> Image (![alt](url))</div>
               <div class="spacing-opt-item" data-md-action="footnote"><i class="fas fa-asterisk" style="color:#eab308;margin-right:8px;"></i> Footnote Reference ([^1])</div>
+              <div class="spacing-opt-item" data-md-action="footnote-def"><i class="fas fa-quote-right" style="color:#8b5cf6;margin-right:8px;"></i> Footnote Definition Block</div>
               <div class="spacing-opt-item" data-md-action="badge"><i class="fas fa-shield" style="color:#10b981;margin-right:8px;"></i> Status Shield Badge</div>
               <div class="spacing-opt-item" data-md-action="hr"><i class="fas fa-minus" style="color:#64748b;margin-right:8px;"></i> Horizontal Rule (---)</div>
             </div>
@@ -1068,11 +1808,14 @@
           <button class="fmt-btn with-text" id="mdStatsBtn" title="Markdown Statistics (Words, Characters, Estimated Reading Time)"><i class="fas fa-chart-simple" style="color:#0284c7;"></i> MD Stats</button>
           <button class="fmt-btn with-text" id="mdBeautifyBtn" title="Clean, Normalize & Beautify Markdown Content"><i class="fas fa-wand-magic-sparkles" style="color:#8b5cf6;"></i> Clean MD</button>
           <button class="fmt-btn with-text" id="mdLintBtn" title="Audit Markdown Syntax, Broken Links & Heading Jumps"><i class="fas fa-spell-check" style="color:#10b981;"></i> MD Lint</button>
+          <button class="fmt-btn with-text" id="mdExtractLinksBtn" title="Extract All Markdown Links & References into a clean list"><i class="fas fa-link-slash" style="color:#06b6d4;"></i> Extract Links</button>
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="mdCopyHtmlBtn" title="Compile Markdown & Copy Formatted HTML to Clipboard"><i class="fas fa-copy" style="color:#10b981;"></i> Copy HTML</button>
           <button class="fmt-btn with-text" id="mdHtmlToMdBtn" title="Convert HTML Markup to Clean Markdown Syntax"><i class="fas fa-right-left" style="color:#f59e0b;"></i> HTML to MD</button>
           <button class="fmt-btn with-text" id="mdTocGenBtn" title="Auto-Generate Table of Contents from Headings"><i class="fas fa-list-check" style="color:#ea580c;"></i> Auto TOC</button>
+          <button class="fmt-btn with-text" id="mdStripToTextBtn" title="Strip Markdown Syntax to Clean Plain Text"><i class="fas fa-file-lines" style="color:#64748b;"></i> Strip to Text</button>
+          <button class="fmt-btn with-text" id="mdCheatSheetBtn" title="Open Markdown Syntax Cheat Sheet Reference"><i class="fas fa-circle-question" style="color:#a855f7;"></i> Cheat Sheet</button>
         </div>
       </div>
 
@@ -1095,7 +1838,7 @@
             <button class="fmt-btn with-text" id="htmlFormatMenuBtn" title="Insert HTML Elements & Templates Dropdown">
               <i class="fab fa-html5" style="color:#ea580c;"></i><span>Insert Elements</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
             </button>
-            <div class="spacing-popover" id="htmlFormatPopover" role="menu" style="min-width:250px;max-height:260px;overflow-y:auto;">
+            <div class="spacing-popover" id="htmlFormatPopover" role="menu" style="min-width:260px;max-height:240px;overflow-y:auto;">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Templates & Page Layouts</div>
               <div class="spacing-opt-item" data-html-action="boilerplate"><i class="fab fa-html5" style="color:#ea580c;margin-right:8px;"></i> HTML5 Boilerplate Template</div>
               <div class="spacing-opt-item" data-html-action="meta-tags"><i class="fas fa-tags" style="color:#0284c7;margin-right:8px;"></i> Meta Tags (SEO & Social)</div>
@@ -1107,12 +1850,16 @@
               <div class="spacing-opt-item" data-html-action="h2"><strong style="color:#ea580c;margin-right:8px;">H2</strong> &lt;h2&gt; Sub Heading</div>
               <div class="spacing-opt-item" data-html-action="h3"><strong style="color:#ea580c;margin-right:8px;">H3</strong> &lt;h3&gt; Section Heading</div>
               <div class="spacing-opt-item" data-html-action="h4"><strong style="color:#ea580c;margin-right:8px;">H4</strong> &lt;h4&gt; Sub-section Heading</div>
+              <div class="spacing-opt-item" data-html-action="h5"><strong style="color:#ea580c;margin-right:8px;">H5</strong> &lt;h5&gt; Minor Heading</div>
+              <div class="spacing-opt-item" data-html-action="h6"><strong style="color:#ea580c;margin-right:8px;">H6</strong> &lt;h6&gt; Sub-minor Heading</div>
               <div class="spacing-opt-item" data-html-action="p"><i class="fas fa-paragraph" style="color:#0284c7;margin-right:8px;"></i> &lt;p&gt; Paragraph</div>
               <div class="spacing-opt-item" data-html-action="span"><i class="fas fa-font" style="color:#64748b;margin-right:8px;"></i> &lt;span&gt; Text Span</div>
               <div class="spacing-opt-item" data-html-action="strong"><i class="fas fa-bold" style="color:#0284c7;margin-right:8px;"></i> &lt;strong&gt; Bold Text</div>
               <div class="spacing-opt-item" data-html-action="em"><i class="fas fa-italic" style="color:#06b6d4;margin-right:8px;"></i> &lt;em&gt; Emphasis</div>
               <div class="spacing-opt-item" data-html-action="mark"><i class="fas fa-highlighter" style="color:#eab308;margin-right:8px;"></i> &lt;mark&gt; Highlight</div>
+              <div class="spacing-opt-item" data-html-action="kbd"><i class="fas fa-keyboard" style="color:#64748b;margin-right:8px;"></i> &lt;kbd&gt; Keyboard Key</div>
               <div class="spacing-opt-item" data-html-action="blockquote"><i class="fas fa-quote-left" style="color:#f59e0b;margin-right:8px;"></i> &lt;blockquote&gt; Quote</div>
+              <div class="spacing-opt-item" data-html-action="time"><i class="fas fa-clock" style="color:#8b5cf6;margin-right:8px;"></i> &lt;time&gt; Datetime Stamp</div>
               <div class="dropdown-sep" style="margin:4px 0;"></div>
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Structure & Containers</div>
               <div class="spacing-opt-item" data-html-action="div"><i class="fas fa-square" style="color:#0284c7;margin-right:8px;"></i> &lt;div&gt; Container</div>
@@ -1122,7 +1869,11 @@
               <div class="spacing-opt-item" data-html-action="footer"><i class="fas fa-window-minimize" style="color:#64748b;margin-right:8px;"></i> &lt;footer&gt; Footer</div>
               <div class="spacing-opt-item" data-html-action="nav"><i class="fas fa-compass" style="color:#0284c7;margin-right:8px;"></i> &lt;nav&gt; Navigation</div>
               <div class="spacing-opt-item" data-html-action="main"><i class="fas fa-chalkboard" style="color:#10b981;margin-right:8px;"></i> &lt;main&gt; Main Area</div>
+              <div class="spacing-opt-item" data-html-action="details"><i class="fas fa-square-caret-down" style="color:#f97316;margin-right:8px;"></i> &lt;details&gt; Accordion</div>
+              <div class="spacing-opt-item" data-html-action="dialog"><i class="fas fa-window-restore" style="color:#3b82f6;margin-right:8px;"></i> &lt;dialog&gt; Native Modal</div>
+              <div class="spacing-opt-item" data-html-action="figure"><i class="fas fa-image" style="color:#ec4899;margin-right:8px;"></i> &lt;figure&gt; Image &amp; Caption</div>
               <div class="spacing-opt-item" data-html-action="code"><i class="fas fa-code" style="color:#ec4899;margin-right:8px;"></i> &lt;pre&gt;&lt;code&gt; Block</div>
+              <div class="spacing-opt-item" data-html-action="hr"><i class="fas fa-minus" style="color:#94a3b8;margin-right:8px;"></i> &lt;hr&gt; Horizontal Rule</div>
               <div class="dropdown-sep" style="margin:4px 0;"></div>
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Forms & Inputs</div>
               <div class="spacing-opt-item" data-html-action="form"><i class="fas fa-table-list" style="color:#3b82f6;margin-right:8px;"></i> &lt;form&gt; Form Block</div>
@@ -1130,6 +1881,8 @@
               <div class="spacing-opt-item" data-html-action="button"><i class="fas fa-toggle-on" style="color:#10b981;margin-right:8px;"></i> &lt;button&gt; Button</div>
               <div class="spacing-opt-item" data-html-action="textarea"><i class="fas fa-align-left" style="color:#a855f7;margin-right:8px;"></i> &lt;textarea&gt; Multi-line</div>
               <div class="spacing-opt-item" data-html-action="select"><i class="fas fa-square-caret-down" style="color:#f59e0b;margin-right:8px;"></i> &lt;select&gt; Dropdown</div>
+              <div class="spacing-opt-item" data-html-action="datalist"><i class="fas fa-list" style="color:#0284c7;margin-right:8px;"></i> &lt;datalist&gt; Autocomplete</div>
+              <div class="spacing-opt-item" data-html-action="progress"><i class="fas fa-bars-progress" style="color:#10b981;margin-right:8px;"></i> &lt;progress&gt; Progress Bar</div>
               <div class="spacing-opt-item" data-html-action="label"><i class="fas fa-tag" style="color:#64748b;margin-right:8px;"></i> &lt;label&gt; Form Label</div>
               <div class="dropdown-sep" style="margin:4px 0;"></div>
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Tables, Lists & Media</div>
@@ -1151,11 +1904,13 @@
           <button class="fmt-btn with-text" id="htmlFormatBtn" title="Format & Indent HTML Code Cleanly"><i class="fas fa-code-merge" style="color:#10b981;"></i> Format Code</button>
           <button class="fmt-btn with-text" id="htmlMinifyBtn" title="Minify & Compact HTML Code"><i class="fas fa-file-zipper" style="color:#f59e0b;"></i> Minify HTML</button>
           <button class="fmt-btn with-text" id="htmlInspectorBtn" title="Inspect DOM Structure, Element Counts & Image Tags"><i class="fas fa-magnifying-glass-chart" style="color:#06b6d4;"></i> DOM Inspector</button>
+          <button class="fmt-btn with-text" id="htmlCommentBtn" title="Comment / Uncomment Code Line (<!-- -->, /* */, //)"><i class="fas fa-comment-dots" style="color:#0284c7;"></i> Comment Line</button>
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="htmlValidateBtn" title="Validate HTML Syntax & Check Tag Nesting"><i class="fas fa-circle-check" style="color:#0284c7;"></i> Validate HTML</button>
-          <button class="fmt-btn with-text" id="htmlEntitiesBtn" title="Quick Insert Common HTML Entities (&copy;, &euro;, &bull;, etc.)"><i class="fas fa-code" style="color:#8b5cf6;"></i> HTML Entities</button>
+          <button class="fmt-btn with-text" id="htmlEntitiesBtn" title="Open In-App HTML Entities & Special Characters Modal"><i class="fas fa-hashtag" style="color:#8b5cf6;"></i> HTML Entities</button>
           <button class="fmt-btn with-text" id="htmlExtractAssetsBtn" title="Extract Embedded CSS and JS Script Blocks"><i class="fas fa-cubes" style="color:#ec4899;"></i> Extract Assets</button>
+          <button class="fmt-btn with-text" id="htmlExtractColorsBtn" title="Extract All Document Hex/RGB Colors into a Visual Palette"><i class="fas fa-palette" style="color:#f59e0b;"></i> Extract Colors</button>
         </div>
       </div>
 
@@ -1256,6 +2011,7 @@
         <span class="page-info" id="pdfPageInfo">Page 1 / 1</span>
         <button id="pdfNext" title="Next Page" aria-label="Next page"><i class="fas fa-chevron-right"></i></button>
         <div class="tool-sep" style="height:18px;"></div>
+        <button class="pdf-ctrl-btn" id="pdfFindBtn" title="Find in PDF (Ctrl+F)"><i class="fas fa-magnifying-glass" style="color:#0284c7;"></i> <span>Find</span></button>
         <button class="pdf-ctrl-btn" id="pdfQuickRotateBtn" title="Rotate PDF Page 90° Clockwise"><i class="fas fa-rotate-right" style="color:#0284c7;"></i> <span>Rotate 90°</span></button>
         <button class="pdf-ctrl-btn" id="pdfQuickInvertBtn" title="Toggle Night / Invert Eye-Care View"><i class="fas fa-circle-half-stroke" style="color:#a855f7;"></i> <span>Night Mode</span></button>
         <div class="tool-sep" style="height:18px;"></div>
@@ -1288,6 +2044,15 @@
         <!-- Rendered dynamically -->
       </div>
     </aside>
+
+    <!-- Document Protection / Lock Notification Banner (Problem 3) -->
+    <div class="doc-locked-banner" id="docLockedBanner" role="alert">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <i class="fas fa-lock" style="font-size:16px;"></i>
+        <span><strong>Protected Document:</strong> This document is locked against editing. Click Unlock to make changes.</span>
+      </div>
+      <button class="doc-unlock-btn" id="docUnlockBannerBtn"><i class="fas fa-lock-open"></i> Unlock Document</button>
+    </div>
 
     <!-- Rich Text Editor Mode -->
     <section class="editor-wrap" id="editorWrap" aria-label="Document Editor">
@@ -1439,19 +2204,26 @@
     </div>
   </div>
 
-  <!-- Clear Formatting Confirmation Modal (Bug 3) -->
+  <!-- Clear Formatting Confirmation Warning Container Modal -->
   <div class="modal-overlay" id="clearFormatModal">
-    <div class="modal" style="width:420px;" role="dialog" aria-modal="true" aria-label="Clear All Formatting">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-        <i class="fas fa-triangle-exclamation" style="color:var(--warning);font-size:22px;"></i>
-        <h3 style="margin:0;">Clear All Formatting?</h3>
+    <div class="modal warning-modal-container" style="width:460px;max-width:92vw;" role="dialog" aria-modal="true" aria-label="Clear All Formatting Warning">
+      <div class="warning-container">
+        <div class="warning-icon-badge">
+          <i class="fas fa-triangle-exclamation"></i>
+        </div>
+        <div class="warning-content">
+          <div class="warning-header">
+            <h3 class="warning-title">Clear All Formatting?</h3>
+            <span class="warning-tag">Warning</span>
+          </div>
+          <p class="warning-desc">
+            This will permanently remove all custom fonts, colors, highlights, bold/italic styles, and layout formatting from your selected text (or entire document).
+          </p>
+        </div>
       </div>
-      <p style="font-size:13px;color:var(--text-secondary);margin:10px 0 16px;line-height:1.5;">
-        This will remove all custom fonts, colors, highlights, bold/italic styles, and block formatting from your selected text (or the entire document if nothing is selected), returning to clean normal paragraph text.
-      </p>
-      <div class="modal-actions">
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
         <button class="modal-btn" id="clearFormatCancel">Cancel</button>
-        <button class="modal-btn danger" id="clearFormatConfirm"><i class="fas fa-eraser"></i> Clear Formatting</button>
+        <button class="modal-btn warning" id="clearFormatConfirm" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;font-weight:600;box-shadow:0 2px 8px rgba(245,158,11,0.35);"><i class="fas fa-eraser" style="margin-right:4px;"></i> Clear Formatting</button>
       </div>
     </div>
   </div>
@@ -1732,6 +2504,52 @@
         <button class="modal-btn" id="mergeCancel">Cancel</button>
         <button class="modal-btn" id="mergeClear" style="margin-right:auto;">Clear All</button>
         <button class="modal-btn primary" id="mergeBtn" disabled>Merge PDFs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF Split Pages Modal (Bug 5) -->
+  <div class="modal-overlay" id="pdfSplitModal">
+    <div class="modal" style="width:480px;max-width:92vw;" role="dialog" aria-modal="true" aria-label="Split PDF Pages">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-scissors" style="color:#ef4444;"></i> Split / Extract PDF Pages
+        </h3>
+        <button class="modal-close-icon" id="pdfSplitCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 14px;">Extract specific pages or page ranges from the current PDF into a new separate PDF document.</p>
+      <div style="background:var(--bg-secondary);padding:10px 14px;border-radius:8px;border:1px solid var(--border);margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;color:var(--text-muted);">Current Document Pages:</span>
+        <strong id="pdfSplitTotalPagesBadge" style="font-size:13px;color:var(--accent);">0 Pages</strong>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label for="pdfSplitRangeInput" style="display:block;font-size:12px;font-weight:600;margin-bottom:6px;">Page Range to Extract</label>
+        <input type="text" id="pdfSplitRangeInput" class="form-input" placeholder="e.g. 1-3, 5, 7-9" style="width:100%;padding:9px 12px;border-radius:6px;border:1px solid var(--border);font-size:13px;">
+        <span style="display:block;font-size:11px;color:var(--text-muted);margin-top:4px;">Examples: <code>1</code> (single page), <code>1-3</code> (range), <code>1, 3, 5</code> (comma separated)</span>
+      </div>
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" id="pdfSplitCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="pdfSplitConfirmBtn"><i class="fas fa-download"></i> Extract & Download PDF</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- PDF Metadata Inspector Modal (Bug 5) -->
+  <div class="modal-overlay" id="pdfMetadataModal">
+    <div class="modal" style="width:520px;max-width:92vw;" role="dialog" aria-modal="true" aria-label="PDF Document Info & Metadata">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-circle-info" style="color:#06b6d4;"></i> PDF Document Information
+        </h3>
+        <button class="modal-close-icon" id="pdfMetadataCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div id="pdfMetadataContent" style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto;padding-right:4px;">
+        <!-- Metadata fields rendered dynamically -->
+      </div>
+      <div class="modal-actions" style="margin-top:16px;display:flex;justify-content:flex-end;">
+        <button class="modal-btn primary" id="pdfMetadataDoneBtn">Done</button>
       </div>
     </div>
   </div>
@@ -2255,6 +3073,240 @@
     </div>
   </div>
 
+  <!-- HTML Entities & Special Characters Inside Modal (Bug 4) -->
+  <div class="modal-overlay" id="htmlEntitiesModal" role="dialog" aria-modal="true" aria-label="HTML Entities and Symbols">
+    <div class="modal" style="width:620px;max-width:94vw;max-height:85vh;display:flex;flex-direction:column;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-hashtag" style="color:var(--accent);"></i> HTML Entities & Special Characters
+        </h3>
+        <button class="modal-close-icon" id="htmlEntitiesCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-shrink:0;">
+        <input type="text" id="htmlEntitySearchInput" class="form-input" placeholder="Search entities (e.g. copy, euro, arrow, heart, alpha, math)..." style="flex:1;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;">
+      </div>
+
+      <!-- Categories Filter Bar -->
+      <div class="preview-device-pills" id="htmlEntityCategoryPills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;flex-shrink:0;">
+        <button type="button" class="fmt-btn active" data-cat="all">All</button>
+        <button type="button" class="fmt-btn" data-cat="symbols">Symbols</button>
+        <button type="button" class="fmt-btn" data-cat="currency">Currency</button>
+        <button type="button" class="fmt-btn" data-cat="arrows">Arrows</button>
+        <button type="button" class="fmt-btn" data-cat="math">Math</button>
+        <button type="button" class="fmt-btn" data-cat="punctuation">Punctuation</button>
+        <button type="button" class="fmt-btn" data-cat="greek">Greek</button>
+      </div>
+
+      <!-- Entities Grid -->
+      <div id="htmlEntitiesGridContainer" style="flex:1;min-height:220px;max-height:360px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill, minmax(105px, 1fr));gap:8px;padding:4px 2px;border:1px solid var(--border);border-radius:8px;background:var(--bg-secondary);">
+        <!-- Entity Cards Rendered Dynamically -->
+      </div>
+
+      <div class="modal-actions" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <span style="font-size:11.5px;color:var(--text-muted);">Click any entity card to insert directly at editor cursor</span>
+        <button class="modal-btn" id="htmlEntitiesCancelBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Excel Select Multiple Rows & Columns Inside Modal (Bug 4) -->
+  <div class="modal-overlay" id="excelSelectMultipleModal" role="dialog" aria-modal="true" aria-label="Select Multiple Rows and Columns">
+    <div class="modal" style="width:480px;max-width:92vw;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-table-cells" style="color:var(--excel-accent, #107c41);"></i> Select Multiple Rows &amp; Columns
+        </h3>
+        <button class="modal-close-icon" id="excelSelectMultipleCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <!-- Mode Selector -->
+      <div style="display:flex;gap:6px;margin-bottom:16px;">
+        <button type="button" class="fmt-btn with-text active" id="excelSelModeRowsBtn" style="flex:1;justify-content:center;padding:7px 10px;font-size:12px;font-weight:600;"><i class="fas fa-bars"></i> Rows Only</button>
+        <button type="button" class="fmt-btn with-text" id="excelSelModeColsBtn" style="flex:1;justify-content:center;padding:7px 10px;font-size:12px;font-weight:600;"><i class="fas fa-table-columns"></i> Columns Only</button>
+        <button type="button" class="fmt-btn with-text" id="excelSelModeBothBtn" style="flex:1;justify-content:center;padding:7px 10px;font-size:12px;font-weight:600;"><i class="fas fa-border-all"></i> Both</button>
+      </div>
+
+      <!-- Input Group for Rows -->
+      <div class="form-group" id="excelSelRowGroup" style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-primary);">Row Numbers to Select</label>
+        <input type="text" id="excelSelRowInput" class="form-input" placeholder="e.g. 1, 3, 5 or 2-6" style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;">
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px;">Separate numbers with commas (1, 3) or use ranges (2-5)</span>
+      </div>
+
+      <!-- Input Group for Columns -->
+      <div class="form-group" id="excelSelColGroup" style="margin-bottom:14px;display:none;">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-primary);">Column Letters or Numbers</label>
+        <input type="text" id="excelSelColInput" class="form-input" placeholder="e.g. A, C, E or A-D or 1, 3" style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;">
+        <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px;">Use column letters (A, B, C) or numbers (1, 2, 3) or ranges (A-C)</span>
+      </div>
+
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button class="modal-btn" id="excelSelectMultipleCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="excelSelectMultipleApplyBtn" style="background:var(--excel-accent, #107c41);border-color:var(--excel-accent, #107c41);color:#fff;"><i class="fas fa-check"></i> Apply Selection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Markdown Syntax Cheat Sheet Inside Modal -->
+  <div class="modal-overlay" id="mdCheatSheetModal" role="dialog" aria-modal="true" aria-label="Markdown Syntax Reference">
+    <div class="modal" style="width:680px;max-width:94vw;max-height:86vh;display:flex;flex-direction:column;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fab fa-markdown" style="color:var(--accent);"></i> Markdown Syntax Reference Guide
+        </h3>
+        <button class="modal-close-icon" id="mdCheatSheetCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding-right:4px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);text-align:left;">
+              <th style="padding:8px;color:var(--text-muted);width:30%;">Element</th>
+              <th style="padding:8px;color:var(--text-muted);width:45%;">Markdown Syntax</th>
+              <th style="padding:8px;color:var(--text-muted);width:25%;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="mdCheatSheetTableBody">
+            <!-- Populated with Cheat Sheet Elements -->
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:14px;display:flex;justify-content:flex-end;flex-shrink:0;">
+        <button class="modal-btn" id="mdCheatSheetDoneBtn">Close Reference</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HTML Document Color Palette Inside Modal (Bug 4: Changable with color picker for each occurrence) -->
+  <div class="modal-overlay" id="htmlColorsModal" role="dialog" aria-modal="true" aria-label="Extracted HTML Document Colors">
+    <div class="modal" style="width:600px;max-width:94vw;max-height:82vh;display:flex;flex-direction:column;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-shrink:0;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-palette" style="color:#f59e0b;"></i> Document Color Palette & Editor
+        </h3>
+        <button class="modal-close-icon" id="htmlColorsCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px;flex-shrink:0;">Detected color occurrences across your HTML markup & styles. Use each color picker to replace all occurrences throughout the document, or click a swatch to copy its code.</p>
+      <div id="htmlColorsGridContainer" style="flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill, minmax(170px, 1fr));gap:10px;padding:4px 2px;">
+        <!-- Swatches Rendered Here -->
+      </div>
+      <div class="modal-actions" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <span id="htmlColorsCountBadge" style="font-size:11.5px;color:var(--text-muted);">0 colors found</span>
+        <button class="modal-btn primary" id="htmlColorsDoneBtn"><i class="fas fa-check"></i> Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Online Slide Background URL Modal (Bug 4) -->
+  <div class="modal-overlay" id="pptOnlineBgModal" role="dialog" aria-modal="true" aria-label="Slide Background URL">
+    <div class="modal" style="width:450px;max-width:92vw;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-image" style="color:var(--accent);"></i> Slide Background Image URL
+        </h3>
+        <button class="modal-close-icon" id="pptOnlineBgCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-primary);">Image Web URL</label>
+        <input type="url" id="pptOnlineBgUrlInput" class="form-input" placeholder="https://images.unsplash.com/photo-..." style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;">
+      </div>
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" id="pptOnlineBgCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="pptOnlineBgApplyBtn"><i class="fas fa-check"></i> Apply Image</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic In-App Prompt Modal (Zero Browser Popups - Bug 4) -->
+  <div class="modal-overlay" id="inAppPromptModal" role="dialog" aria-modal="true" aria-label="Input Dialog">
+    <div class="modal" style="width:440px;max-width:92vw;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 id="inAppPromptTitle" style="margin:0;font-size:15px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-edit" style="color:var(--accent);"></i> Input Required
+        </h3>
+        <button class="modal-close-icon" id="inAppPromptCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label id="inAppPromptMessage" style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;color:var(--text-primary);"></label>
+        <input type="text" id="inAppPromptInput" class="form-input" style="width:100%;padding:9px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13.5px;">
+      </div>
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" id="inAppPromptCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="inAppPromptConfirmBtn"><i class="fas fa-check"></i> Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Protect / Lock Modal (Problem 3) -->
+  <div class="modal-overlay" id="docProtectModal" role="dialog" aria-modal="true" aria-label="Protect Document">
+    <div class="modal" style="width:440px;max-width:92vw;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;color:#e11d48;">
+          <i class="fas fa-lock"></i> Protect & Lock Document
+        </h3>
+        <button class="modal-close-icon" id="docProtectCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;line-height:1.5;">
+        Locking this document prevents unauthorized changes. The editor will be switched to read-only mode until unlocked.
+      </p>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label for="docProtectPinInput" style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:var(--text-primary);">Set Optional Unlock Password / PIN (Leave empty for quick lock)</label>
+        <input type="password" id="docProtectPinInput" class="form-input" placeholder="e.g. 1234 or password..." style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;">
+      </div>
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" id="docProtectCancelBtn">Cancel</button>
+        <button class="modal-btn danger" id="docProtectConfirmBtn"><i class="fas fa-lock"></i> Lock Document</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Unlock Modal (Problem 3) -->
+  <div class="modal-overlay" id="docUnlockModal" role="dialog" aria-modal="true" aria-label="Unlock Document">
+    <div class="modal" style="width:400px;max-width:92vw;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;color:#10b981;">
+          <i class="fas fa-lock-open"></i> Unlock Document
+        </h3>
+        <button class="modal-close-icon" id="docUnlockCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;line-height:1.5;">
+        Enter your password or PIN to unlock this document for editing.
+      </p>
+      <div class="form-group" style="margin-bottom:16px;" id="docUnlockPinGroup">
+        <label for="docUnlockPinInput" style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:var(--text-primary);">Unlock Password / PIN</label>
+        <input type="password" id="docUnlockPinInput" class="form-input" placeholder="Enter PIN..." style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;">
+      </div>
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" id="docUnlockCancelBtn">Cancel</button>
+        <button class="modal-btn primary" id="docUnlockConfirmBtn"><i class="fas fa-lock-open"></i> Unlock</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grammar & Spelling Inspector Modal (Problem 3) -->
+  <div class="modal-overlay" id="spellCheckModal" role="dialog" aria-modal="true" aria-label="Grammar and Spelling">
+    <div class="modal" style="width:580px;max-width:94vw;max-height:85vh;display:flex;flex-direction:column;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;color:#10b981;">
+          <i class="fas fa-spell-check"></i> Grammar & Spelling Review
+        </h3>
+        <button class="modal-close-icon" id="spellCheckCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 12px;flex-shrink:0;">
+        Inspecting document text for repeated words, common spelling errors, irregular capitalization, and grammar clarity.
+      </p>
+      <div id="spellCheckList" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px;">
+        <!-- Issue Cards Rendered Dynamically -->
+      </div>
+      <div class="modal-actions" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;">
+        <span id="spellCheckCountBadge" style="font-size:12px;color:var(--text-muted);">0 issues detected</span>
+        <div style="display:flex;gap:8px;">
+          <button class="modal-btn" id="spellCheckDoneBtn">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
@@ -2270,6 +3322,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
   <!-- React 18 & Official Excalidraw Studio Engine -->
   <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>

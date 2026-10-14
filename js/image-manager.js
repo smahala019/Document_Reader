@@ -864,12 +864,20 @@
         openImageCropper(img);
       } else if (action === 'alt') {
         const currentAlt = img.alt || '';
-        const newAlt = prompt('Enter description (alt text) for this image:', currentAlt);
-        if (newAlt !== null) {
-          img.alt = newAlt.trim();
-          window.DocFlow.Editor.notifyChange();
-          showToast('Image description updated', 'info');
-        }
+        window.DocFlow.UI?.showPromptModal?.({
+          title: 'Image Alt Text',
+          message: 'Enter description (alt text) for this image:',
+          defaultValue: currentAlt,
+          placeholder: 'Image description...',
+          confirmText: 'Save',
+          onConfirm: (newAlt) => {
+            if (newAlt !== null && newAlt !== undefined) {
+              img.alt = newAlt.trim();
+              window.DocFlow.Editor?.notifyChange?.();
+              showToast('Image description updated', 'info');
+            }
+          }
+        });
       } else if (action === 'delete') {
         img.remove();
         deselectImage();

@@ -302,11 +302,20 @@
     $('#pdfRibbonLastPageBtn')?.addEventListener('click', () => jumpToPage(pdfTotalPages));
 
     $('#pdfRibbonPageJumpBtn')?.addEventListener('click', () => {
-      const pageStr = prompt(`Enter page number to jump to (1 - ${pdfTotalPages}):`, pdfCurrentPage);
-      if (pageStr) {
-        const pageNum = parseInt(pageStr, 10);
-        if (pageNum >= 1 && pageNum <= pdfTotalPages) jumpToPage(pageNum);
-      }
+      window.DocFlow.UI?.showPromptModal?.({
+        title: 'Jump to PDF Page',
+        message: `Enter page number to jump to (1 - ${pdfTotalPages}):`,
+        defaultValue: String(pdfCurrentPage),
+        placeholder: 'Page number...',
+        confirmText: 'Jump',
+        onConfirm: (pageStr) => {
+          if (pageStr) {
+            const pageNum = parseInt(pageStr, 10);
+            if (pageNum >= 1 && pageNum <= pdfTotalPages) jumpToPage(pageNum);
+            else showToast(`Page number must be between 1 and ${pdfTotalPages}`, 'warning');
+          }
+        }
+      });
     });
 
     // Tracking page while scrolling
@@ -349,8 +358,12 @@
 
     // Night Mode / Invert View
     const togglePdfNightAction = () => {
-      if (!pdfWrap) return;
-      const isNight = pdfWrap.classList.toggle('pdf-night-mode');
+      const wrap = $('#pdfWrap') || pdfWrap;
+      if (!wrap || !pdfDoc) {
+        showToast('Open a PDF document first', 'info');
+        return;
+      }
+      const isNight = wrap.classList.toggle('pdf-night-mode');
       showToast(`PDF ${isNight ? 'Night Mode enabled' : 'Day Mode restored'}`, 'info');
     };
     $('#pdfRibbonInvertBtn')?.addEventListener('click', togglePdfNightAction);
@@ -367,7 +380,10 @@
 
   // Extract Text & Embedded Images from PDF into Editable Rich Mode Document (Preserves all fonts, colors, layout, spacing, and design elements)
   async function extractTextFromPdf(includeImages = true) {
-    if (!pdfDoc) return;
+    if (!pdfDoc) {
+      showToast('Open a PDF document first to extract content', 'info');
+      return;
+    }
     showToast('Converting PDF to Rich Mode (preserving all fonts, colors & layout)...', 'info');
 
     try {
@@ -1056,13 +1072,320 @@
     };
   }
 
+  // Problem 5: New Unique PDF Functionality
+  function setupPdfSplitModal() {
+    $('#pdfSplitPagesBtn')?.addEventListener('click', () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfData) {
+        showToast('Open a PDF document first to split pages', 'warning');
+        return;
+      }
+      const totalBadge = $('#pdfSplitTotalPagesBadge');
+      if (totalBadge) totalBadge.textContent = `${pdfTotalPages} Page${pdfTotalPages > 1 ? 's' : ''}`;
+      const input = $('#pdfSplitRangeInput');
+      if (input) input.value = `1-${Math.min(pdfTotalPages, 2)}`;
+      openModal('#pdfSplitModal');
+    });
+
+    $('#pdfSplitCloseBtn')?.addEventListener('click', () => closeModal('#pdfSplitModal'));
+    $('#pdfSplitCancelBtn')?.addEventListener('click', () => closeModal('#pdfSplitModal'));
+
+    $('#pdfSplitConfirmBtn')?.addEventListener('click', async () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfData) return;
+      const rangeStr = ($('#pdfSplitRangeInput')?.value || '').trim();
+      if (!rangeStr) {
+        showToast('Please enter a page range (e.g. 1-3, 5)', 'warning');
+        return;
+      }
+
+      const pagesToExtract = new Set();
+      const parts = rangeStr.split(',');
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (trimmed.includes('-')) {
+          const [startStr, endStr] = trimmed.split('-');
+          const start = parseInt(startStr, 10);
+          const end = parseInt(endStr, 10);
+          if (!isNaN(start) && !isNaN(end) && start <= end) {
+            for (let i = start; i <= end; i++) {
+              if (i >= 1 && i <= pdfTotalPages) pagesToExtract.add(i - 1);
+            }
+          }
+        } else {
+          const p = parseInt(trimmed, 10);
+          if (!isNaN(p) && p >= 1 && p <= pdfTotalPages) {
+            pagesToExtract.add(p - 1);
+          }
+        }
+      }
+
+      const indices = Array.from(pagesToExtract).sort((a, b) => a - b);
+      if (indices.length === 0) {
+        showToast(`No valid pages selected. Document has ${pdfTotalPages} page(s).`, 'warning');
+        return;
+      }
+
+      try {
+        showToast('Splitting and generating PDF...', 'info');
+        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        const newPdf = await PDFLib.PDFDocument.create();
+        const copied = await newPdf.copyPages(srcPdf, indices);
+        copied.forEach(page => newPdf.addPage(page));
+        const pdfBytes = await newPdf.save();
+
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
+        a.download = `${baseName}_split_pages_${rangeStr.replace(/[^0-9,-]/g, '')}.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        closeModal('#pdfSplitModal');
+        showToast(`Extracted ${indices.length} page(s) into new PDF download!`, 'success');
+      } catch (err) {
+        console.error('PDF Split error:', err);
+        showToast('Failed to split PDF: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // Problem 4: Unique PDF Engineering Tools (Flatten, Reverse Pages, Compress, Delete Page)
+  function setupPdfEngineeringTools() {
+    // 1. Flatten Form Fields & Annotations (Permanent Read-Only Lock)
+    $('#pdfFlattenBtn')?.addEventListener('click', async () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfData) {
+        showToast('Open a PDF document first to flatten form fields & annotations', 'warning');
+        return;
+      }
+      try {
+        showToast('Flattening and locking all PDF form fields & annotations...', 'info');
+        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        try {
+          const form = srcPdf.getForm();
+          form.flatten();
+        } catch (fe) {
+          // Form may have no interactive AcroForm widgets, continue
+        }
+        const pdfBytes = await srcPdf.save({ useObjectStreams: true });
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
+        a.download = `${baseName}_flattened.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('PDF flattened & locked successfully! Download initiated.', 'success');
+      } catch (err) {
+        console.error('PDF Flatten error:', err);
+        showToast('Failed to flatten PDF: ' + err.message, 'error');
+      }
+    });
+
+    // 2. Reverse Page Order (1..N to N..1 for back-to-front scans)
+    $('#pdfReversePagesBtn')?.addEventListener('click', async () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfData) {
+        showToast('Open a PDF document first to reverse pages', 'warning');
+        return;
+      }
+      try {
+        showToast('Reversing PDF page order (1..N to N..1)...', 'info');
+        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        const totalPages = srcPdf.getPageCount();
+        if (totalPages <= 1) {
+          showToast('Document only has 1 page, no reordering needed', 'info');
+          return;
+        }
+        const newDoc = await PDFLib.PDFDocument.create();
+        const pageIndices = Array.from({ length: totalPages }, (_, i) => totalPages - 1 - i);
+        const copiedPages = await newDoc.copyPages(srcPdf, pageIndices);
+        copiedPages.forEach(p => newDoc.addPage(p));
+        const pdfBytes = await newDoc.save({ useObjectStreams: true });
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
+        a.download = `${baseName}_reversed.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast(`Reversed all ${totalPages} pages and initiated download!`, 'success');
+      } catch (err) {
+        console.error('PDF Reverse error:', err);
+        showToast('Failed to reverse pages: ' + err.message, 'error');
+      }
+    });
+
+    // 3. Compress / Optimize PDF Object Streams
+    $('#pdfCompressBtn')?.addEventListener('click', async () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfData) {
+        showToast('Open a PDF document first to compress', 'warning');
+        return;
+      }
+      try {
+        showToast('Optimizing and compressing PDF streams...', 'info');
+        const originalSize = activeTab.pdfData.byteLength || (activeTab.size || 0);
+        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        const compressedBytes = await srcPdf.save({
+          useObjectStreams: true,
+          addDefaultPage: false,
+          objectsPerTick: 50
+        });
+        const newSize = compressedBytes.byteLength;
+        const savedBytes = Math.max(0, originalSize - newSize);
+        const pct = originalSize > 0 ? ((savedBytes / originalSize) * 100).toFixed(1) : 0;
+        
+        const blob = new Blob([compressedBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
+        a.download = `${baseName}_compressed.pdf`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        
+        const savedKb = (savedBytes / 1024).toFixed(1);
+        showToast(`PDF optimized: ${newSize < originalSize ? `Saved ${savedKb} KB (${pct}% reduction)` : 'Streams already optimized'}! Download started.`, 'success');
+      } catch (err) {
+        console.error('PDF Compress error:', err);
+        showToast('Failed to compress PDF: ' + err.message, 'error');
+      }
+    });
+
+    // 4. Delete Current Page
+    $('#pdfDeleteCurrentPageBtn')?.addEventListener('click', async () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfDoc || !activeTab.pdfData) {
+        showToast('Open a PDF document first to delete a page', 'warning');
+        return;
+      }
+      const totalPages = activeTab.pdfDoc.numPages;
+      if (totalPages <= 1) {
+        showToast('Cannot delete the only page in the document', 'warning');
+        return;
+      }
+      const pageIndexToDelete = pdfCurrentPage - 1;
+      try {
+        showToast(`Deleting page ${pdfCurrentPage} of ${totalPages}...`, 'info');
+        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        srcPdf.removePage(pageIndexToDelete);
+        const pdfBytes = await srcPdf.save({ useObjectStreams: true });
+        
+        // Re-parse with PDF.js and refresh view
+        activeTab.pdfData = pdfBytes.buffer;
+        const doc = await pdfjsLib.getDocument({ data: pdfBytes.slice(0) }).promise;
+        activeTab.pdfDoc = doc;
+        pdfDoc = doc;
+        pdfTotalPages = doc.numPages;
+        pdfCurrentPage = Math.min(pdfCurrentPage, pdfTotalPages);
+        updatePdfControls();
+        await buildPdfPlaceholders();
+        showToast(`Page ${pageIndexToDelete + 1} deleted. Remaining pages: ${pdfTotalPages}`, 'success');
+      } catch (err) {
+        console.error('PDF Delete Page error:', err);
+        showToast('Failed to delete page: ' + err.message, 'error');
+      }
+    });
+  }
+
+  function setupPdfMetadata() {
+    $('#pdfMetadataBtn')?.addEventListener('click', async () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfDoc) {
+        showToast('Open a PDF document first to view properties', 'warning');
+        return;
+      }
+      try {
+        const meta = await activeTab.pdfDoc.getMetadata();
+        const info = meta?.info || {};
+        const metaFields = [
+          { label: 'File Name', val: activeTab.name || 'document.pdf', icon: 'fa-file-pdf', color: '#ef4444' },
+          { label: 'Document Title', val: info.Title || 'None specified', icon: 'fa-heading', color: '#0284c7' },
+          { label: 'Author / Creator', val: info.Author || info.Creator || 'Unknown', icon: 'fa-user-pen', color: '#10b981' },
+          { label: 'Subject', val: info.Subject || 'None', icon: 'fa-tag', color: '#8b5cf6' },
+          { label: 'Keywords', val: info.Keywords || 'None', icon: 'fa-key', color: '#f59e0b' },
+          { label: 'Producer', val: info.Producer || 'PDF Standard Engine', icon: 'fa-gears', color: '#64748b' },
+          { label: 'PDF Version', val: meta?.metadata?.get?.('pdf:pdfversion') || info.PDFFormatVersion || '1.7', icon: 'fa-code-branch', color: '#ec4899' },
+          { label: 'Total Pages', val: `${pdfTotalPages} page${pdfTotalPages > 1 ? 's' : ''}`, icon: 'fa-copy', color: '#06b6d4' },
+          { label: 'File Size', val: activeTab.pdfData ? `${(activeTab.pdfData.byteLength / 1024).toFixed(1)} KB` : 'Unknown', icon: 'fa-hard-drive', color: '#16a34a' },
+          { label: 'Creation Date', val: info.CreationDate ? String(info.CreationDate).replace(/^D:/, '').slice(0, 14) : 'Not recorded', icon: 'fa-calendar', color: '#ea580c' }
+        ];
+
+        const container = $('#pdfMetadataContent');
+        if (container) {
+          container.innerHTML = metaFields.map(f => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:8px;">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <i class="fas ${f.icon}" style="color:${f.color};font-size:14px;width:18px;text-align:center;"></i>
+                <span style="font-size:12.5px;font-weight:600;color:var(--text-secondary);">${escHtml(f.label)}:</span>
+              </div>
+              <span style="font-size:12.5px;color:var(--text-primary);max-width:280px;text-align:right;word-break:break-word;font-weight:500;">${escHtml(f.val)}</span>
+            </div>
+          `).join('');
+        }
+        openModal('#pdfMetadataModal');
+      } catch (err) {
+        showToast('Error reading PDF metadata: ' + err.message, 'error');
+      }
+    });
+
+    $('#pdfMetadataCloseBtn')?.addEventListener('click', () => closeModal('#pdfMetadataModal'));
+    $('#pdfMetadataDoneBtn')?.addEventListener('click', () => closeModal('#pdfMetadataModal'));
+
+    // Grayscale Toggle
+    $('#pdfGrayscaleBtn')?.addEventListener('click', () => {
+      const wrap = $('#pdfWrap') || pdfWrap;
+      const pages = $('#pdfPages');
+      if ((!wrap && !pages) || !pdfDoc) {
+        showToast('Open a PDF document first', 'info');
+        return;
+      }
+      const isGray = wrap?.classList.toggle('pdf-grayscale-mode') || pages?.classList.toggle('pdf-grayscale-mode');
+      showToast(`PDF Grayscale Mode: ${isGray ? 'ON' : 'OFF'}`, 'info');
+    });
+
+    // Save Page PNG
+    $('#pdfExportCurrentPageImgBtn')?.addEventListener('click', async () => {
+      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab || !activeTab.pdfDoc) {
+        showToast('Open a PDF document first', 'warning');
+        return;
+      }
+      try {
+        showToast(`Rendering Page ${pdfCurrentPage} to PNG...`, 'info');
+        const page = await activeTab.pdfDoc.getPage(pdfCurrentPage);
+        const vp = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        const ctx = canvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        const dataUrl = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
+        a.download = `${baseName}_page_${pdfCurrentPage}.png`;
+        a.click();
+        showToast(`Page ${pdfCurrentPage} saved as high-res PNG!`, 'success');
+      } catch (err) {
+        showToast('Failed to save page image: ' + err.message, 'error');
+      }
+    });
+  }
+
   function initPdfViewer() {
     setupPdfControls();
     setupMergePdfModal();
     setupCreatePdfFromImagesModal();
+    setupPdfSplitModal();
+    setupPdfEngineeringTools();
+    setupPdfMetadata();
   }
-
-  const openPdfWatermarkModal = () => {};
 
   // Export module
   window.DocFlow = window.DocFlow || {};
@@ -1071,7 +1394,6 @@
     loadPdfTab,
     openMergeModal,
     openCreatePdfFromImagesModal,
-    openPdfWatermarkModal,
     extractTextFromPdf,
     extractImagesFromPdf,
     rotatePdf,
@@ -1088,7 +1410,8 @@
     nextPage: () => $('#pdfNext')?.click(),
     prevPage: () => $('#pdfPrev')?.click(),
     getTotalPages: () => pdfTotalPages,
-    getCurrentPage: () => pdfCurrentPage
+    getCurrentPage: () => pdfCurrentPage,
+    getPdfDoc: () => pdfDoc
   };
 
 })(window);

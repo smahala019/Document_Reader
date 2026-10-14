@@ -6,14 +6,17 @@
 .topbar {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
-  height: 44px;
+  height: 40px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  justify-content: space-between;
+  padding: 0 14px;
   gap: 6px;
   flex-shrink: 0;
   z-index: 100;
   width: 100%;
+  position: relative;
+  box-sizing: border-box;
 }
 
 .topbar-brand {
@@ -21,29 +24,35 @@
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14.5px;
   letter-spacing: -0.5px;
   color: var(--accent);
   user-select: none;
   flex-shrink: 0;
+  z-index: 2;
 }
 
 .topbar-brand i {
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .topbar-filename {
-  flex: 1;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   text-align: center;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  max-width: calc(100% - 320px);
   min-width: 0;
   overflow: hidden;
   padding: 0 8px;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .topbar-filename span {
@@ -51,6 +60,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 500;
+  pointer-events: auto;
 }
 
 .modified-dot {
@@ -61,6 +71,7 @@
   display: inline-block;
   flex-shrink: 0;
   transition: background 0.2s ease, box-shadow 0.2s ease;
+  pointer-events: auto;
 }
 
 .modified-dot.saved {
@@ -75,10 +86,12 @@
 }
 
 .topbar-actions {
+  margin-left: auto !important;
   display: flex;
   gap: 3px;
   align-items: center;
   flex-shrink: 0;
+  z-index: 2;
 }
 
 .tb-btn {
@@ -547,8 +560,28 @@
   min-width: 150px;
   max-height: min(280px, 50vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light, #3e3e44) transparent;
   -webkit-overflow-scrolling: touch;
   animation: dropIn 0.15s ease;
+}
+
+.spacing-popover::-webkit-scrollbar {
+  width: 5px;
+}
+
+.spacing-popover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.spacing-popover::-webkit-scrollbar-thumb {
+  background: var(--border-light, #3e3e44);
+  border-radius: 4px;
+}
+
+.spacing-popover::-webkit-scrollbar-thumb:hover {
+  background: var(--accent, #3b82f6);
 }
 
 #casePopover {
@@ -575,6 +608,148 @@
 .spacing-opt-item:hover {
   background: var(--accent-dim);
   color: var(--accent);
+}
+
+/* Font Family Dropdown Button (Outer Box) & Visual Font Preview (Issue 4) */
+#fontFamilyDropdownWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+#fontFamilyBtn {
+  width: 140px !important;
+  max-width: 155px !important;
+  height: 28px !important;
+  padding: 0 10px !important;
+  background: var(--bg-tertiary, #f1f5f9) !important;
+  border: 1px solid var(--border, #cbd5e1) !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  color: var(--text-primary, #0f172a) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  transition: all var(--transition-fast, 0.15s ease) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  cursor: pointer !important;
+}
+
+#fontFamilyBtn:hover {
+  background: var(--bg-secondary, #e2e8f0) !important;
+  border-color: var(--accent, #3b82f6) !important;
+  box-shadow: 0 0 0 1px var(--accent-dim, rgba(59, 130, 246, 0.2)) !important;
+}
+
+#fontFamilyBtn:focus-visible {
+  outline: none;
+  border-color: var(--accent, #3b82f6) !important;
+  box-shadow: 0 0 0 2px var(--accent-dim, rgba(59, 130, 246, 0.25)) !important;
+}
+
+#fontFamilyLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 104px;
+  font-weight: 600;
+  text-align: left;
+  display: inline-block;
+}
+
+#fontFamilyBtn i.fa-chevron-down {
+  font-size: 9px;
+  opacity: 0.7;
+  flex-shrink: 0;
+  margin-left: 6px;
+  transition: transform 0.2s ease;
+}
+
+#fontFamilyPopover {
+  min-width: 300px !important;
+  max-width: 340px !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding: 6px !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.font-opt-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 7px 10px !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all var(--transition-fast, 0.15s ease) !important;
+  margin-bottom: 2px !important;
+}
+
+.font-opt-item .font-opt-name {
+  font-size: 13.5px !important;
+  color: var(--text-primary) !important;
+  letter-spacing: normal !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  flex: 1;
+}
+
+.font-opt-item .font-opt-sample {
+  font-size: 12.5px !important;
+  opacity: 0.65;
+  color: var(--text-secondary) !important;
+  margin-left: 10px;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.font-opt-item .font-check {
+  font-size: 11px;
+  color: var(--accent, #3b82f6);
+  margin-left: 8px;
+  display: none;
+}
+
+.font-opt-item.active {
+  background: var(--accent-dim, rgba(59, 130, 246, 0.15)) !important;
+}
+
+.font-opt-item.active .font-opt-name {
+  color: var(--accent, #3b82f6) !important;
+  font-weight: 700 !important;
+}
+
+.font-opt-item.active .font-check {
+  display: inline-block;
+}
+
+.font-opt-item:hover {
+  background: var(--accent-dim, rgba(59, 130, 246, 0.12)) !important;
+  transform: translateX(2px);
+}
+
+.font-opt-item:hover .font-opt-name {
+  color: var(--accent, #3b82f6) !important;
+}
+
+.font-opt-item:hover .font-opt-sample {
+  opacity: 0.95;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] #fontFamilyBtn {
+  background: var(--bg-secondary, #1e293b) !important;
+  border-color: var(--border, #334155) !important;
+  color: var(--text-primary, #f8fafc) !important;
+}
+
+[data-theme="dark"] #fontFamilyBtn:hover {
+  background: var(--bg-tertiary, #334155) !important;
+  border-color: var(--accent, #3b82f6) !important;
 }
 
 /* Margin Presets Popover */
@@ -1568,78 +1743,563 @@ body.is-excel-or-ppt-file #lineInfoWrap {
   padding: 6px 10px 4px;
 }
 
-/* Comprehensive Responsive Media Queries */
-@media (max-width: 900px) {
-  .topbar { padding: 0 8px; gap: 4px; }
-  .topbar-brand span { display: none; }
-  .tb-btn.text-btn span { display: none; }
-  .tb-btn.text-btn { padding: 0; width: 32px; justify-content: center; }
-  .drop-zone { padding: 36px 20px; width: 94vw; max-width: 94vw; }
-  .recent-files-container { width: 94vw; max-width: 94vw; }
-  .drop-title { font-size: 17px; }
-  .drop-formats { gap: 6px; }
-  .format-tag { padding: 4px 8px; font-size: 10px; }
+/* ==========================================================================
+   Comprehensive 8-Tier Responsive System (Bug 8)
+   Breakpoints:
+   1. Small mobile: 320px – 374px
+   2. Mobile: 375px – 424px
+   3. Large mobile: 425px – 575px
+   4. Small tablet: 576px – 767px
+   5. Tablet: 768px – 991px
+   6. Small laptop: 992px – 1199px
+   7. Desktop: 1200px – 1399px
+   8. Large desktop: 1400px and above
+   ========================================================================== */
+
+/* Universal Responsive Guards to prevent horizontal overflow */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+.modal-overlay .modal {
+  max-width: 95vw !important;
+  box-sizing: border-box;
+}
+
+.editor-wrap, #editor {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+#editor img, .editor-wrap img, .ppt-slide-canvas img {
+  max-width: 100%;
+  height: auto;
+}
+
+.ribbon-panel {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ribbon-panel::-webkit-scrollbar {
+  display: none;
+}
+
+/* --- 1. Small mobile: 320px – 374px --- */
+@media (max-width: 374px) {
+  .topbar {
+    height: 38px;
+    padding: 0 4px;
+    gap: 2px;
+  }
+  .topbar-brand span,
+  .tb-btn.text-btn span {
+    display: none !important;
+  }
+  .tb-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+    padding: 0;
+    justify-content: center;
+  }
+  .topbar-filename {
+    max-width: 70px;
+    font-size: 9px;
+  }
+  .ribbon-menu-bar {
+    height: 26px;
+  }
+  .ribbon-tab-btn {
+    font-size: 9.5px;
+    padding: 3px 6px;
+  }
+  .ribbon-panel {
+    min-height: 42px;
+    padding: 3px 4px;
+    gap: 3px;
+  }
+  .fmt-btn {
+    width: 24px;
+    height: 24px;
+    font-size: 10px;
+  }
+  .fmt-btn.with-text {
+    padding: 2px 4px;
+    font-size: 9.5px;
+  }
+  .fmt-select#fontFamily,
+  #fontFamily {
+    width: 80px !important;
+    max-width: 80px !important;
+    font-size: 9.5px !important;
+    height: 24px !important;
+  }
+  .font-size-stepper {
+    height: 24px;
+  }
+  #fontSizeInput {
+    width: 24px;
+    font-size: 9.5px;
+  }
+  .tab-bar {
+    height: 28px;
+  }
+  .tab {
+    max-width: 75px;
+    font-size: 8.5px;
+    padding: 0 3px;
+  }
+  .tab-more-btn, .tab-close {
+    width: 14px;
+    height: 14px;
+    font-size: 9px;
+  }
+  .format-pill-group {
+    grid-template-columns: 1fr !important;
+    gap: 4px;
+  }
+  .drop-zone {
+    padding: 16px 8px;
+    width: 96vw;
+    max-width: 96vw;
+  }
+  .drop-title {
+    font-size: 14px;
+  }
+  .drop-subtitle {
+    font-size: 10.5px;
+  }
+  .recent-files-container {
+    width: 96vw;
+    padding: 8px 10px;
+  }
+  .statusbar {
+    font-size: 7.5px;
+    height: 22px;
+    padding: 0 4px;
+    gap: 4px;
+  }
+  #charCountItem, #modeInfo, #lineInfoWrap, #charCount {
+    display: none !important;
+  }
+  .outline-panel {
+    width: 100vw;
+  }
+  .find-bar {
+    left: 4px !important;
+    right: 4px !important;
+    width: calc(100% - 8px) !important;
+  }
+}
+
+/* --- 2. Mobile: 375px – 424px --- */
+@media (min-width: 375px) and (max-width: 424px) {
+  .topbar {
+    height: 40px;
+    padding: 0 6px;
+    gap: 3px;
+  }
+  .topbar-brand span,
+  .tb-btn.text-btn span {
+    display: none !important;
+  }
+  .tb-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+    padding: 0;
+    justify-content: center;
+  }
+  .topbar-filename {
+    max-width: 95px;
+    font-size: 10px;
+  }
+  .ribbon-menu-bar {
+    height: 27px;
+  }
+  .ribbon-tab-btn {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+  .ribbon-panel {
+    min-height: 44px;
+    padding: 3px 6px;
+    gap: 4px;
+  }
+  .fmt-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 11px;
+  }
+  .fmt-btn.with-text {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+  .fmt-select#fontFamily,
+  #fontFamily {
+    width: 90px !important;
+    max-width: 90px !important;
+    font-size: 10px !important;
+    height: 25px !important;
+  }
+  .tab-bar {
+    height: 30px;
+  }
+  .tab {
+    max-width: 92px;
+    font-size: 9.5px;
+    padding: 0 4px;
+  }
+  .format-pill-group {
+    grid-template-columns: 1fr !important;
+    gap: 5px;
+  }
+  .drop-zone {
+    padding: 20px 10px;
+    width: 94vw;
+  }
+  .drop-title {
+    font-size: 15px;
+  }
+  .recent-files-container {
+    width: 94vw;
+    padding: 10px 12px;
+  }
+  .statusbar {
+    font-size: 8px;
+    height: 23px;
+    padding: 0 6px;
+    gap: 5px;
+  }
+  #charCountItem, #modeInfo {
+    display: none !important;
+  }
+}
+
+/* --- 3. Large mobile: 425px – 575px --- */
+@media (min-width: 425px) and (max-width: 575px) {
+  .topbar {
+    height: 42px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+  .topbar-brand span {
+    display: none !important;
+  }
+  .tb-btn.text-btn span {
+    display: none !important;
+  }
+  .tb-btn {
+    width: 30px;
+    height: 30px;
+    font-size: 11.5px;
+  }
+  .topbar-filename {
+    max-width: 130px;
+    font-size: 11px;
+  }
+  .ribbon-menu-bar {
+    height: 28px;
+  }
+  .ribbon-tab-btn {
+    font-size: 10.5px;
+    padding: 4px 9px;
+  }
+  .ribbon-panel {
+    min-height: 46px;
+    padding: 4px 6px;
+    gap: 5px;
+  }
+  .fmt-btn {
+    width: 27px;
+    height: 27px;
+    font-size: 11.5px;
+  }
+  .fmt-btn.with-text {
+    padding: 3px 6px;
+    font-size: 10.5px;
+  }
+  .fmt-select#fontFamily,
+  #fontFamily {
+    width: 98px !important;
+    max-width: 98px !important;
+    font-size: 10.5px !important;
+  }
+  .tab-bar {
+    height: 32px;
+  }
+  .tab {
+    max-width: 115px;
+    font-size: 10px;
+    padding: 0 5px;
+  }
+  .format-pill-group {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px;
+  }
+  .drop-zone {
+    padding: 24px 14px;
+    width: 94vw;
+  }
+  .statusbar {
+    font-size: 8.5px;
+    height: 24px;
+    padding: 0 6px;
+    gap: 6px;
+  }
+  #modeInfo {
+    display: none !important;
+  }
+}
+
+/* --- 4. Small tablet: 576px – 767px --- */
+@media (min-width: 576px) and (max-width: 767px) {
+  .topbar {
+    height: 44px;
+    padding: 0 10px;
+    gap: 5px;
+  }
+  .topbar-filename {
+    max-width: 170px;
+    font-size: 11.5px;
+  }
+  .ribbon-menu-bar {
+    height: 30px;
+  }
+  .ribbon-tab-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
   .ribbon-panel {
     min-height: 48px;
     padding: 4px 8px;
-    overflow-x: auto;
-    overflow-y: visible;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    gap: 6px;
   }
-  .ribbon-panel::-webkit-scrollbar { display: none; }
-  .ribbon-group { padding-right: 6px; }
-  .outline-panel { width: 230px; }
-  .find-bar { right: 8px; left: 8px; max-width: calc(100vw - 16px); }
-  .find-bar input { width: 100%; flex: 1; min-width: 0; }
-  .statusbar { gap: 10px; padding: 0 8px; font-size: 9px; }
+  .tab-bar {
+    height: 33px;
+  }
+  .tab {
+    max-width: 140px;
+    font-size: 10.5px;
+    padding: 0 6px;
+  }
+  .format-pill-group {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+  }
+  .drop-zone {
+    max-width: 540px;
+    width: 92vw;
+  }
+  .outline-panel {
+    width: 220px;
+  }
+  .statusbar {
+    font-size: 9px;
+    height: 24px;
+    padding: 0 8px;
+  }
 }
 
-@media (max-width: 640px) {
-  .topbar { height: 40px; padding: 0 6px; }
-  .topbar-filename { font-size: 11.5px; max-width: 150px; }
-  .ribbon-menu-bar { height: 28px; }
-  .ribbon-tab-btn { font-size: 11px; padding: 4px 10px; }
-  .ribbon-panel { min-height: 46px; gap: 5px; }
-  .fmt-btn { width: 28px; height: 28px; font-size: 11.5px; }
-  .fmt-btn.with-text { padding: 3px 6px; font-size: 11px; }
-  .tab-bar { height: 32px; }
-  .tab { max-width: 130px; padding: 0 6px; font-size: 10px; }
-  .tab-save-dot { width: 6px; height: 6px; }
-  .format-pill-group { grid-template-columns: repeat(2, 1fr) !important; gap: 6px; }
-  .recent-files-container { padding: 12px 14px; }
-  .recent-file-item { padding: 7px 10px; gap: 8px; }
-  .statusbar { gap: 8px; padding: 0 6px; font-size: 9px; height: 24px; }
-  .find-bar { min-width: 0 !important; width: calc(100% - 16px) !important; left: 8px !important; right: 8px !important; }
+/* --- 5. Tablet: 768px – 991px --- */
+@media (min-width: 768px) and (max-width: 991px) {
+  .topbar {
+    height: 40px;
+    padding: 0 12px;
+  }
+  .topbar-filename {
+    max-width: calc(100% - 280px);
+    font-size: 12px;
+  }
+  .topbar-actions {
+    margin-left: auto !important;
+  }
+  .ribbon-menu-bar {
+    height: 28px;
+  }
+  .ribbon-tab-btn {
+    font-size: 11.5px;
+    padding: 3px 10px;
+  }
+  .ribbon-panel {
+    min-height: 46px;
+    padding: 3px 8px;
+    gap: 6px;
+  }
+  .tab-bar {
+    height: 32px;
+  }
+  .tab {
+    max-width: 160px;
+    font-size: 11px;
+    padding: 0 7px;
+  }
+  .format-pill-group {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px;
+  }
+  .drop-zone {
+    max-width: 680px;
+  }
+  .outline-panel {
+    width: 240px;
+  }
+  .statusbar {
+    font-size: 9.5px;
+    height: 24px;
+    padding: 0 10px;
+  }
 }
 
-@media (max-width: 480px) {
-  .format-tag span { display: none; }
-  .drop-icon { font-size: 34px; margin-bottom: 12px; }
-  .drop-title { font-size: 15px; }
-  .drop-subtitle { font-size: 11.5px; margin-bottom: 16px; }
-  .topbar-actions { gap: 1px; }
-  .tb-divider { margin: 0 1px; }
-  .tb-btn { width: 28px; height: 28px; font-size: 11px; }
-  .topbar-filename { max-width: 110px; font-size: 10.5px; }
-  .empty-state { padding: 16px 10px 40px; gap: 14px; }
-  .tab { max-width: 100px; font-size: 9.5px; padding: 0 4px; }
-  .tab-more-btn { width: 16px; height: 16px; font-size: 10px; }
-  .tab-close { width: 16px; height: 16px; font-size: 11px; }
-  #charCount, #modeInfo { display: none !important; }
-  .statusbar { font-size: 8.5px; gap: 6px; }
-  .status-credit { font-size: 9px; }
-  .recent-files-container { padding: 10px 12px; }
-  .recent-file-item { padding: 6px 8px; }
+/* --- 6. Small laptop: 992px – 1199px --- */
+@media (min-width: 992px) and (max-width: 1199px) {
+  .topbar {
+    height: 40px;
+    padding: 0 14px;
+  }
+  .topbar-filename {
+    max-width: calc(100% - 320px);
+    font-size: 12.5px;
+  }
+  .topbar-actions {
+    margin-left: auto !important;
+  }
+  .ribbon-menu-bar {
+    height: 28px;
+  }
+  .ribbon-tab-btn {
+    font-size: 11.5px;
+    padding: 4px 11px;
+  }
+  .ribbon-panel {
+    min-height: 46px;
+    padding: 4px 10px;
+    gap: 7px;
+  }
+  .tab-bar {
+    height: 32px;
+  }
+  .tab {
+    max-width: 180px;
+    font-size: 11.5px;
+    padding: 0 8px;
+  }
+  .format-pill-group {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px;
+  }
+  .drop-zone {
+    max-width: 820px;
+  }
+  .outline-panel {
+    width: 260px;
+  }
+  .statusbar {
+    font-size: 10px;
+    height: 24px;
+    padding: 0 12px;
+  }
 }
 
-@media (max-width: 360px) {
-  .topbar-filename { max-width: 75px; font-size: 9.5px; }
-  .format-pill-group { grid-template-columns: 1fr !important; }
-  .tab-bar { height: 28px; }
-  .tab { max-width: 85px; font-size: 9px; }
-  .statusbar { font-size: 8px; }
-  .status-credit { font-size: 8.5px; }
+/* --- 7. Desktop: 1200px – 1399px --- */
+@media (min-width: 1200px) and (max-width: 1399px) {
+  .topbar {
+    height: 40px;
+    padding: 0 16px;
+  }
+  .topbar-filename {
+    max-width: calc(100% - 360px);
+    font-size: 13px;
+  }
+  .topbar-actions {
+    margin-left: auto !important;
+  }
+  .ribbon-menu-bar {
+    height: 28px;
+  }
+  .ribbon-tab-btn {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+  .ribbon-panel {
+    min-height: 46px;
+    padding: 4px 12px;
+    gap: 8px;
+  }
+  .tab-bar {
+    height: 32px;
+  }
+  .tab {
+    max-width: 200px;
+    font-size: 12px;
+  }
+  .format-pill-group {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 10px;
+  }
+  .outline-panel {
+    width: 275px;
+  }
+  .statusbar {
+    font-size: 10px;
+    height: 25px;
+    padding: 0 14px;
+  }
+}
+
+/* --- 8. Large desktop: 1400px and above --- */
+@media (min-width: 1400px) {
+  .topbar {
+    height: 40px;
+    padding: 0 20px;
+  }
+  .topbar-filename {
+    max-width: calc(100% - 400px);
+    font-size: 13px;
+  }
+  .topbar-actions {
+    margin-left: auto !important;
+  }
+  .ribbon-menu-bar {
+    height: 28px;
+  }
+  .ribbon-tab-btn {
+    font-size: 12px;
+    padding: 4px 13px;
+  }
+  .ribbon-panel {
+    min-height: 46px;
+    padding: 4px 14px;
+    gap: 8px;
+  }
+  .tab-bar {
+    height: 32px;
+  }
+  .tab {
+    max-width: 220px;
+    font-size: 12px;
+  }
+  .format-pill-group {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 12px;
+  }
+  .outline-panel {
+    width: 280px;
+  }
+  .statusbar {
+    font-size: 10px;
+    height: 25px;
+    padding: 0 16px;
+  }
 }
 
 /* Distraction-Free Reading Mode (Bug 8) */

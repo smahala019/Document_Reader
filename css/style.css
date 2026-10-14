@@ -28,7 +28,7 @@
   --scrollbar-bg: #141416;
   --scrollbar-thumb: #3e3e44;
   --font-ui: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-doc: Georgia, 'Times New Roman', serif;
+  --font-doc: Calibri, 'Segoe UI', Arial, sans-serif;
   
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.25);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);

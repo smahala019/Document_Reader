@@ -346,7 +346,10 @@
 
   // Command Execution
   function execCmd(cmd, value = null) {
-    if (window.DocFlow.currentMode !== 'edit') return false;
+    if (window.DocFlow.currentMode !== 'edit') {
+      showToast('Open or switch to an editable document first', 'info');
+      return false;
+    }
     focusEditor();
     if (cmd === 'undo') {
       undo();
@@ -367,6 +370,26 @@
     updateToolbarState();
     notifyChange();
     saveSnapshot();
+
+    const cmdNames = {
+      bold: 'Bold',
+      italic: 'Italic',
+      underline: 'Underline',
+      strikeThrough: 'Strikethrough',
+      subscript: 'Subscript',
+      superscript: 'Superscript',
+      justifyLeft: 'Align Left',
+      justifyCenter: 'Align Center',
+      justifyRight: 'Align Right',
+      justifyFull: 'Justify Full',
+      insertUnorderedList: 'Bulleted List',
+      insertOrderedList: 'Numbered List',
+      indent: 'Increase Indent',
+      outdent: 'Decrease Indent'
+    };
+    if (cmdNames[cmd]) {
+      showToast(`${cmdNames[cmd]} applied`, 'info');
+    }
     return true;
   }
 
@@ -421,10 +444,18 @@
     try {
       const fontName = (document.queryCommandValue('fontName') || '').replace(/['"]/g, '');
       const fontFamily = $('#fontFamily');
+      const fontLabel = $('#fontFamilyLabel');
       if (fontFamily && fontName) {
         for (let opt of fontFamily.options) {
-          if (opt.value.toLowerCase().includes(fontName.toLowerCase())) {
+          if (opt.value.toLowerCase().includes(fontName.toLowerCase()) || opt.text.toLowerCase().includes(fontName.toLowerCase())) {
             fontFamily.value = opt.value;
+            if (fontLabel) {
+              fontLabel.textContent = opt.text.split('(')[0].trim();
+              fontLabel.style.fontFamily = opt.value;
+            }
+            $$('#fontFamilyPopover .spacing-opt-item').forEach(el => {
+              el.classList.toggle('active', el.dataset.font === opt.value);
+            });
             break;
           }
         }
@@ -562,11 +593,47 @@
       });
 
       textInput.addEventListener('change', function () {
-        if (window.DocFlow.currentMode !== 'edit') return;
+        if (window.DocFlow.currentMode !== 'edit') {
+          showToast('Open a document in edit mode to change text color', 'info');
+          return;
+        }
         restoreSelection();
         document.execCommand('foreColor', false, this.value);
         notifyChange();
         updateToolbarState();
+        showToast('Text color applied', 'success');
+      });
+    }
+
+    if (bgBtn && bgInput) {
+      bgBtn.addEventListener('click', () => {
+        saveSelection();
+        if (typeof bgInput.showPicker === 'function') {
+          bgInput.showPicker();
+        } else {
+          bgInput.click();
+        }
+      });
+
+      bgInput.addEventListener('input', function () {
+        if (bgBar) bgBar.style.background = this.value;
+      });
+
+      bgInput.addEventListener('change', function () {
+        if (window.DocFlow.currentMode !== 'edit') {
+          showToast('Open a document in edit mode to highlight text', 'info');
+          return;
+        }
+        restoreSelection();
+        try {
+          document.execCommand('styleWithCSS', false, true);
+          document.execCommand('hiliteColor', false, this.value);
+        } catch (e) {
+          document.execCommand('backColor', false, this.value);
+        }
+        notifyChange();
+        updateToolbarState();
+        showToast('Text highlight color applied', 'success');
       });
     }
 
@@ -830,6 +897,7 @@
 
     notifyChange();
     updateToolbarState();
+    showToast(`Font size set to ${size}px`, 'info');
   }
 
   // Bullet and Numbering List Style Applicator
@@ -893,6 +961,7 @@
 
     notifyChange();
     updateToolbarState();
+    showToast(`List style applied: ${type}`, 'info');
   }
 
   // Line Spacing Applicator
@@ -909,6 +978,7 @@
     if (block) {
       block.style.lineHeight = spacing;
       notifyChange();
+      // showToast(`Line spacing set to ${spacing}`, 'info');
     }
   }
 
@@ -953,7 +1023,12 @@
     const fontSizeInput = $('#fontSizeInput');
     if (fontSizeInput) fontSizeInput.value = '15';
     const fontFamily = $('#fontFamily');
-    if (fontFamily) fontFamily.value = "Georgia, serif";
+    if (fontFamily) fontFamily.value = "Calibri, sans-serif";
+    const fontLabel = $('#fontFamilyLabel');
+    if (fontLabel) fontLabel.textContent = "Calibri";
+    $$('#fontFamilyPopover .spacing-opt-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.name === 'Calibri');
+    });
 
     notifyChange();
     updateToolbarState();
@@ -1363,7 +1438,50 @@
     }
     $('#homePptShadowBtn')?.addEventListener('click', toggleTextShadow);
 
-    // Font Family — saves selection on focus and mousedown, restores on change
+    // Font Family Popover Controls (Problem 5: Small height & scrollable)
+    const fontFamilyBtn = $('#fontFamilyBtn');
+    const fontFamilyPopover = $('#fontFamilyPopover');
+
+    if (fontFamilyBtn) {
+      fontFamilyBtn.addEventListener('mousedown', () => saveSelection());
+      fontFamilyBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        saveSelection();
+        if (fontFamilyPopover?.classList.contains('show')) {
+          fontFamilyPopover.classList.remove('show');
+        } else if (fontFamilyPopover) {
+          window.DocFlow?.UI?.positionPopover?.(fontFamilyBtn, fontFamilyPopover);
+        }
+      });
+    }
+
+    $$('#fontFamilyPopover .spacing-opt-item[data-font]').forEach(item => {
+      item.addEventListener('click', () => {
+        const fontVal = item.dataset.font;
+        const fontName = item.dataset.name || item.textContent.trim();
+        const fontLabel = $('#fontFamilyLabel');
+        if (fontLabel) {
+          fontLabel.textContent = fontName;
+          fontLabel.style.fontFamily = fontVal;
+        }
+        const fontFamily = $('#fontFamily');
+        if (fontFamily) fontFamily.value = fontVal;
+
+        if (window.DocFlow.currentMode === 'edit') {
+          restoreSelection();
+          document.execCommand('fontName', false, fontVal);
+          notifyChange();
+          updateToolbarState();
+        }
+
+        $$('#fontFamilyPopover .spacing-opt-item').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        fontFamilyPopover?.classList.remove('show');
+        showToast(`Font family set: ${fontName}`, 'info');
+      });
+    });
+
+    // Font Family native select fallback
     const fontFamily = $('#fontFamily');
     if (fontFamily) {
       fontFamily.addEventListener('focus', () => saveSelection());
@@ -1372,6 +1490,9 @@
         if (window.DocFlow.currentMode !== 'edit') return;
         restoreSelection();
         document.execCommand('fontName', false, this.value);
+        const fontLabel = $('#fontFamilyLabel');
+        const opt = fontFamily.options[fontFamily.selectedIndex];
+        if (fontLabel && opt) fontLabel.textContent = opt.text.split('(')[0].trim();
         notifyChange();
         updateToolbarState();
       });
@@ -1437,6 +1558,7 @@
         document.execCommand('formatBlock', false, val === 'p' ? '<p>' : `<${val}>`);
         notifyChange();
         updateToolbarState();
+        showToast(`Heading set to ${val === 'p' ? 'Normal Paragraph' : val.toUpperCase()}`, 'info');
         if (window.DocFlow.Find) window.DocFlow.Find.scheduleOutlineUpdate();
       });
     }

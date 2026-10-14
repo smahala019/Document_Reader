@@ -19,14 +19,23 @@
   let outlineTimer = null;
   let findDebounceTimer = null;
 
+  let pdfSearchResults = []; // [{ pageNum, count }]
+  let pdfCurrentMatchIdx = -1;
+  let pdfSearchGen = 0;
+
   // ==========================================================================
-  // Document Search & Highlighting (Robust DOM Walker)
+  // Document Search & Highlighting (Robust DOM Walker & PDF Content Search)
   // ==========================================================================
 
   function openFindBar(showReplace = false) {
-    if (window.DocFlow.currentMode !== 'edit') {
-      showToast('Open a document in edit mode first', 'info');
+    if (window.DocFlow.currentMode === 'empty') {
+      showToast('Open or create a document first', 'info');
       return;
+    }
+    const isPdf = window.DocFlow.currentMode === 'view';
+    if (isPdf && showReplace) {
+      showToast('PDF documents are view-only. Opened in Find mode.', 'info');
+      showReplace = false;
     }
     if (!findBar) return;
     findBar.classList.add('open');
@@ -52,11 +61,12 @@
         findInput.select();
       }
     }
+    showToast(showReplace ? 'Find & Replace bar opened' : 'Find in document opened', 'info');
   }
 
   function toggleFindBar() {
-    if (window.DocFlow.currentMode !== 'edit') {
-      showToast('Open a document in edit mode first', 'info');
+    if (window.DocFlow.currentMode === 'empty') {
+      showToast('Open or create a document first', 'info');
       return;
     }
 
@@ -72,8 +82,11 @@
 
   function closeFindBar() {
     if (!findBar) return;
+    const wasOpen = findBar.classList.contains('open');
     findBar.classList.remove('open');
     clearFindHighlights();
+    clearPdfFindHighlights();
+    if (wasOpen) showToast('Find bar closed', 'info');
     if (findInput) findInput.value = '';
     const replaceInput = $('#replaceInput');
     if (replaceInput) replaceInput.value = '';
@@ -82,6 +95,15 @@
     if (findCountEl) findCountEl.textContent = '0 results';
     findHighlightSpans = [];
     findCurrentIdx = -1;
+    pdfSearchResults = [];
+    pdfCurrentMatchIdx = -1;
+  }
+
+  function clearPdfFindHighlights() {
+    document.querySelectorAll('.pdf-page-wrap.pdf-match-active').forEach(w => {
+      w.classList.remove('pdf-match-active');
+      w.style.boxShadow = '';
+    });
   }
 
   function clearFindHighlights() {
@@ -116,17 +138,108 @@
     return clone.innerHTML;
   }
 
+  async function performPdfFind(term) {
+    const thisSearchGen = ++pdfSearchGen;
+    clearPdfFindHighlights();
+    pdfSearchResults = [];
+    pdfCurrentMatchIdx = -1;
+
+    const pdfDoc = window.DocFlow?.PDF?.getPdfDoc?.();
+    if (!pdfDoc) {
+      if (findCountEl) findCountEl.textContent = '0 results';
+      return;
+    }
+
+    if (findCountEl) findCountEl.textContent = 'Searching PDF...';
+
+    const lowerTerm = term.toLowerCase();
+    const termLen = term.length;
+    const numPages = pdfDoc.numPages || window.DocFlow?.PDF?.getTotalPages?.() || 1;
+    const matches = [];
+    let totalCount = 0;
+
+    for (let p = 1; p <= numPages; p++) {
+      if (thisSearchGen !== pdfSearchGen) return;
+      try {
+        const page = await pdfDoc.getPage(p);
+        const textContent = await page.getTextContent({ normalizeWhitespace: true });
+        let pageStr = '';
+        if (textContent && textContent.items) {
+          pageStr = textContent.items.map(item => item.str || '').join(' ');
+        }
+        const lowerPageStr = pageStr.toLowerCase();
+        let matchCount = 0;
+        let idx = lowerPageStr.indexOf(lowerTerm);
+        while (idx !== -1) {
+          matchCount++;
+          idx = lowerPageStr.indexOf(lowerTerm, idx + termLen);
+        }
+        if (matchCount > 0) {
+          totalCount += matchCount;
+          matches.push({ pageNum: p, count: matchCount });
+        }
+      } catch (err) {
+        // Continue searching other pages
+      }
+    }
+
+    if (thisSearchGen !== pdfSearchGen) return;
+
+    pdfSearchResults = matches;
+    if (matches.length > 0) {
+      pdfCurrentMatchIdx = 0;
+      highlightPdfCurrentMatch(totalCount);
+    } else {
+      if (findCountEl) findCountEl.textContent = '0 results';
+    }
+  }
+
+  function highlightPdfCurrentMatch(totalMatches) {
+    if (pdfCurrentMatchIdx < 0 || pdfCurrentMatchIdx >= pdfSearchResults.length) return;
+    clearPdfFindHighlights();
+
+    const currentMatch = pdfSearchResults[pdfCurrentMatchIdx];
+    const pageNum = currentMatch.pageNum;
+
+    if (window.DocFlow?.PDF?.jumpToPage) {
+      window.DocFlow.PDF.jumpToPage(pageNum);
+    }
+
+    const pageWrap = document.querySelector(`.pdf-page-wrap[data-page="${pageNum}"]`);
+    if (pageWrap) {
+      pageWrap.classList.add('pdf-match-active');
+      pageWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      pageWrap.style.boxShadow = '0 0 0 3px var(--accent, #e85d04)';
+    }
+
+    const total = totalMatches || pdfSearchResults.reduce((acc, m) => acc + m.count, 0);
+    if (findCountEl) {
+      findCountEl.textContent = `Page ${pageNum} (${pdfCurrentMatchIdx + 1} of ${pdfSearchResults.length} pages, ${total} matches)`;
+    }
+  }
+
   function performFind() {
     clearFindHighlights();
+    clearPdfFindHighlights();
     findHighlightSpans = [];
     findCurrentIdx = -1;
+    pdfSearchResults = [];
+    pdfCurrentMatchIdx = -1;
 
-    if (!editor || !findInput) return;
+    if (!findInput) return;
     const term = findInput.value.trim();
     if (!term) {
       if (findCountEl) findCountEl.textContent = '0 results';
       return;
     }
+
+    // PDF View Mode
+    if (window.DocFlow.currentMode === 'view') {
+      performPdfFind(term);
+      return;
+    }
+
+    if (!editor) return;
 
     // Collect all text nodes
     const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, null, false);
@@ -194,6 +307,15 @@
   }
 
   function findNavigate(direction) {
+    if (window.DocFlow.currentMode === 'view') {
+      if (!pdfSearchResults.length) return;
+      pdfCurrentMatchIdx += direction;
+      if (pdfCurrentMatchIdx >= pdfSearchResults.length) pdfCurrentMatchIdx = 0;
+      if (pdfCurrentMatchIdx < 0) pdfCurrentMatchIdx = pdfSearchResults.length - 1;
+      highlightPdfCurrentMatch();
+      return;
+    }
+
     if (!findHighlightSpans.length) return;
 
     if (findCurrentIdx >= 0 && findCurrentIdx < findHighlightSpans.length) {
@@ -211,6 +333,25 @@
     if (findCurrentIdx < 0 || findCurrentIdx >= findHighlightSpans.length) return;
     const cur = findHighlightSpans[findCurrentIdx];
     cur.style.backgroundColor = 'rgba(232, 93, 4, 0.85)';
+
+    // If match is inside a PowerPoint slide wrapper, switch to that slide!
+    const slideWrapper = cur.closest('.pptx-slide-wrapper');
+    if (slideWrapper && editor) {
+      const slides = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+      const slideIdx = slides.indexOf(slideWrapper);
+      if (slideIdx !== -1 && window.DocFlow?.selectPptSlide) {
+        window.DocFlow.selectPptSlide(slideIdx);
+      }
+    }
+
+    // If match is inside an Excel cell or table
+    const cell = cur.closest('td, th');
+    if (cell) {
+      cell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      document.querySelectorAll('.excel-cell-active').forEach(c => c.classList.remove('excel-cell-active'));
+      cell.classList.add('excel-cell-active');
+    }
+
     cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
     if (findCountEl) {
@@ -219,6 +360,10 @@
   }
 
   function performReplace() {
+    if (window.DocFlow.currentMode === 'view') {
+      showToast('Replace is not available in read-only PDF mode', 'info');
+      return;
+    }
     if (window.DocFlow.currentMode !== 'edit' || !editor) return;
     const replaceInput = $('#replaceInput');
     const replaceVal = replaceInput ? replaceInput.value : '';
@@ -262,6 +407,10 @@
   }
 
   function performReplaceAll() {
+    if (window.DocFlow.currentMode === 'view') {
+      showToast('Replace is not available in read-only PDF mode', 'info');
+      return;
+    }
     if (window.DocFlow.currentMode !== 'edit' || !editor || !findInput) return;
     const term = findInput.value.trim();
     if (!term) {
@@ -288,6 +437,7 @@
 
   function setupFindBar() {
     $('#findBtn')?.addEventListener('click', () => openFindBar(false));
+    $('#pdfFindBtn')?.addEventListener('click', () => openFindBar(false));
     $('#ribbonFindBtn')?.addEventListener('click', () => openFindBar(false));
     $('#ribbonHomeFindBtn')?.addEventListener('click', () => openFindBar(false));
 
@@ -356,10 +506,11 @@
       return;
     }
     if (!outlinePanel) return;
-    outlinePanel.classList.toggle('open');
-    if (outlinePanel.classList.contains('open')) {
+    const isOpen = outlinePanel.classList.toggle('open');
+    if (isOpen) {
       updateOutline();
     }
+    showToast(isOpen ? 'Document Outline opened' : 'Document Outline closed', 'info');
   }
 
   function closeOutline() {
@@ -417,6 +568,12 @@
   // ==========================================================================
 
   function showStatsModal() {
+    if (window.DocFlow.currentMode === 'view') {
+      const pdfDoc = window.DocFlow?.PDF?.getPdfDoc?.();
+      const numPages = pdfDoc ? (pdfDoc.numPages || window.DocFlow.PDF.getTotalPages?.() || 1) : 1;
+      showToast(`PDF Document: ${numPages} page${numPages > 1 ? 's' : ''}`, 'info');
+      return;
+    }
     if (window.DocFlow.currentMode !== 'edit' || !editor) {
       showToast('Open a document in edit mode first', 'info');
       return;

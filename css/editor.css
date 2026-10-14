@@ -38,7 +38,7 @@
   padding: 72px 72px;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.08);
   border-radius: 3px;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: Calibri, 'Segoe UI', Arial, sans-serif;
   font-size: 15px;
   line-height: 1.75;
   outline: none;
@@ -923,17 +923,41 @@ td.excel-sel-right {
   margin: 0 !important;
   padding-bottom: 0 !important;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #94a3b8 rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="dark"] .excel-sheet-viewport {
+  scrollbar-color: #64748b #18181b !important;
 }
 
 .excel-sheet-viewport::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+  display: block !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.excel-sheet-viewport::-webkit-scrollbar-track {
+  background: var(--bg-tertiary, #f1f5f9) !important;
+  border-radius: 6px;
+}
+
+.excel-sheet-viewport::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 6px;
+  border: 2px solid var(--bg-tertiary, #f1f5f9) !important;
+}
+
+.excel-sheet-viewport::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+.excel-sheet-viewport::-webkit-scrollbar-corner {
+  background: var(--bg-tertiary, #f1f5f9) !important;
 }
 
 .excel-grid-table {
+  min-width: max-content !important;
   margin-bottom: 0 !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
@@ -1341,6 +1365,7 @@ body.slide-deck-mode .pptx-slide-card {
   word-break: break-word !important;
   overflow-wrap: break-word !important;
   position: relative;
+  cursor: text !important;
 }
 .slide-freeform-rect,
 .slide-nested-card,
@@ -1349,12 +1374,30 @@ body.slide-deck-mode .pptx-slide-card {
 .pptx-slide-title,
 .pptx-slide-body {
   position: relative;
-  cursor: default;
+  cursor: text;
   word-break: break-word !important;
   overflow-wrap: break-word !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
 }
+
+/* Ensure all editable content inside PPT slides shows proper text cursor (Bug 6) */
+.pptx-slide-card [contenteditable="true"],
+.pptx-slide-card .slide-title-box,
+.pptx-slide-card .slide-content-box,
+.pptx-slide-card .pptx-slide-title,
+.pptx-slide-card .pptx-slide-body,
+.pptx-slide-card .slide-nested-card,
+.pptx-slide-card p,
+.pptx-slide-card h1,
+.pptx-slide-card h2,
+.pptx-slide-card h3,
+.pptx-slide-card h4,
+.pptx-slide-card li,
+.pptx-slide-card span:not(.slide-badge) {
+  cursor: text !important;
+}
+
 .slide-freeform-rect:hover,
 .slide-nested-card:hover,
 .slide-title-box:hover,
@@ -1571,10 +1614,11 @@ body.slide-deck-mode .pptx-slide-card {
   border-radius: 12px;
   padding: 44px;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85);
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start !important;
   position: relative;
   color: #1e293b;
 }
@@ -2595,6 +2639,568 @@ body.df-focus-mode .tab-bar:hover {
 .anim-fade-out, [data-animation="fade-out"] { animation: elemFadeOut 0.5s ease-out forwards; }
 .anim-zoom-out, [data-animation="zoom-out"] { animation: elemZoomOut 0.45s ease-out forwards; }
 
+/* 7 New Element Animations */
+@keyframes elemHeartbeat {
+  0% { transform: scale(1); }
+  14% { transform: scale(1.15); }
+  28% { transform: scale(1); }
+  42% { transform: scale(1.15); }
+  70% { transform: scale(1); }
+}
+.anim-heartbeat, [data-animation="heartbeat"] { animation: elemHeartbeat 0.9s ease-in-out; }
+
+@keyframes elemGlow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(234, 88, 12, 0.3)); }
+  50% { filter: drop-shadow(0 0 16px rgba(234, 88, 12, 0.9)) brightness(1.2); }
+}
+.anim-glow, [data-animation="glow"] { animation: elemGlow 1.2s ease-in-out; }
+
+@keyframes elemJello {
+  0%, 11.1%, 100% { transform: none; }
+  22.2% { transform: skewX(-12.5deg) skewY(-12.5deg); }
+  33.3% { transform: skewX(6.25deg) skewY(6.25deg); }
+  44.4% { transform: skewX(-3.125deg) skewY(-3.125deg); }
+  55.5% { transform: skewX(1.5625deg) skewY(1.5625deg); }
+  66.6% { transform: skewX(-0.78125deg) skewY(-0.78125deg); }
+}
+.anim-jello, [data-animation="jello"] { animation: elemJello 0.85s ease-in-out; }
+
+@keyframes elemTada {
+  0% { transform: scale3d(1, 1, 1); }
+  10%, 20% { transform: scale3d(0.9, 0.9, 0.9) rotate3d(0, 0, 1, -3deg); }
+  30%, 50%, 70%, 90% { transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, 3deg); }
+  40%, 60%, 80% { transform: scale3d(1.1, 1.1, 1.1) rotate3d(0, 0, 1, -3deg); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+.anim-tada, [data-animation="tada"] { animation: elemTada 0.85s ease-in-out; }
+
+@keyframes elemFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.anim-float, [data-animation="float"] { animation: elemFloat 1.3s ease-in-out; }
+
+@keyframes elemTypewriter {
+  0% { max-width: 0; opacity: 0; }
+  1% { opacity: 1; }
+  100% { max-width: 100%; opacity: 1; }
+}
+.anim-typewriter, [data-animation="typewriter"] {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  animation: elemTypewriter 0.85s steps(28, end) forwards;
+}
+
+@keyframes elemBlurFade {
+  0% { opacity: 0; filter: blur(10px); transform: scale(1.05); }
+  100% { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+.anim-blur-fade, [data-animation="blur-fade"] { animation: elemBlurFade 0.55s ease-out forwards; }
+
+/* 7 New PPT Transitions */
+@keyframes pptGlitch {
+  0% { transform: translate(0); filter: hue-rotate(0deg); opacity: 0; }
+  20% { transform: translate(-8px, 4px); filter: hue-rotate(90deg); opacity: 0.8; }
+  40% { transform: translate(6px, -4px); filter: hue-rotate(180deg); opacity: 0.9; }
+  60% { transform: translate(-4px, 2px); filter: hue-rotate(270deg); }
+  80% { transform: translate(2px, -1px); }
+  100% { transform: translate(0); filter: none; opacity: 1; }
+}
+.anim-ppt-glitch, .pptx-slide-wrapper[data-transition="glitch"] .pptx-slide-card {
+  animation: pptGlitch var(--ppt-trans-dur, 0.45s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptHoneycomb {
+  0% { opacity: 0; transform: scale(0.6) rotate(15deg); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+  60% { opacity: 0.9; transform: scale(1.04) rotate(-3deg); clip-path: polygon(50% 0%, 100% 10%, 100% 90%, 50% 100%, 0% 90%, 0% 10%); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%); }
+}
+.anim-ppt-honeycomb, .pptx-slide-wrapper[data-transition="honeycomb"] .pptx-slide-card {
+  animation: pptHoneycomb var(--ppt-trans-dur, 0.6s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptPageCurl {
+  0% { opacity: 0; transform: perspective(1000px) rotateY(-80deg); transform-origin: left center; }
+  100% { opacity: 1; transform: perspective(1000px) rotateY(0deg); transform-origin: left center; }
+}
+.anim-ppt-page-curl, .pptx-slide-wrapper[data-transition="page-curl"] .pptx-slide-card {
+  animation: pptPageCurl var(--ppt-trans-dur, 0.55s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptZoomRotate {
+  0% { opacity: 0; transform: scale(0.2) rotate(-180deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.anim-ppt-zoom-rotate, .pptx-slide-wrapper[data-transition="zoom-rotate"] .pptx-slide-card {
+  animation: pptZoomRotate var(--ppt-trans-dur, 0.5s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptShimmerWave {
+  0% { opacity: 0; filter: brightness(2) contrast(1.5) blur(10px); transform: scale(1.05); }
+  100% { opacity: 1; filter: none; transform: scale(1); }
+}
+.anim-ppt-shimmer-wave, .pptx-slide-wrapper[data-transition="shimmer-wave"] .pptx-slide-card {
+  animation: pptShimmerWave var(--ppt-trans-dur, 0.55s) ease-out forwards;
+}
+
+@keyframes pptCardFlip {
+  0% { opacity: 0; transform: perspective(800px) rotateX(90deg); }
+  60% { opacity: 0.9; transform: perspective(800px) rotateX(-10deg); }
+  100% { opacity: 1; transform: perspective(800px) rotateX(0deg); }
+}
+.anim-ppt-card-flip, .pptx-slide-wrapper[data-transition="card-flip"] .pptx-slide-card {
+  animation: pptCardFlip var(--ppt-trans-dur, 0.6s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptKaleidoscope {
+  0% { opacity: 0; transform: scale(0.5) rotate(90deg); filter: saturate(3); }
+  50% { opacity: 0.8; transform: scale(1.08) rotate(-15deg); filter: saturate(1.8); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: none; }
+}
+.anim-ppt-kaleidoscope, .pptx-slide-wrapper[data-transition="kaleidoscope"] .pptx-slide-card {
+  animation: pptKaleidoscope var(--ppt-trans-dur, 0.65s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 6 Additional PPT Transitions (Problem 2) */
+@keyframes pptBlinds {
+  0% { opacity: 0; clip-path: inset(0 0 100% 0); }
+  50% { opacity: 0.8; clip-path: inset(0 0 30% 0); }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+.anim-ppt-blinds, .pptx-slide-wrapper[data-transition="blinds"] .pptx-slide-card {
+  animation: pptBlinds var(--ppt-trans-dur, 0.6s) ease-in-out forwards;
+}
+
+@keyframes pptOrbit {
+  0% { opacity: 0; transform: perspective(1000px) rotateY(-90deg) translateZ(200px); }
+  100% { opacity: 1; transform: perspective(1000px) rotateY(0deg) translateZ(0); }
+}
+.anim-ppt-orbit, .pptx-slide-wrapper[data-transition="orbit"] .pptx-slide-card {
+  animation: pptOrbit var(--ppt-trans-dur, 0.7s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptMorph {
+  0% { opacity: 0; transform: scale(0.4); border-radius: 50%; }
+  60% { opacity: 0.9; transform: scale(1.03); border-radius: 12px; }
+  100% { opacity: 1; transform: scale(1); border-radius: 8px; }
+}
+.anim-ppt-morph, .pptx-slide-wrapper[data-transition="morph"] .pptx-slide-card {
+  animation: pptMorph var(--ppt-trans-dur, 0.6s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptBoxTurn {
+  0% { opacity: 0; transform: perspective(1200px) rotateY(90deg) scale(0.8); transform-origin: right center; }
+  100% { opacity: 1; transform: perspective(1200px) rotateY(0deg) scale(1); transform-origin: right center; }
+}
+.anim-ppt-box-turn, .pptx-slide-wrapper[data-transition="box-turn"] .pptx-slide-card {
+  animation: pptBoxTurn var(--ppt-trans-dur, 0.65s) ease-out forwards;
+}
+
+@keyframes pptGallery {
+  0% { opacity: 0; transform: scale(1.4) translateY(30px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.anim-ppt-gallery, .pptx-slide-wrapper[data-transition="gallery"] .pptx-slide-card {
+  animation: pptGallery var(--ppt-trans-dur, 0.55s) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes pptConveyor {
+  0% { opacity: 0; transform: translateX(100%) scale(0.9); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+.anim-ppt-conveyor, .pptx-slide-wrapper[data-transition="conveyor"] .pptx-slide-card {
+  animation: pptConveyor var(--ppt-trans-dur, 0.55s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 6 Additional PPT Animations (Problem 2) */
+@keyframes elemRubberBand {
+  0% { transform: scale3d(1, 1, 1); }
+  30% { transform: scale3d(1.25, 0.75, 1); }
+  40% { transform: scale3d(0.75, 1.25, 1); }
+  50% { transform: scale3d(1.15, 0.85, 1); }
+  65% { transform: scale3d(0.95, 1.05, 1); }
+  75% { transform: scale3d(1.05, 0.95, 1); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+.anim-rubberBand, [data-animation="rubberBand"] { animation: elemRubberBand var(--ppt-anim-dur, 0.9s) ease; }
+
+@keyframes elemWobble {
+  0% { transform: translate3d(0, 0, 0); }
+  15% { transform: translate3d(-15%, 0, 0) rotate3d(0, 0, 1, -5deg); }
+  30% { transform: translate3d(10%, 0, 0) rotate3d(0, 0, 1, 3deg); }
+  45% { transform: translate3d(-10%, 0, 0) rotate3d(0, 0, 1, -3deg); }
+  60% { transform: translate3d(5%, 0, 0) rotate3d(0, 0, 1, 2deg); }
+  75% { transform: translate3d(-5%, 0, 0) rotate3d(0, 0, 1, -1deg); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+.anim-wobble, [data-animation="wobble"] { animation: elemWobble var(--ppt-anim-dur, 1.0s) ease; }
+
+@keyframes elemSwing {
+  20% { transform: rotate3d(0, 0, 1, 15deg); }
+  40% { transform: rotate3d(0, 0, 1, -10deg); }
+  60% { transform: rotate3d(0, 0, 1, 5deg); }
+  80% { transform: rotate3d(0, 0, 1, -5deg); }
+  100% { transform: rotate3d(0, 0, 1, 0deg); }
+}
+.anim-swing, [data-animation="swing"] {
+  transform-origin: top center;
+  animation: elemSwing var(--ppt-anim-dur, 0.9s) ease;
+}
+
+@keyframes elemFlipInX {
+  0% { transform: perspective(400px) rotate3d(1, 0, 0, 90deg); opacity: 0; }
+  40% { transform: perspective(400px) rotate3d(1, 0, 0, -20deg); }
+  60% { transform: perspective(400px) rotate3d(1, 0, 0, 10deg); opacity: 0.9; }
+  80% { transform: perspective(400px) rotate3d(1, 0, 0, -5deg); }
+  100% { transform: perspective(400px); opacity: 1; }
+}
+.anim-flip-in-x, [data-animation="flip-in-x"] { animation: elemFlipInX var(--ppt-anim-dur, 0.85s) ease-in forwards; }
+
+@keyframes elemZoomInDown {
+  0% { opacity: 0; transform: scale3d(0.1, 0.1, 0.1) translate3d(0, -800px, 0); }
+  60% { opacity: 1; transform: scale3d(0.475, 0.475, 0.475) translate3d(0, 40px, 0); }
+  100% { transform: scale3d(1, 1, 1) translate3d(0, 0, 0); }
+}
+.anim-zoom-in-down, [data-animation="zoom-in-down"] { animation: elemZoomInDown var(--ppt-anim-dur, 0.85s) cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards; }
+
+@keyframes elemRollIn {
+  0% { opacity: 0; transform: translate3d(-100%, 0, 0) rotate3d(0, 0, 1, -120deg); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.anim-roll-in, [data-animation="roll-in"] { animation: elemRollIn var(--ppt-anim-dur, 0.85s) ease-out forwards; }
+
+/* 8 New PPT Transitions (Problem 2) */
+@keyframes pptSwirl {
+  0% { opacity: 0; transform: rotate(-180deg) scale(0.2); }
+  100% { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+.anim-ppt-swirl, .pptx-slide-wrapper[data-transition="swirl"] .pptx-slide-card {
+  animation: pptSwirl var(--ppt-trans-dur, 0.6s) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes pptCurtainRise {
+  0% { opacity: 0; transform: translateY(100%) scaleY(0.6); }
+  100% { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+.anim-ppt-curtain-rise, .pptx-slide-wrapper[data-transition="curtain-rise"] .pptx-slide-card {
+  animation: pptCurtainRise var(--ppt-trans-dur, 0.65s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptPrism {
+  0% { opacity: 0; transform: rotateY(90deg) rotateX(40deg) scale(0.6); filter: contrast(180%); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+.anim-ppt-prism, .pptx-slide-wrapper[data-transition="prism"] .pptx-slide-card {
+  animation: pptPrism var(--ppt-trans-dur, 0.7s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptRevealRight {
+  0% { clip-path: inset(0 100% 0 0); opacity: 0; }
+  100% { clip-path: inset(0 0 0 0); opacity: 1; }
+}
+.anim-ppt-reveal-right, .pptx-slide-wrapper[data-transition="reveal-right"] .pptx-slide-card {
+  animation: pptRevealRight var(--ppt-trans-dur, 0.6s) cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes pptElasticScale {
+  0% { opacity: 0; transform: scale(0.3); }
+  60% { opacity: 1; transform: scale(1.08); }
+  80% { transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.anim-ppt-elastic-scale, .pptx-slide-wrapper[data-transition="elastic-scale"] .pptx-slide-card {
+  animation: pptElasticScale var(--ppt-trans-dur, 0.75s) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes pptSlideRotate {
+  0% { opacity: 0; transform: translateX(80%) rotate(20deg); }
+  100% { opacity: 1; transform: translateX(0) rotate(0); }
+}
+.anim-ppt-slide-rotate, .pptx-slide-wrapper[data-transition="slide-rotate"] .pptx-slide-card {
+  animation: pptSlideRotate var(--ppt-trans-dur, 0.6s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptPanDown {
+  0% { opacity: 0; transform: translateY(-70px) scale(1.06); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.anim-ppt-pan-down, .pptx-slide-wrapper[data-transition="pan-down"] .pptx-slide-card {
+  animation: pptPanDown var(--ppt-trans-dur, 0.55s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptUnfold {
+  0% { opacity: 0; transform: scaleY(0.01) scaleX(0); }
+  50% { opacity: 0.8; transform: scaleY(0.01) scaleX(1); }
+  100% { opacity: 1; transform: scaleY(1) scaleX(1); }
+}
+.anim-ppt-unfold, .pptx-slide-wrapper[data-transition="unfold"] .pptx-slide-card {
+  animation: pptUnfold var(--ppt-trans-dur, 0.7s) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+/* 9 New PPT Element Animations (Problem 2) */
+@keyframes elemFlashBurst {
+  0%, 50%, 100% { opacity: 1; transform: scale(1); }
+  25%, 75% { opacity: 0.2; transform: scale(1.08); filter: brightness(1.5); }
+}
+.anim-flash-burst, [data-animation="flash-burst"] {
+  animation: elemFlashBurst var(--ppt-anim-dur, 0.9s) ease;
+}
+
+@keyframes elemHeadShake {
+  0% { transform: translateX(0); }
+  13% { transform: translateX(-6px) rotateY(-9deg); }
+  37% { transform: translateX(5px) rotateY(7deg); }
+  62% { transform: translateX(-3px) rotateY(-5deg); }
+  100% { transform: translateX(0); }
+}
+.anim-headShake, [data-animation="headShake"] {
+  animation: elemHeadShake var(--ppt-anim-dur, 0.8s) ease-in-out;
+}
+
+@keyframes elemSwingDrop {
+  0% { opacity: 0; transform: translateY(-40px) rotate(-12deg); }
+  70% { transform: translateY(8px) rotate(4deg); }
+  100% { opacity: 1; transform: translateY(0) rotate(0); }
+}
+.anim-swing-drop, [data-animation="swing-drop"] {
+  animation: elemSwingDrop var(--ppt-anim-dur, 0.85s) cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes elemBounceDrop {
+  0% { opacity: 0; transform: translateY(-80px); }
+  60% { opacity: 1; transform: translateY(16px); }
+  80% { transform: translateY(-6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.anim-bounce-drop, [data-animation="bounce-drop"] {
+  animation: elemBounceDrop var(--ppt-anim-dur, 0.85s) ease-out;
+}
+
+@keyframes elemBlurZoom {
+  0% { opacity: 0; filter: blur(14px); transform: scale(1.35); }
+  100% { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+.anim-blur-zoom, [data-animation="blur-zoom"] {
+  animation: elemBlurZoom var(--ppt-anim-dur, 0.7s) ease-out forwards;
+}
+
+@keyframes elemSlideRotateIn {
+  0% { opacity: 0; transform: translateX(-50px) rotate(-15deg); }
+  100% { opacity: 1; transform: translateX(0) rotate(0); }
+}
+.anim-slide-rotate-in, [data-animation="slide-rotate-in"] {
+  animation: elemSlideRotateIn var(--ppt-anim-dur, 0.75s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes elemFlipInY {
+  0% { opacity: 0; transform: perspective(400px) rotateY(90deg); }
+  40% { transform: perspective(400px) rotateY(-18deg); }
+  70% { transform: perspective(400px) rotateY(9deg); }
+  100% { opacity: 1; transform: perspective(400px) rotateY(0); }
+}
+.anim-flip-in-y, [data-animation="flip-in-y"] {
+  animation: elemFlipInY var(--ppt-anim-dur, 0.85s) ease-out forwards;
+}
+
+@keyframes elemPopIn {
+  0% { opacity: 0; transform: scale(0.4); }
+  70% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.anim-pop-in, [data-animation="pop-in"] {
+  animation: elemPopIn var(--ppt-anim-dur, 0.65s) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes elemTrackingIn {
+  0% { letter-spacing: -0.4em; opacity: 0; }
+  40% { opacity: 0.6; }
+  100% { opacity: 1; letter-spacing: normal; }
+}
+.anim-tracking-in, [data-animation="tracking-in"] {
+  animation: elemTrackingIn var(--ppt-anim-dur, 0.8s) cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
+}
+
+/* Additional PPT Slide Transitions (Issue 2) */
+@keyframes pptSwingDoor {
+  0% { opacity: 0; transform: perspective(1000px) rotateY(-85deg); transform-origin: left center; }
+  100% { opacity: 1; transform: perspective(1000px) rotateY(0deg); transform-origin: left center; }
+}
+.anim-ppt-swing-door, .pptx-slide-wrapper[data-transition="swing-door"] .pptx-slide-card {
+  animation: pptSwingDoor var(--ppt-trans-dur, 0.8s) cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes pptFloatUp {
+  0% { opacity: 0; transform: translateY(50px) scale(0.96); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+}
+.anim-ppt-float-up, .pptx-slide-wrapper[data-transition="float-up"] .pptx-slide-card {
+  animation: pptFloatUp var(--ppt-trans-dur, 0.75s) ease-out forwards;
+}
+
+@keyframes pptRotateZoomOut {
+  0% { opacity: 0; transform: scale(1.4) rotate(12deg); filter: blur(6px); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); filter: blur(0); }
+}
+.anim-ppt-rotate-zoom-out, .pptx-slide-wrapper[data-transition="rotate-zoom-out"] .pptx-slide-card {
+  animation: pptRotateZoomOut var(--ppt-trans-dur, 0.8s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptBlindsHorizontal {
+  0% { opacity: 0; clip-path: inset(0 0 100% 0); }
+  100% { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+.anim-ppt-blinds-horizontal, .pptx-slide-wrapper[data-transition="blinds-horizontal"] .pptx-slide-card {
+  animation: pptBlindsHorizontal var(--ppt-trans-dur, 0.7s) cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+@keyframes pptExpandCircle {
+  0% { opacity: 0; clip-path: circle(0% at 50% 50%); }
+  100% { opacity: 1; clip-path: circle(100% at 50% 50%); }
+}
+.anim-ppt-expand-circle, .pptx-slide-wrapper[data-transition="expand-circle"] .pptx-slide-card {
+  animation: pptExpandCircle var(--ppt-trans-dur, 0.8s) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes pptSkewSlide {
+  0% { opacity: 0; transform: translateX(80px) skewX(-15deg); }
+  100% { opacity: 1; transform: translateX(0) skewX(0deg); }
+}
+.anim-ppt-skew-slide, .pptx-slide-wrapper[data-transition="skew-slide"] .pptx-slide-card {
+  animation: pptSkewSlide var(--ppt-trans-dur, 0.7s) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Additional PPT Element Animations (Issue 2) */
+@keyframes elemSwingInTop {
+  0% { opacity: 0; transform: rotateX(-100deg); transform-origin: top; }
+  100% { opacity: 1; transform: rotateX(0deg); transform-origin: top; }
+}
+.anim-swing-in-top, [data-animation="swing-in-top"] {
+  animation: elemSwingInTop var(--ppt-anim-dur, 0.75s) cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes elemBounceInRight {
+  0% { opacity: 0; transform: translateX(120px); }
+  60% { opacity: 1; transform: translateX(-15px); }
+  80% { transform: translateX(6px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.anim-bounce-in-right, [data-animation="bounce-in-right"] {
+  animation: elemBounceInRight var(--ppt-anim-dur, 0.85s) ease-out forwards;
+}
+
+@keyframes elemBackInDown {
+  0% { opacity: 0.7; transform: translateY(-300px) scale(0.7); }
+  80% { opacity: 1; transform: translateY(0px) scale(0.7); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.anim-back-in-down, [data-animation="back-in-down"] {
+  animation: elemBackInDown var(--ppt-anim-dur, 0.8s) ease forwards;
+}
+
+@keyframes elemLightSpeedIn {
+  0% { opacity: 0; transform: translateX(100%) skewX(-20deg); }
+  60% { opacity: 1; transform: skewX(12deg); }
+  80% { transform: skewX(-5deg); }
+  100% { opacity: 1; transform: translateX(0) skewX(0deg); }
+}
+.anim-lightspeed-in, [data-animation="lightspeed-in"] {
+  animation: elemLightSpeedIn var(--ppt-anim-dur, 0.8s) ease-out forwards;
+}
+
+@keyframes elemHeartPop {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.22); filter: drop-shadow(0 4px 10px rgba(239, 68, 68, 0.4)); }
+  50% { transform: scale(0.95); }
+  75% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.anim-heart-pop, [data-animation="heart-pop"] {
+  animation: elemHeartPop var(--ppt-anim-dur, 0.7s) ease-in-out;
+}
+
+@keyframes elemSlitInVertical {
+  0% { opacity: 0; transform: translateZ(-800px) rotateY(90deg); }
+  54% { opacity: 0.8; transform: translateZ(-160px) rotateY(87deg); }
+  100% { opacity: 1; transform: translateZ(0) rotateY(0); }
+}
+.anim-slit-in-vertical, [data-animation="slit-in-vertical"] {
+  animation: elemSlitInVertical var(--ppt-anim-dur, 0.75s) ease-out forwards;
+}
+
+/* HTML Comment Styling (Issue 3: Preserves document formatting cleanly) */
+.df-html-comment {
+  color: var(--text-muted, #64748b) !important;
+  font-style: italic !important;
+  background: rgba(100, 116, 139, 0.12) !important;
+  border-left: 2px solid #94a3b8 !important;
+  padding: 1px 6px !important;
+  border-radius: 4px !important;
+  font-family: inherit !important;
+  user-select: text !important;
+  display: inline;
+  opacity: 0.85;
+  transition: all 0.15s ease;
+}
+
+.df-html-comment::before {
+  content: '<!-- ';
+  color: #94a3b8;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.df-html-comment::after {
+  content: ' -->';
+  color: #94a3b8;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.df-html-comment-block {
+  opacity: 0.65 !important;
+  font-style: italic !important;
+  border-left: 3px solid #94a3b8 !important;
+  padding-left: 10px !important;
+  position: relative !important;
+  transition: all 0.2s ease;
+}
+
+.df-html-comment-block::before {
+  content: '<!-- ';
+  color: #94a3b8;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-block;
+  margin-right: 4px;
+}
+
+.df-html-comment-block::after {
+  content: ' -->';
+  color: #94a3b8;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-block;
+  margin-left: 4px;
+}
+
+[data-theme="dark"] .df-html-comment {
+  background: rgba(148, 163, 184, 0.15) !important;
+  border-left-color: #64748b !important;
+  color: #94a3b8 !important;
+}
+
+[data-theme="dark"] .df-html-comment-block {
+  border-left-color: #64748b !important;
+}
+
+
 /* Hide Slide Numbers when toggled */
 .editor-page.hide-slide-badges .pptx-slide-badge,
 #editor.hide-slide-badges .pptx-slide-badge {
@@ -3042,6 +3648,134 @@ body:not([data-mode="empty"]).editor-statusbar-hidden #statusbar {
 [data-theme="dark"] .excel-grid-table td.excel-cell-selected *,
 [data-theme="dark"] .excel-grid-table tr.excel-row-selected td * {
   color: #f0fdf4 !important;
+}
+
+/* ==========================================================================
+   Problem 3: Document Comments (Dull Highlight & Hover/Click Popover)
+   ========================================================================== */
+.df-comment-highlight {
+  background-color: rgba(217, 119, 6, 0.22) !important;
+  border-bottom: 2px dashed #b45309 !important;
+  color: inherit !important;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+  padding: 1px 2px;
+}
+
+.df-comment-highlight:hover,
+.df-comment-highlight.active {
+  background-color: rgba(217, 119, 6, 0.38) !important;
+  border-bottom: 2px solid #b45309 !important;
+}
+
+[data-theme="dark"] .df-comment-highlight {
+  background-color: rgba(245, 158, 11, 0.26) !important;
+  border-bottom: 2px dashed #f59e0b !important;
+}
+
+.df-comment-popover {
+  position: fixed;
+  z-index: 100015;
+  background: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  padding: 12px 14px;
+  width: 270px;
+  max-width: 90vw;
+  font-size: 13px;
+  color: var(--text-primary);
+  animation: popoverFadeIn 0.15s ease-out;
+}
+
+.df-comment-pop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.df-comment-pop-body {
+  margin: 6px 0 10px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.df-comment-pop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.df-comment-resolve-btn {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.df-comment-resolve-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Problem 3: Document Lock & Protection Banner
+   ========================================================================== */
+.doc-locked-banner {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 90;
+}
+
+.doc-locked-banner.show {
+  display: flex;
+}
+
+[data-theme="dark"] .doc-locked-banner {
+  background: linear-gradient(135deg, #4c0519, #881337);
+  border: 1px solid #9f1239;
+  color: #ffe4e6;
+}
+
+.doc-unlock-btn {
+  background: #e11d48;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.doc-unlock-btn:hover {
+  background: #be123c;
 }
 
 

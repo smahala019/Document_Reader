@@ -86,7 +86,8 @@
     }
 
     container.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('show'));
+    void toast.offsetWidth;
+    toast.classList.add('show');
 
     // Ensure notification remains visible long enough to read (4s for info/success, 5s for warnings/errors)
     const duration = (type === 'error' || type === 'warning') ? 5000 : 4000;
@@ -124,7 +125,10 @@
 
     const themeBtn = $('#themeBtn');
     if (themeBtn) {
-      themeBtn.addEventListener('click', () => setTheme(!isDark));
+      themeBtn.addEventListener('click', () => {
+        setTheme(!isDark);
+        showToast(isDark ? 'Dark theme enabled' : 'Light theme enabled', 'info');
+      });
     }
   }
 
@@ -151,6 +155,62 @@
         window.DocFlow.Editor.focusEditor();
       }
     }
+  }
+
+  // Inside Container Prompt Modal (Zero Browser Popups - Bug 4)
+  function showPromptModal({ title = 'Prompt', message = 'Please enter value:', defaultValue = '', placeholder = '', confirmText = 'Confirm', onConfirm = null }) {
+    const modal = $('#inAppPromptModal');
+    if (!modal) return;
+    const titleEl = $('#inAppPromptTitle');
+    const msgEl = $('#inAppPromptMessage');
+    const inputEl = $('#inAppPromptInput');
+    const confirmBtn = $('#inAppPromptConfirmBtn');
+
+    if (titleEl) titleEl.innerHTML = `<i class="fas fa-edit" style="color:var(--accent,#0284c7);margin-right:6px;"></i> ${escHtml(title)}`;
+    if (msgEl) msgEl.textContent = message;
+    if (confirmBtn) confirmBtn.innerHTML = `<i class="fas fa-check"></i> ${escHtml(confirmText)}`;
+    if (inputEl) {
+      inputEl.value = defaultValue || '';
+      inputEl.placeholder = placeholder || message;
+    }
+
+    const cleanup = () => {
+      closeModal('#inAppPromptModal');
+      if (confirmBtn) confirmBtn.onclick = null;
+      if (inputEl) inputEl.onkeydown = null;
+    };
+
+    const submit = () => {
+      const val = inputEl ? inputEl.value : '';
+      cleanup();
+      if (typeof onConfirm === 'function') onConfirm(val);
+    };
+
+    if (confirmBtn) confirmBtn.onclick = submit;
+    if (inputEl) {
+      inputEl.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          submit();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          cleanup();
+        }
+      };
+    }
+
+    const cancelBtn = $('#inAppPromptCancelBtn');
+    const closeBtn = $('#inAppPromptCloseBtn');
+    if (cancelBtn) cancelBtn.onclick = cleanup;
+    if (closeBtn) closeBtn.onclick = cleanup;
+
+    openModal('#inAppPromptModal');
+    setTimeout(() => {
+      if (inputEl) {
+        inputEl.focus();
+        inputEl.select();
+      }
+    }, 80);
   }
 
   function initModals() {
@@ -207,9 +267,11 @@
       btn.addEventListener('click', toggleFullscreen);
       document.addEventListener('fullscreenchange', () => {
         const icon = btn.querySelector('i');
+        const isFull = !!document.fullscreenElement;
         if (icon) {
-          icon.className = document.fullscreenElement ? 'fas fa-compress' : 'fas fa-expand';
+          icon.className = isFull ? 'fas fa-compress' : 'fas fa-expand';
         }
+        showToast(isFull ? 'Entered Fullscreen mode (F11 / Esc)' : 'Exited Fullscreen mode', 'info');
       });
     }
   }
@@ -423,17 +485,24 @@
       if (!tab) return;
       const currentName = tab.name.replace(/\.[^.]+$/, '');
       const ext = tab.name.includes('.') ? '.' + tab.name.split('.').pop() : '';
-      const newBase = prompt('Enter new document name:', currentName);
-      if (!newBase || !newBase.trim()) return;
-      const newName = newBase.trim() + ext;
-      tab.name = newName;
-      if (this.activeId === id) {
-        const fnDisplay = $('#fileNameDisplay');
-        if (fnDisplay) fnDisplay.textContent = newName;
-      }
-      this.render();
-      this.save();
-      showToast(`Renamed to "${newName}"`, 'info');
+      showPromptModal({
+        title: 'Rename Document',
+        message: 'Enter new document name:',
+        defaultValue: currentName,
+        confirmText: 'Rename',
+        onConfirm: (newBase) => {
+          if (!newBase || !newBase.trim()) return;
+          const newName = newBase.trim() + ext;
+          tab.name = newName;
+          if (this.activeId === id) {
+            const fnDisplay = $('#fileNameDisplay');
+            if (fnDisplay) fnDisplay.textContent = newName;
+          }
+          this.render();
+          this.save();
+          showToast(`Renamed to "${newName}"`, 'info');
+        }
+      });
     },
 
     render() {
@@ -674,9 +743,29 @@
 
   // Smooth mouse wheel horizontal scrolling for ribbon panel and ribbon menu bar
   function initRibbonScroll() {
+    // Capture-phase wheel handler for all scrollable popovers and menus:
+    // Guarantees vertical mouse wheel scrolling works 100% reliably on all dropdowns
+    document.addEventListener('wheel', e => {
+      const popover = e.target?.closest?.(
+        '.spacing-popover, .bullet-popover, .margin-popover, .dropdown-menu, .df-popover, [role="menu"], select'
+      );
+      if (popover) {
+        e.stopPropagation();
+        const canScroll = popover.scrollHeight > popover.clientHeight;
+        if (canScroll && e.deltaY !== 0) {
+          popover.scrollTop += e.deltaY;
+          e.preventDefault();
+        }
+      }
+    }, { capture: true, passive: false });
+
     const scrollContainers = document.querySelectorAll('.ribbon-panel, .ribbon-menu-bar');
     scrollContainers.forEach(container => {
       container.addEventListener('wheel', e => {
+        // If event originated inside any scrollable dropdown, popover, or select, NEVER intercept!
+        if (e.target && e.target.closest && e.target.closest('.spacing-popover, .dropdown-menu, .bullet-popover, .margin-popover, .df-popover, .color-grid, select, [style*="overflow"], [class*="popover"], [class*="dropdown"]')) {
+          return;
+        }
         if (e.deltaY !== 0 && container.scrollWidth > container.clientWidth) {
           e.preventDefault();
           container.scrollLeft += e.deltaY;
@@ -711,6 +800,7 @@
     initTheme,
     openModal,
     closeModal,
+    showPromptModal,
     initModals,
     toggleFullscreen,
     initFullscreen,

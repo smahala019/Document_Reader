@@ -10,6 +10,11 @@
 - **Full Responsive Design**: Optimized across mobile phones, tablets, laptops, and ultra-wide desktop monitors.
 - **Dynamic 2-Row Ribbon Balancer**: Strict maximum of 2 rows only (never 3+ rows). Smooth single-row collapse when space permits, dynamic rearrange on resize, horizontal mouse wheel / touch scroll, and orphan button recovery.
 - **Client-Side Privacy**: All document reading, parsing, rendering, editing, and conversions run entirely inside your browser. No files are uploaded to any external server.
+- **Visual Font Family Selector**: Interactive font family dropdown showing each font name and sample preview rendered directly in its native typeface with Calibri as the default font.
+- **Non-Destructive HTML Comment Engine**: Comment lines, selections, or code blocks without altering document layout, headings, tables, or formatting.
+- **Extensive Excel Formulas**: 50+ spreadsheet formulas spanning math, statistics, text, logic, and dates with seamless mouse-wheel scrollable popovers.
+- **Rich PowerPoint Transitions & Animations**: 35+ slide transitions and 30+ element animations with customizable duration timers.
+- **Modern Warning Containers & Modals**: Themed warning boxes, icon badges, and glowing confirmation modals for destructive action safety.
 - **Auto-Save Engine & Recent Documents**: Persistent auto-save with a 5-second inactivity timer, real-time green/red state indicators, and recent documents management.
 - **Multi-Page Fixed Watermark Printing**: Reliable repeating watermark across every printed page in multi-page documents via CSS Paged Media standards.
 - **Official Excalidraw Whiteboard Studio**: Full drawing suite powered by React 18 and `@excalidraw/excalidraw` with instant canvas export.
@@ -22,110 +27,112 @@
 d:/antigravity/file reader/
 ├── index.html            # Main semantic HTML structure & application layout
 ├── README.md             # Complete documentation and user manual
-├── bug.txt               # Tracked improvements and bug specifications
+├── issue.txt             # Requirements and issue specifications
 ├── css/
 │   ├── base.css          # Design tokens, themes (light/dark), CSS resets
-│   ├── layout.css        # Topbar, responsive ribbon balancer, status bar, popovers
-│   ├── editor.css        # Rich text canvas, column breaks, page breaks, watermarks, print
-│   └── modals.css        # Modal dialogs, overlays, Excalidraw studio, GIF search
+│   ├── layout.css        # Topbar, responsive ribbon balancer, status bar, font dropdown
+│   ├── editor.css        # Rich text canvas, slide transitions, animations, HTML comments, print
+│   ├── pdf.css           # PDF.js canvas, toolbar, page thumbnails, zoom controls
+│   └── modals.css        # Warning containers, modal dialogs, Excalidraw studio, GIF search
 └── js/
-    ├── ui.js             # Theme switcher, ribbon balancer, popovers, modals, tabs
-    ├── editor.js         # Text formatting engine, Change Case, column breaks, font size
+    ├── ui.js             # Theme switcher, ribbon balancer, wheel scroll capture, popovers, tabs
+    ├── editor.js         # Typography engine, visual font selection, Change Case, formatting
     ├── image-manager.js  # Image insertion, resizing handles, wrap modes, cropper
     ├── pdf-viewer.js     # PDF.js integration, page rendering, text extraction
     ├── find-outline.js   # Document outline headings, real-time find & replace
     ├── file-io.js        # File parsers (DOCX, PDF, XLSX, PPTX, MD, HTML, TXT)
-    └── app.js            # Coordinator, Excalidraw studio, GIF search, watermark print
+    └── app.js            # Coordinator, Excel formulas, PPT animations, HTML commenting, chart generator
 ```
 
 ---
 
 ## 🎛️ Detailed Menu & Ribbon Feature Tour
 
-### 1. Responsive & Scrollable Toolbar (`.ribbon-panel`)
-- **Strict Maximum of 2 Rows**: Enforced via CSS `max-height: 72px` and dynamic JavaScript calculations. The toolbar never creates a 3rd row under any circumstance.
-- **Single-Row Adaptive Fit**: When sufficient horizontal viewport space is available, buttons automatically collapse into a single streamlined row (`.single-row`).
-- **Dynamic 2-Row Wrap**: If screen width is reduced, buttons wrap neatly into 2 rows.
-- **Orphan Button Recovery**: If only 1 button remains on the second row and space is available on the first row, DocFlow automatically moves that button back to row 1 to prevent leaving an isolated orphan button.
-- **Silky-Smooth Scrolling**: Fully scrollable horizontally on smaller viewports with touch drag on mobile and mouse wheel scrolling on desktop (`initRibbonScroll`).
-- **Preserved Styling**: Zero clipped buttons, zero overlapping, and 100% preservation of original Word-style aesthetics.
-
-### 2. File Menu (`#ribbonPanelFile`)
-- **New Document**: Create documents from scratch or customizable templates (Blank, Report, Letter, Resume, Meeting Notes).
-- **Direct Office Creation**: Instant creation of Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), and PDF (`.pdf`) files.
-- **Print Document Button**: Dedicated `#ribbonFilePrintBtn` in the File ribbon for 1-click access to the system print dialog.
-- **Keyboard Shortcut `Ctrl + P`**: Standard shortcut triggers clean document printing without interfering with browser shortcuts or editor state.
-- **Save Dropdown**: Export to HTML, Markdown, Plain Text, or Native Print/PDF.
-- **Auto-Save**: Automatic background saving with real-time state indication (🔴 Unsaved / 🟢 Saved).
-
-### 3. Home Menu (`#ribbonPanelHome`)
-- **Change Case Dropdown Fixed**:
-  - Elevated floating popover (`#casePopover`) with `z-index: 1200 !important` and viewport-aware `positionPopover`.
-  - Opens firmly above the editor canvas without vertical overflow clipping or hiding behind page borders.
-  - Text selection is preserved (`saveSelection()` / `restoreSelection()`) so transforming cases (Sentence case, lowercase, UPPERCASE, Capitalize Each Word) works reliably on selected text.
-- **Microsoft Office Integrations**:
-  - **Excel Table Style (`#homeExcelFormatBtn`)**: Applies professional Excel table styling (emerald green header, alternating row zebra striping, crisp borders) to an existing table, or inserts a 3×3 styled financial table.
-  - **PowerPoint Slide Card (`#homePptLayoutBtn`)**: Inserts a 16:9 presentation slide callout card with slide title and bulleted points.
-- **Formatting Tools**: Bold (`Ctrl+B`), Italic (`Ctrl+I`), Underline (`Ctrl+U`), Strikethrough, Subscript, Superscript, Font Family, Font Size stepper (unlimited), Color Picker, Background Highlighter, and Default Text Color (`auto`).
-- **Lists & Alignment**: Bullets (Disc, Circle, Square, Diamond, Arrow, Check, Star, Dash), Numbering (1., a., A., i., I.), Indent/Outdent, and Line Spacing (1.0 to 3.0).
-- **Editing Tools**: Find (`Ctrl+F`) and Find & Replace (`Ctrl+H`).
-
-### 4. Insert Menu (`#ribbonPanelInsert`)
-- **High-Performance GIF Search (`#gifModal`)**:
-  - Curated library of 120+ animated GIFs across popular categories (Trending, Thumbs Up, Clap, Cats, Dogs, Celebration, Work, Dance).
-  - Fast 2-second timeout network search with spinner loading indicator and instant fallback so search never hangs.
-  - Tag chips for quick 1-click category browsing.
-  - **Direct GIF URL Tab**: Insert any online GIF via URL with live image preview.
-  - Inserted GIFs are fully managed with resize handles, wrap modes, and alignment.
-- **Official Excalidraw Whiteboard Studio (`#paintModal`)**:
-  - Powered by React 18 and the official `@excalidraw/excalidraw` library.
-  - Studio tab renders the official Excalidraw engine with vector export directly into the document.
-  - **Quick Canvas Tab**: Instant fallback with Freehand Pen, Straight Line, Arrow Pointer, Rectangle, Diamond, Circle, Text Labels, Sticky Notes, and Eraser.
-- **Microsoft Office Embeds**:
-  - **Excel Grid (`#ribbonInsertExcelGridBtn`)**: Embeds an interactive, formula-ready spreadsheet table with row headers (1-5), column headers (A-E), and editable cells.
-  - **PPT Slide (`#ribbonInsertPptSlideBtn`)**: Embeds presentation slide cards with header badges, title, and key takeaways.
-- **Media, Tables, Links & Symbols**:
-  - Picture insertion with HTML5 image cropper and text wrapping (Inline, Behind, In Front, Wrap Left, Wrap Right).
-  - Clean table insertion without unwanted placeholder text.
-  - Clickable hyperlink previews with 1-click unlink.
-  - Categorized Symbols modal (Currency, Math, Arrows, Greek, Typography).
-
-### 5. Layout Menu (`#ribbonPanelLayout`)
-- **Page Breaks (`#layoutPageBreakBtn`)**:
-  - Designated page breaks (`.doc-page-break`) with dashed visual separator in editor.
-  - Physical break in print (`break-after: page !important; page-break-after: always !important;`).
-  - No negative margins or horizontal bleed; content flows smoothly without text overlapping.
-- **Custom Column Breaks (`#layoutColumnBreakBtn`)**:
-  - Controls exact flow from one column to the next (`break-after: column !important;`).
-  - Visual blue dashed divider line in the editor indicating the break position.
-  - In multi-column mode and discrete column panes (`.doc-col-pane`), users can click directly inside any column to type without cursor jumping.
-- **Multi-Page Repeating Watermark**:
-  - Watermark appears on **every single page** of multi-page documents in print via CSS Paged Media fixed viewport (`#dfPrintFixedWatermark`).
-  - Replicated using `beforeprint` and `afterprint` lifecycle events.
-  - Preserves exact rotation angle, opacity, color tone, position, and pattern count across all pages, page breaks, and multi-column sections.
-- **Office Layout Presets**:
-  - **Sheet Layout (`#layoutExcelFitBtn`)**: Toggles 1200px wide mode for large spreadsheets and wide tables.
-  - **Slide 16:9 (`#layoutPptAspectBtn`)**: Toggles 16:9 widescreen slide canvas dimensions.
-
-### 6. View Menu (`#ribbonPanelView`)
-- **Slide Deck View (`#viewSlideDeckBtn`)**: Toggles presentation slide deck viewer background mode (`body.slide-deck-mode`) for reviewing presentation slides.
-- **Excel Gridlines (`#viewExcelGridlinesBtn`)**: Toggles subtle spreadsheet gridline background and table cell borders (`.excel-gridlines-mode`).
-- **Reading Mode**: Distraction-free reading canvas with floating Exit button and `Escape` key shortcut.
-- **Document Outline**: Automatic hierarchy synchronization with document headings (`H1`-`H4`).
-- **Editor Zoom**: Zoom in, zoom out, and reset zoom (50% to 200%).
-- **Theme**: Instant toggle between Dark Mode and Light Mode.
-- **Document Outline**: Headings drawer automatically synchronizing with document `H1`-`H4` tags for instant navigation.
-- **Reading Mode**: Distraction-free mode with a floating **Exit Read Mode** button (`#exitReadingModeBtn`) for easy exit on mobile and desktop.
-- **Zoom Controls**: Zoom in, zoom out, and reset zoom (50% to 200%).
-- **Theme**: Seamless toggle between sleek Dark Mode and clean Light Mode.
+### 1. Home Menu (`#ribbonPanelHome`)
+- **Visual Font Family Selector with Native Typeface Previews (Issue 4)**:
+  - **Live Style Previews**: Every font in the dropdown renders both its font name and preview text (`Aa Bb 123`) directly in its native typeface so users can instantly preview how each font looks before applying it.
+  - **Refined Button & Dropdown Box CSS**: Outer button (`#fontFamilyBtn`) features a sleek 28px height, 140px width, rounded border, neutral background, focus-ring animations, and a smooth chevron indicator.
+  - **Scrollable Popover**: High-performance popover (`#fontFamilyPopover`) with an expanded 300px max-height and custom scrollbar for comfortable browsing.
+  - **Calibri as Default Font**: Calibri is established as the default font across the toolbar label, dropdown selection, active checkmark, and editor document canvas.
+  - **Expanded Font Library**: Added `Work Sans`, `Karla`, `Comfortaa`, `Crimson Text`, `Libre Baskerville`, `Bitter`, `Permanent Marker`, `Lobster`, and `Satisfy` without removing any existing global typographies (Inter, Roboto, Arial, Times New Roman, Georgia, Courier New, Consolas, Fira Code, JetBrains Mono, Outfit, Plus Jakarta Sans, Syne, Caveat, Pacifico, Dancing Script, Great Vibes, Cinzel, Amiri, etc.).
+- **Clear Formatting Warning Container**:
+  - The Clear Formatting confirmation dialog (`#clearFormatModal`) is built with `.warning-container`, featuring an amber icon badge, warning tag, description, and smooth glowing backdrop animation in both dark and light modes.
+- **Change Case Dropdown**:
+  - Elevated floating popover (`#casePopover`) with `z-index: 1200 !important` and viewport-aware positioning.
+  - Supports Sentence case, lowercase, UPPERCASE, and Capitalize Each Word.
+- **Formatting Tools**: Bold (`Ctrl+B`), Italic (`Ctrl+I`), Underline (`Ctrl+U`), Strikethrough, Subscript, Superscript, Font Size stepper, Color Picker, Background Highlighter, and Format Painter.
+- **Lists & Alignment**: Bullets (Disc, Circle, Square, Diamond, Arrow, Check, Star, Dash), Numbering, Indent/Outdent, and Line Spacing (1.0 to 3.0).
 
 ---
 
-## 📊 Status Bar & Home State Behavior
+### 2. Excel Menu & Spreadsheet Document Tools (`#ribbonPanelExcel`)
+- **Expanded Formula Library (Issue 1)**:
+  - Added 16+ new formula functions without removing previous ones:
+    - **Math & Statistical**: `FACT` (Factorial), `GCD` (Greatest Common Divisor), `LCM` (Least Common Multiple), `TRUNC` (Truncate Integer), `PI` (Pi Constant 3.14159...), `LARGE` (k-th Largest Value), `SMALL` (k-th Smallest Value), `RANK` (Rank in Sorted List).
+    - **Text & Logic**: `CLEAN` (Remove Non-printable Characters), `EXACT` (Case-Sensitive String Comparison), `REPLACE` (Replace Text by Position), `T` (Extract Text Values), `XOR` (Exclusive Logical OR), `IFERROR` (Evaluate or Return Safe Fallback).
+    - **Date & Time**: `DAYS` (Number of Days Between Dates), `YEARFRAC` (Fraction of Year Between Dates).
+  - Preserved all existing core formulas: `SUM`, `AVERAGE`, `COUNT`, `MAX`, `MIN`, `MEDIAN`, `PRODUCT`, `COUNTA`, `COUNTBLANK`, `AVERAGEA`, `STDEV`, `VAR`, `MODE`, `ROUND`, `CEILING`, `FLOOR`, `ABS`, `SQRT`, `POWER`, `EXP`, `LOG`, `LN`, `SIGN`, `MOD`, `QUOTIENT`, `INT`, `RAND`, `RANDBETWEEN`, `COUNTIF`, `SUMIF`, `CONCAT`, `UPPER`, `LOWER`, `PROPER`, `LEN`, `TRIM`, `REPT`, `SUBSTITUTE`, `LEFT`, `RIGHT`, `IF`, `AND`, `OR`, `NOT`, `ISNUMBER`, `ISTEXT`, `ISBLANK`, `NOW`, `TODAY`, `YEAR`, `MONTH`, `DAY`, `WEEKDAY`, `HOUR`, `MINUTE`, `SECOND`, `DATE`.
+- **Mouse Wheel Scrollable Dropdown (Issue 1)**:
+  - Resolved mouse wheel scrolling issues across dropdowns and popovers by implementing a capture-phase wheel listener (`initRibbonScroll` with `{ capture: true, passive: false }`).
+  - When the user hovers over `#excelFunctionPopover` or any ribbon popover, scrolling with the mouse wheel smoothly and directly scrolls the popover contents without propagating out or freezing.
 
-- **Dynamic Visibility**: When in the welcome / empty home state or when all tabs are closed, word count, character count, and line/column metrics are hidden.
-- **Active Editing Metrics**: Word count, character count, and cursor position (`Ln X, Col Y`) activate and update in real-time as soon as the user enters or clicks into the editor canvas.
-- **Credit Line**: Centered attribution footer ("all right reserved made with ❤ sachin") cleanly centered across all screen resolutions without interfering with stats.
+---
+
+### 3. PowerPoint Menu & Presentation Tools (`#ribbonPanelPpt`)
+- **Slide Transitions Expansion (Issue 2)**:
+  - Added 6 new hardware-accelerated 3D slide transitions:
+    - `3D Swing Door` (`swing-door`): 3D perspective door opening swing.
+    - `Float & Blur Up` (`float-up`): Vertical upward glide with smooth focus blur transition.
+    - `Rotate & Zoom Out` (`rotate-zoom-out`): Rotational spin with smooth zoom scaling.
+    - `Blinds Horizontal` (`blinds-horizontal`): Clean horizontal slat reveal.
+    - `Radial Expand` (`expand-circle`): Center-origin radial circle clipping reveal.
+    - `Skew Slide In` (`skew-slide`): Dynamic angled kinetic slide in.
+  - All existing transitions remain intact: `Fade`, `Slide Right`, `Push Up`, `Zoom`, `3D Flip`, `Slide Up`, `Bounce In`, `Spin & Scale`, `Wipe Left`, `Blur In`, `3D Cube`, `Split Doors`, `Camera Flash`, `Shutter`, `Door Swing`, `Fly In`, `Fall Over`, `Curtains Open`, `Pixel Dissolve`, `Origami Fold`, `Vortex Swirl`, `3D Switch`, `Water Ripple`, `Glitch Shift`, `Honeycomb Hex`, `Page Curl`, `Zoom & Spin`, `Shimmer Wave`, `3D Card Flip`, `Kaleidoscope`, `Vertical Blinds`, `3D Orbit`, `Shape Morph`, `3D Box Turn`, `Gallery Push`, `Conveyor Belt`, `Swirl In`, `Curtain Rise`, `3D Prism Twist`, `Reveal Right`, `Elastic Bounce`, `Slide Rotate`, `Pan Down`, `3D Unfold`.
+- **Element Animations Expansion (Issue 2)**:
+  - Added 6 new element animations:
+    - `3D Swing In Top` (`swing-in-top`): Perspective top hinge entrance.
+    - `Bounce In Right` (`bounce-in-right`): Multi-stage spring bounce from the right.
+    - `Back In Down` (`back-in-down`): Downward scale-in drop.
+    - `Lightspeed In` (`lightspeed-in`): High-speed tilted streak entrance.
+    - `Heart Pop Burst` (`heart-pop`): Dynamic scale burst with glow pulse.
+    - `Slit In Vertical` (`slit-in-vertical`): 3D vertical slit rotation into view.
+  - Preserved all existing element animations (`Fade In`, `Fly In`, `Zoom In`, `Bounce In`, `Pulse`, `Shimmer`, `Spin`, `RubberBand`, `Wobble`, `Pendulum Swing`, `Flip In X/Y`, `Zoom In Down`, `Roll In`, `Heartbeat`, `Neon Glow`, `Jello`, `Tada`, `Float`, `Typewriter`, `Blur Fade`, `Flash Burst`, `Head Shake`, `Swing Drop`, `Bounce Drop`, `Blur Zoom`, `Slide & Rotate`, `Pop & Snap`, `Tracking Letters`, `Fade Out`, `Zoom Out`).
+- **Duration Timers**:
+  - Independent timer selection for transition and animation durations (0.3s, 0.5s, 1.0s, 1.5s, 2.0s, 3.0s).
+
+---
+
+### 4. HTML Menu & Code Tools (`#ribbonPanelHtml`)
+- **Non-Destructive Commenting (Issue 3)**:
+  - Completely resolved the issue where clicking the comment button altered or broke document formatting.
+  - **WYSIWYG Mode**:
+    - When clicking **Comment Line** on a line or block element (`<p>`, `<h1>`-`<h6>`, `<li>`, `<tr>`, etc.), DocFlow applies `.df-html-comment-block` with subtle comment opacity and monospace pseudo-elements `<!-- ` and ` -->`.
+    - No DOM nodes are deleted, no tags are split, and zero headings, margins, font styles, or table layouts are disturbed.
+    - When selecting text, it cleanly wraps the selection in `.df-html-comment` without corrupting child spans.
+    - Clicking the button again seamlessly uncomments the block or selection, restoring the original state.
+  - **Code View Mode (`pre.html-code-view`)**:
+    - Cleanly toggles `<!-- ... -->` on single lines or multi-line selections with exact indentation and line-break preservation.
+    - Supports contextual CSS `/* ... */` inside `<style>` blocks and JavaScript `//` inside `<script>` blocks.
+- **Productivity Tools**:
+  - Format Code (HTML beautifier with indentation), Minify HTML, DOM Inspector, Validate HTML, HTML Entities Modal, Extract CSS/JS Assets, Extract Colors Palette, and Live HTML Preview.
+
+---
+
+### 5. Warning Container System (`css/modals.css`)
+- **Component Classes**:
+  - `.warning-container`, `.warning-box`: Soft amber background, rounded corners, subtle border, and responsive flex layout.
+  - `.warning-icon-badge`: Circular warning icon badge with amber lighting.
+  - `.warning-content`, `.warning-header`, `.warning-title`, `.warning-tag`, `.warning-desc`: Clear hierarchy separating the title, tag chip, and explanatory description.
+  - `.warning-modal-container`: Glowing modal border and animated shadow emphasizing destructive confirmation dialogs.
+- **Dual-Theme Support**:
+  - Automatically styled for both Dark Mode and Light Mode (`[data-theme="light"]`) with high-contrast readable text and warm warning palettes.
+
+---
+
+### 6. File & Layout Tools
+- **File Menu (`#ribbonPanelFile`)**: New Document, Office file creation (.docx, .xlsx, .pptx, .pdf), Direct Print button (`Ctrl+P`), Auto-Save (5s timer), and Export (HTML, MD, TXT, PDF).
+- **Layout Menu (`#ribbonPanelLayout`)**: Page Breaks (`Ctrl+Enter`), Column Breaks, Multi-Page Repeating Watermark in Print, Sheet Layout (1200px), and Slide Aspect (16:9).
+- **View Menu (`#ribbonPanelView`)**: Slide Deck View, Excel Gridlines View, Distraction-Free Reading Mode, Headings Document Outline, Zoom (50%-200%), and Dark/Light Theme Switcher.
 
 ---
 
@@ -144,7 +151,8 @@ d:/antigravity/file reader/
 | `Ctrl + Y` | Redo Typing |
 | `Ctrl + F` | Open Find in Document |
 | `Ctrl + H` | Open Find & Replace in Document |
-| `Esc` | Exit Distraction-Free Reading Mode / Close Modals |
+| `Ctrl + \` | Clear Formatting (Opens Warning Modal) |
+| `Esc` | Exit Reading Mode / Close Modals & Popovers |
 
 ---
 

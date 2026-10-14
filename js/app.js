@@ -712,11 +712,12 @@
 
   function updateBtnStates() {
     const isEdit = window.DocFlow.currentMode === 'edit';
+    const isView = window.DocFlow.currentMode === 'view';
     const outlineBtn = $('#outlineBtn');
     const findBtn = $('#findBtn');
 
     if (outlineBtn) outlineBtn.style.opacity = isEdit ? '1' : '0.4';
-    if (findBtn) findBtn.style.opacity = isEdit ? '1' : '0.4';
+    if (findBtn) findBtn.style.opacity = (isEdit || isView) ? '1' : '0.4';
 
     $$('[data-save]').forEach(b => {
       b.disabled = (b.dataset.save !== 'merge') && !isEdit;
@@ -1054,6 +1055,40 @@
             e.preventDefault();
             window.DocFlow.Find?.toggleFindBar();
             break;
+          case 'h':
+            e.preventDefault();
+            window.DocFlow.Find?.openFindBar(true);
+            break;
+          case 'b':
+            if (window.DocFlow.currentMode === 'edit') {
+              e.preventDefault();
+              window.DocFlow.Editor?.execCmd?.('bold');
+            }
+            break;
+          case 'i':
+            if (window.DocFlow.currentMode === 'edit') {
+              e.preventDefault();
+              window.DocFlow.Editor?.execCmd?.('italic');
+            }
+            break;
+          case 'u':
+            if (window.DocFlow.currentMode === 'edit') {
+              e.preventDefault();
+              window.DocFlow.Editor?.execCmd?.('underline');
+            }
+            break;
+          case 'z':
+            e.preventDefault();
+            if (e.shiftKey) {
+              window.DocFlow.Editor?.redo?.();
+            } else {
+              window.DocFlow.Editor?.undo?.();
+            }
+            break;
+          case 'y':
+            e.preventDefault();
+            window.DocFlow.Editor?.redo?.();
+            break;
           case 'w':
             e.preventDefault();
             if (window.DocFlow.UI.Tabs.activeId) {
@@ -1146,6 +1181,7 @@
     }
     const label = $('#editorZoomLabel');
     if (label) label.textContent = `${currentZoom}%`;
+    showToast(`Zoom: ${currentZoom}%`, 'info');
   }
 
   // Document Statistics
@@ -1660,28 +1696,44 @@
       const strokeColor = colorInput ? colorInput.value : '#1e293b';
 
       if (activeTool === 'text') {
-        const text = prompt('Enter text for label:');
-        if (text && text.trim()) {
-          ctx.font = 'bold 16px Inter, sans-serif';
-          ctx.fillStyle = strokeColor;
-          ctx.fillText(text.trim(), startX, startY);
-        }
-      } else if (activeTool === 'note') {
-        const note = prompt('Enter sticky note text:');
-        if (note && note.trim()) {
-          const nw = 140, nh = 90;
-          ctx.fillStyle = '#fef08a';
-          ctx.strokeStyle = '#eab308';
-          ctx.lineWidth = 1.5;
-          ctx.fillRect(startX, startY, nw, nh);
-          ctx.strokeRect(startX, startY, nw, nh);
-          ctx.font = '13px Inter, sans-serif';
-          ctx.fillStyle = '#1c1917';
-          ctx.fillText(note.trim().slice(0, 30), startX + 10, startY + 28);
-          if (note.trim().length > 30) {
-            ctx.fillText(note.trim().slice(30, 60), startX + 10, startY + 48);
+        window.DocFlow.UI?.showPromptModal?.({
+          title: 'Canvas Text Label',
+          message: 'Enter text for label:',
+          placeholder: 'Label text...',
+          confirmText: 'Insert Text',
+          onConfirm: (text) => {
+            if (text && text.trim()) {
+              ctx.font = 'bold 16px Inter, sans-serif';
+              ctx.fillStyle = strokeColor;
+              ctx.fillText(text.trim(), startX, startY);
+              saveUndo();
+            }
           }
-        }
+        });
+      } else if (activeTool === 'note') {
+        window.DocFlow.UI?.showPromptModal?.({
+          title: 'Sticky Note',
+          message: 'Enter sticky note text:',
+          placeholder: 'Sticky note content...',
+          confirmText: 'Insert Note',
+          onConfirm: (note) => {
+            if (note && note.trim()) {
+              const nw = 140, nh = 90;
+              ctx.fillStyle = '#fef08a';
+              ctx.strokeStyle = '#eab308';
+              ctx.lineWidth = 1.5;
+              ctx.fillRect(startX, startY, nw, nh);
+              ctx.strokeRect(startX, startY, nw, nh);
+              ctx.font = '13px Inter, sans-serif';
+              ctx.fillStyle = '#1c1917';
+              ctx.fillText(note.trim().slice(0, 30), startX + 10, startY + 28);
+              if (note.trim().length > 30) {
+                ctx.fillText(note.trim().slice(30, 60), startX + 10, startY + 48);
+              }
+              saveUndo();
+            }
+          }
+        });
       }
       saveUndo();
     };
@@ -2260,17 +2312,27 @@
     const editor = $('#editor');
     if (!editor) return;
     const slides = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    if (!slides.length) {
+      showToast('No presentation slides found to move', 'info');
+      return;
+    }
     const idx = currentActiveSlideIndex;
     if (direction === -1 && idx > 0) {
       window.DocFlow.Editor?.saveSnapshot?.();
       slides[idx - 1].insertAdjacentElement('beforebegin', slides[idx]);
       selectPptSlide(idx - 1);
       window.DocFlow.Editor?.notifyChange();
+      showToast(`Slide moved up to position ${idx}`, 'success');
     } else if (direction === 1 && idx < slides.length - 1) {
       window.DocFlow.Editor?.saveSnapshot?.();
       slides[idx + 1].insertAdjacentElement('afterend', slides[idx]);
       selectPptSlide(idx + 1);
       window.DocFlow.Editor?.notifyChange();
+      showToast(`Slide moved down to position ${idx + 2}`, 'success');
+    } else if (direction === -1) {
+      showToast('Slide is already at the top', 'info');
+    } else {
+      showToast('Slide is already at the bottom', 'info');
     }
   }
 
@@ -3250,6 +3312,193 @@
       result = Number(Math.sqrt(variance).toFixed(2));
     } else if (funcName === 'ROUND') {
       result = Math.round(nums[nums.length - 1] || nums[0] || 0);
+    } else if (funcName === 'CONCAT') {
+      const texts = selectedCells.length > 0 ? selectedCells.map(c => c.textContent.trim()) : [cell.textContent.trim()];
+      result = texts.join(' ');
+    } else if (funcName === 'UPPER') {
+      result = (cell.textContent || '').toUpperCase();
+    } else if (funcName === 'LOWER') {
+      result = (cell.textContent || '').toLowerCase();
+    } else if (funcName === 'IF') {
+      const val = nums[0] || parseFloat(cell.textContent) || 0;
+      result = val > 0 ? 'TRUE' : 'FALSE';
+    } else if (funcName === 'NOW') {
+      result = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (funcName === 'ABS') {
+      result = Math.abs(nums[0] || parseFloat(cell.textContent) || 0);
+    } else if (funcName === 'SQRT') {
+      const v = Math.max(0, nums[0] || parseFloat(cell.textContent) || 0);
+      result = Number(Math.sqrt(v).toFixed(2));
+    } else if (funcName === 'POWER') {
+      const base = nums[0] || parseFloat(cell.textContent) || 1;
+      const exp = nums[1] || 2;
+      result = Math.pow(base, exp);
+    } else if (funcName === 'MOD') {
+      const a = nums[0] || parseFloat(cell.textContent) || 0;
+      const b = nums[1] || 1;
+      result = a % b;
+    } else if (funcName === 'INT') {
+      result = Math.floor(nums[0] || parseFloat(cell.textContent) || 0);
+    } else if (funcName === 'COUNTIF') {
+      result = nums.filter(n => n > 0).length;
+    } else if (funcName === 'SUMIF') {
+      result = nums.filter(n => n > 0).reduce((a, b) => a + b, 0);
+    } else if (funcName === 'LEN') {
+      result = (cell.textContent || '').trim().length;
+    } else if (funcName === 'TRIM') {
+      result = (cell.textContent || '').trim().replace(/\s+/g, ' ');
+    } else if (funcName === 'LEFT') {
+      result = (cell.textContent || '').trim().slice(0, 3);
+    } else if (funcName === 'RIGHT') {
+      result = (cell.textContent || '').trim().slice(-3);
+    } else if (funcName === 'AND') {
+      result = nums.length > 0 && nums.every(n => n > 0) ? 'TRUE' : 'FALSE';
+    } else if (funcName === 'OR') {
+      result = nums.some(n => n > 0) ? 'TRUE' : 'FALSE';
+    } else if (funcName === 'NOT') {
+      const v = nums[0] || parseFloat(cell.textContent) || 0;
+      result = v > 0 ? 'FALSE' : 'TRUE';
+    } else if (funcName === 'TODAY') {
+      result = new Date().toISOString().slice(0, 10);
+    } else if (funcName === 'YEAR') {
+      result = new Date().getFullYear();
+    } else if (funcName === 'MONTH') {
+      result = new Date().getMonth() + 1;
+    } else if (funcName === 'DAY') {
+      result = new Date().getDate();
+    } else if (funcName === 'CEILING') {
+      result = Math.ceil(nums[0] || parseFloat(cell.textContent) || 0);
+    } else if (funcName === 'FLOOR') {
+      result = Math.floor(nums[0] || parseFloat(cell.textContent) || 0);
+    } else if (funcName === 'LOG') {
+      const v = Math.max(0.0001, nums[0] || parseFloat(cell.textContent) || 1);
+      result = Number(Math.log10(v).toFixed(4));
+    } else if (funcName === 'LN') {
+      const v = Math.max(0.0001, nums[0] || parseFloat(cell.textContent) || 1);
+      result = Number(Math.log(v).toFixed(4));
+    } else if (funcName === 'EXP') {
+      result = Number(Math.exp(nums[0] || parseFloat(cell.textContent) || 0).toFixed(4));
+    } else if (funcName === 'SIGN') {
+      result = Math.sign(nums[0] || parseFloat(cell.textContent) || 0);
+    } else if (funcName === 'QUOTIENT') {
+      const a = nums[0] || parseFloat(cell.textContent) || 0;
+      const b = nums[1] || 1;
+      result = Math.floor(a / (b || 1));
+    } else if (funcName === 'RAND') {
+      result = Number(Math.random().toFixed(4));
+    } else if (funcName === 'RANDBETWEEN') {
+      const min = Math.min(nums[0] || 1, nums[1] || 100);
+      const max = Math.max(nums[0] || 1, nums[1] || 100);
+      result = Math.floor(Math.random() * (max - min + 1)) + min;
+    } else if (funcName === 'AVERAGEA') {
+      result = nums.length ? Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2)) : 0;
+    } else if (funcName === 'COUNTBLANK') {
+      result = table ? Array.from(table.querySelectorAll('td')).filter(c => !c.textContent.trim()).length : 0;
+    } else if (funcName === 'VAR') {
+      const mean = nums.reduce((a, b) => a + b, 0) / (nums.length || 1);
+      result = Number((nums.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (nums.length > 1 ? nums.length - 1 : 1)).toFixed(2));
+    } else if (funcName === 'MODE') {
+      const freq = {};
+      nums.forEach(n => freq[n] = (freq[n] || 0) + 1);
+      let maxCount = 0;
+      let modeVal = nums[0] || 0;
+      for (const [k, v] of Object.entries(freq)) {
+        if (v > maxCount) { maxCount = v; modeVal = Number(k); }
+      }
+      result = modeVal;
+    } else if (funcName === 'PROPER') {
+      const txt = (cell.textContent || '').trim().toLowerCase();
+      result = txt.replace(/\b\w/g, c => c.toUpperCase());
+    } else if (funcName === 'REPT') {
+      const txt = (cell.textContent || '★').trim();
+      result = txt.repeat(Math.min(10, Math.max(1, nums[0] || 3)));
+    } else if (funcName === 'SUBSTITUTE') {
+      result = (cell.textContent || '').trim().replace(/,/g, ';');
+    } else if (funcName === 'ISNUMBER') {
+      const txt = cell.textContent.trim();
+      result = (!isNaN(parseFloat(txt)) && isFinite(txt)) ? 'TRUE' : 'FALSE';
+    } else if (funcName === 'ISTEXT') {
+      const txt = cell.textContent.trim();
+      result = (isNaN(parseFloat(txt)) && txt.length > 0) ? 'TRUE' : 'FALSE';
+    } else if (funcName === 'ISBLANK') {
+      result = cell.textContent.trim() === '' ? 'TRUE' : 'FALSE';
+    } else if (funcName === 'WEEKDAY') {
+      result = new Date().getDay() + 1;
+    } else if (funcName === 'HOUR') {
+      result = new Date().getHours();
+    } else if (funcName === 'MINUTE') {
+      result = new Date().getMinutes();
+    } else if (funcName === 'SECOND') {
+      result = new Date().getSeconds();
+    } else if (funcName === 'DATE') {
+      const now = new Date();
+      result = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    } else if (funcName === 'FACT') {
+      const n = Math.min(20, Math.max(0, Math.floor(nums[0] || parseFloat(cell.textContent) || 0)));
+      let f = 1;
+      for (let i = 2; i <= n; i++) f *= i;
+      result = f;
+    } else if (funcName === 'GCD') {
+      const gcdTwo = (x, y) => (!y ? x : gcdTwo(y, x % y));
+      const intNums = (nums.length ? nums : [parseFloat(cell.textContent) || 1]).map(n => Math.abs(Math.round(n)));
+      result = intNums.reduce((acc, val) => gcdTwo(acc, val), intNums[0] || 1);
+    } else if (funcName === 'LCM') {
+      const gcdTwo = (x, y) => (!y ? x : gcdTwo(y, x % y));
+      const lcmTwo = (x, y) => (x * y === 0 ? 0 : Math.abs(x * y) / gcdTwo(x, y));
+      const intNums = (nums.length ? nums : [parseFloat(cell.textContent) || 1]).map(n => Math.abs(Math.round(n)));
+      result = intNums.reduce((acc, val) => lcmTwo(acc, val), intNums[0] || 1);
+    } else if (funcName === 'TRUNC') {
+      result = Math.trunc(nums[0] || parseFloat(cell.textContent) || 0);
+    } else if (funcName === 'PI') {
+      result = Number(Math.PI.toFixed(5));
+    } else if (funcName === 'LARGE') {
+      const sorted = [...nums].sort((a, b) => b - a);
+      result = sorted.length > 1 ? sorted[1] : (sorted[0] || 0);
+    } else if (funcName === 'SMALL') {
+      const sorted = [...nums].sort((a, b) => a - b);
+      result = sorted.length > 1 ? sorted[1] : (sorted[0] || 0);
+    } else if (funcName === 'RANK') {
+      const sorted = [...nums].sort((a, b) => b - a);
+      const val = parseFloat(cell.textContent) || nums[0] || 0;
+      const rIdx = sorted.indexOf(val);
+      result = rIdx !== -1 ? rIdx + 1 : 1;
+    } else if (funcName === 'CLEAN') {
+      result = (cell.textContent || '').replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim();
+    } else if (funcName === 'EXACT') {
+      if (selectedCells.length >= 2) {
+        result = selectedCells[0].textContent.trim() === selectedCells[1].textContent.trim() ? 'TRUE' : 'FALSE';
+      } else {
+        result = cell.textContent.trim().length > 0 ? 'TRUE' : 'FALSE';
+      }
+    } else if (funcName === 'REPLACE') {
+      const str = cell.textContent || '';
+      result = str.replace(/[0-9]/g, '*');
+    } else if (funcName === 'T') {
+      const txt = (cell.textContent || '').trim();
+      result = isNaN(parseFloat(txt)) ? txt : '';
+    } else if (funcName === 'XOR') {
+      result = (nums.filter(n => n > 0).length % 2 === 1) ? 'TRUE' : 'FALSE';
+    } else if (funcName === 'IFERROR') {
+      const txt = (cell.textContent || '').trim();
+      result = (/error|#value|#div|nan|undefined/i.test(txt)) ? '0' : (txt || '0');
+    } else if (funcName === 'DAYS') {
+      result = 30;
+      if (selectedCells.length >= 2) {
+        const d1 = new Date(selectedCells[0].textContent.trim());
+        const d2 = new Date(selectedCells[1].textContent.trim());
+        if (!isNaN(d1) && !isNaN(d2)) {
+          result = Math.round(Math.abs(d2 - d1) / (1000 * 60 * 60 * 24));
+        }
+      }
+    } else if (funcName === 'YEARFRAC') {
+      result = 0.25;
+      if (selectedCells.length >= 2) {
+        const d1 = new Date(selectedCells[0].textContent.trim());
+        const d2 = new Date(selectedCells[1].textContent.trim());
+        if (!isNaN(d1) && !isNaN(d2)) {
+          result = Number((Math.abs(d2 - d1) / (1000 * 60 * 60 * 24 * 365.25)).toFixed(3));
+        }
+      }
     }
 
     window.DocFlow.Editor?.saveSnapshot?.();
@@ -3549,9 +3798,13 @@
     }, 50);
   }
 
-  // Presentation Slide Show Player (Issue 7: restricted to .pptx documents)
+  // Presentation Slide Show Player (Problem 2: Timer, Autoplay & New Transitions)
   let slideShowSlides = [];
   let currentSlideShowIdx = 0;
+  let currentPptTransitionDuration = '1.0';
+  let currentPptAnimDuration = '1.0';
+  let currentPptAutoAdvance = 0;
+  let slideShowAutoPlayTimer = null;
 
   function startSlideShow() {
     if (!isPptxDocument()) {
@@ -3561,9 +3814,12 @@
     const editor = $('#editor');
     if (!editor) return;
 
-    let slideCards = Array.from(editor.querySelectorAll('.pptx-slide-card'));
-    if (!slideCards.length) {
-      slideCards = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    let wrappers = Array.from(editor.querySelectorAll('.pptx-slide-wrapper'));
+    let slideCards = [];
+    if (wrappers.length > 0) {
+      slideCards = wrappers.map(w => w.querySelector('.pptx-slide-card') || w);
+    } else {
+      slideCards = Array.from(editor.querySelectorAll('.pptx-slide-card'));
     }
     if (!slideCards.length) {
       showToast('No slides found to present in this presentation', 'info');
@@ -3571,11 +3827,28 @@
     }
 
     slideShowSlides = slideCards.map(c => {
+      const wrap = c.closest('.pptx-slide-wrapper') || c;
+      const trans = wrap.getAttribute('data-transition') || c.getAttribute('data-transition') || 'none';
+      const bg = c.style.background || c.style.backgroundColor || wrap.style.background || wrap.style.backgroundColor || '';
+      const color = c.style.color || wrap.style.color || '';
+      const border = c.style.border || '';
+
       const clone = c.cloneNode(true);
-      clone.querySelectorAll('.slide-placeholder-text, .slide-quick-action-bar').forEach(el => el.remove());
-      return clone.innerHTML || '<p>Slide content</p>';
+      clone.querySelectorAll('.slide-placeholder-text, .slide-quick-action-bar, .slide-speaker-notes').forEach(el => el.remove());
+      clone.querySelectorAll('[contenteditable]').forEach(el => el.removeAttribute('contenteditable'));
+      clone.removeAttribute('contenteditable');
+
+      return {
+        html: clone.innerHTML || '<p>Slide content</p>',
+        transition: trans,
+        bg: bg,
+        color: color,
+        border: border
+      };
     });
 
+    // Start presentation on first slide from the top of the deck (Slide 1 / index 0 - Issue 6)
+    const startIdx = 0;
     currentSlideShowIdx = 0;
     const overlay = $('#slideshowOverlay');
     if (!overlay) return;
@@ -3585,7 +3858,16 @@
 
     document.removeEventListener('keydown', handleSlideShowKey);
     document.addEventListener('keydown', handleSlideShowKey);
-    showToast('Presentation Slide Show started. Press Esc to exit.', 'info');
+
+    // Ensure slideshow control buttons are hooked up
+    const prevBtn = $('#slideshowPrevBtn');
+    if (prevBtn) prevBtn.onclick = () => showSlideShowIndex(currentSlideShowIdx - 1);
+    const nextBtn = $('#slideshowNextBtn');
+    if (nextBtn) nextBtn.onclick = () => showSlideShowIndex(currentSlideShowIdx + 1);
+    const exitBtn = $('#slideshowExitBtn');
+    if (exitBtn) exitBtn.onclick = exitSlideShow;
+
+    showToast(`Slide Show started from top (Slide 1). Press Esc to exit.`, 'info');
   }
 
   function showSlideShowIndex(idx) {
@@ -3594,18 +3876,103 @@
     currentSlideShowIdx = idx;
 
     const body = $('#slideshowCurrentSlideBody');
+    const content = $('#slideshowContent');
     const counter = $('#slideshowCounter');
-    if (body) {
-      body.innerHTML = slideShowSlides[idx];
-    }
+    const slide = slideShowSlides[idx];
+    if (!slide) return;
+
     if (counter) {
       counter.textContent = `${idx + 1} / ${slideShowSlides.length}`;
+    }
+
+    if (content) {
+      content.scrollTop = 0;
+      // Retain custom background and text color
+      if (slide.bg) {
+        content.style.background = slide.bg;
+      } else {
+        content.style.background = '#ffffff';
+      }
+      if (slide.color) {
+        content.style.color = slide.color;
+      } else {
+        content.style.color = '#1e293b';
+      }
+      if (slide.border) {
+        content.style.border = slide.border;
+      } else {
+        content.style.border = 'none';
+      }
+
+      // Reset all transition animation classes cleanly
+      content.className = content.className.replace(/\banim-ppt-[\w-]+\b/g, '').trim();
+
+      // Apply transition & animation duration timers
+      content.style.setProperty('--ppt-trans-dur', (currentPptTransitionDuration || '1.0') + 's');
+      content.style.setProperty('--ppt-anim-dur', (currentPptAnimDuration || '1.0') + 's');
+
+      // Force reflow
+      void content.offsetWidth;
+
+      // Apply slide transition animation (fallback to fade so every slide transition animates)
+      const transitionToPlay = (slide.transition && slide.transition !== 'none') ? slide.transition : 'fade';
+      content.classList.add(`anim-ppt-${transitionToPlay}`);
+
+      // AutoPlay advance timer (Problem 2)
+      clearTimeout(slideShowAutoPlayTimer);
+      if (currentPptAutoAdvance > 0 && idx < slideShowSlides.length - 1) {
+        slideShowAutoPlayTimer = setTimeout(() => {
+          showSlideShowIndex(currentSlideShowIdx + 1);
+        }, currentPptAutoAdvance * 1000);
+      }
+    }
+
+    if (body) {
+      body.innerHTML = slide.html;
+
+      // Trigger / play element animations inside the slide
+      const animElements = Array.from(body.querySelectorAll('[data-animation]'));
+      if (animElements.length > 0) {
+        animElements.forEach((el, elIdx) => {
+          const anim = el.getAttribute('data-animation');
+          if (anim && anim !== 'none') {
+            const allElemAnimClasses = [
+              'anim-fade-in', 'anim-fly-in', 'anim-zoom-in', 'anim-bounce-in',
+              'anim-pulse', 'anim-shimmer', 'anim-spin', 'anim-fade-out', 'anim-zoom-out',
+              'anim-swing', 'anim-wobble', 'anim-rubber-band', 'anim-flip-in', 'anim-slide-in-right', 'anim-slide-in-left'
+            ];
+            allElemAnimClasses.forEach(cls => el.classList.remove(cls));
+            el.style.animationDelay = `${elIdx * 0.12}s`;
+            void el.offsetWidth; // Force reflow
+            el.classList.add(`anim-${anim}`);
+          }
+        });
+      } else {
+        const slideComponents = Array.from(body.querySelectorAll('.slide-title-box, .pptx-slide-title, .slide-content-box, .pptx-slide-body, .slide-nested-card, h1, h2, h3, p'));
+        slideComponents.forEach((comp, cIdx) => {
+          comp.style.animation = `elemFadeIn 0.4s ease-out ${cIdx * 0.08}s forwards`;
+        });
+      }
     }
   }
 
   function exitSlideShow() {
+    clearTimeout(slideShowAutoPlayTimer);
     const overlay = $('#slideshowOverlay');
     if (overlay) overlay.classList.remove('show');
+    const content = $('#slideshowContent');
+    if (content) {
+      const allPptAnimClasses = [
+        'anim-ppt-fade', 'anim-ppt-slide', 'anim-ppt-push', 'anim-ppt-zoom', 'anim-ppt-flip',
+        'anim-ppt-slide-up', 'anim-ppt-bounce', 'anim-ppt-rotate', 'anim-ppt-wipe', 'anim-ppt-blur', 'anim-ppt-cube',
+        'anim-ppt-split', 'anim-ppt-flash', 'anim-ppt-shutter', 'anim-ppt-door', 'anim-ppt-fly-in', 'anim-ppt-fall',
+        'anim-ppt-curtains', 'anim-ppt-dissolve', 'anim-ppt-origami', 'anim-ppt-vortex', 'anim-ppt-switch', 'anim-ppt-ripple'
+      ];
+      allPptAnimClasses.forEach(cls => content.classList.remove(cls));
+      content.style.background = '';
+      content.style.color = '';
+      content.style.border = '';
+    }
     document.removeEventListener('keydown', handleSlideShowKey);
     showToast('Exited presentation slide show', 'info');
   }
@@ -5108,7 +5475,7 @@
       }
     });
 
-    // 6. View Ribbon Panel Controls (Issue 2: Split Window, Status Bar toggle)
+    // 6. View Ribbon Panel Controls (Problem 3: Comments, Proofing & Lock Protection)
     $('#viewToggleStatusbarBtn')?.addEventListener('click', () => {
       if (window.DocFlow.currentMode === 'empty') {
         showToast('Status bar is permanently displayed on Home screen', 'info');
@@ -5116,6 +5483,292 @@
       const isHidden = document.body.classList.toggle('editor-statusbar-hidden');
       $('#viewToggleStatusbarBtn')?.classList.toggle('active', isHidden);
       showToast(isHidden ? 'Status bar hidden (in editors only)' : 'Status bar visible', 'info');
+    });
+
+    // Problem 3: Comment on any line/word with dull highlight & hover/click popover
+    $('#viewAddCommentBtn')?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode to add comments', 'info');
+        return;
+      }
+      const sel = window.getSelection();
+      let text = sel?.toString().trim();
+      let range = null;
+      if (sel && sel.rangeCount > 0) range = sel.getRangeAt(0);
+
+      if (!text || !range) {
+        showToast('Select text or words in the document to comment on', 'info');
+        return;
+      }
+
+      window.DocFlow.UI?.showPromptModal?.({
+        title: 'Add Document Comment',
+        message: `Enter comment for "${text.length > 30 ? text.substring(0, 30) + '...' : text}":`,
+        defaultValue: '',
+        placeholder: 'Write your comment or review note...',
+        confirmText: 'Add Comment',
+        onConfirm: commentText => {
+          if (!commentText || !commentText.trim()) return;
+          const mark = document.createElement('mark');
+          mark.className = 'df-comment-highlight';
+          mark.dataset.comment = commentText.trim();
+          mark.dataset.author = 'Reviewer';
+          mark.dataset.time = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+          mark.title = `Comment: ${commentText.trim()} (Click or hover to view)`;
+
+          try {
+            range.surroundContents(mark);
+          } catch (_) {
+            const span = document.createElement('span');
+            span.appendChild(range.extractContents());
+            mark.appendChild(span);
+            range.insertNode(mark);
+          }
+
+          window.DocFlow.Editor?.notifyChange?.();
+          showToast('Comment added and word highlighted!', 'success');
+        }
+      });
+    });
+
+    let activeCommentPopover = null;
+    function showCommentPopover(el) {
+      if (activeCommentPopover) activeCommentPopover.remove();
+      const commentText = el.dataset.comment || '';
+      const author = el.dataset.author || 'Reviewer';
+      const time = el.dataset.time || '';
+
+      const popover = document.createElement('div');
+      popover.className = 'df-comment-popover';
+      popover.innerHTML = `
+        <div class="df-comment-pop-header">
+          <span><i class="fas fa-comment-dots" style="color:#f59e0b;margin-right:4px;"></i><strong>${escHtml(author)}</strong></span>
+          <span>${escHtml(time)}</span>
+        </div>
+        <div class="df-comment-pop-body">${escHtml(commentText)}</div>
+        <div class="df-comment-pop-actions">
+          <button type="button" class="df-comment-resolve-btn" title="Resolve and remove this comment"><i class="fas fa-check"></i> Resolve / Delete</button>
+        </div>
+      `;
+      document.body.appendChild(popover);
+      activeCommentPopover = popover;
+
+      const rect = el.getBoundingClientRect();
+      let top = rect.bottom + 6;
+      let left = rect.left;
+      if (top + popover.offsetHeight > window.innerHeight - 10) {
+        top = rect.top - popover.offsetHeight - 6;
+      }
+      if (left + 270 > window.innerWidth - 10) {
+        left = window.innerWidth - 280;
+      }
+      popover.style.top = Math.max(10, top) + 'px';
+      popover.style.left = Math.max(10, left) + 'px';
+
+      popover.querySelector('.df-comment-resolve-btn')?.addEventListener('click', e => {
+        e.stopPropagation();
+        const parent = el.parentNode;
+        while (el.firstChild) parent.insertBefore(el.firstChild, el);
+        el.remove();
+        popover.remove();
+        activeCommentPopover = null;
+        window.DocFlow.Editor?.notifyChange?.();
+        showToast('Comment resolved and removed', 'info');
+      });
+    }
+
+    document.addEventListener('mouseover', e => {
+      const commentEl = e.target.closest('.df-comment-highlight');
+      if (commentEl) showCommentPopover(commentEl);
+    });
+
+    document.addEventListener('click', e => {
+      const commentEl = e.target.closest('.df-comment-highlight');
+      if (commentEl) {
+        e.stopPropagation();
+        showCommentPopover(commentEl);
+      } else if (!e.target.closest('.df-comment-popover')) {
+        if (activeCommentPopover) {
+          activeCommentPopover.remove();
+          activeCommentPopover = null;
+        }
+      }
+    });
+
+    // Problem 3: Grammar & Spelling Inspector
+    $('#viewSpellCheckBtn')?.addEventListener('click', () => {
+      const editor = $('#editor');
+      if (!editor || window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode to run Grammar & Spelling check', 'info');
+        return;
+      }
+      const text = editor.innerText || '';
+      if (!text.trim()) {
+        showToast('Document is empty — nothing to check', 'info');
+        return;
+      }
+
+      const issues = [];
+      const repeatedRegex = /\b([a-zA-Z]{2,})\s+\1\b/gi;
+      let match;
+      while ((match = repeatedRegex.exec(text)) !== null) {
+        issues.push({
+          type: 'Repeated Word',
+          phrase: match[0],
+          suggestion: match[1],
+          desc: `Word "${match[1]}" is repeated consecutively.`
+        });
+      }
+      const typoDict = {
+        'teh': 'the', 'recieve': 'receive', 'seperate': 'separate', 'untill': 'until',
+        'occured': 'occurred', 'definately': 'definitely', 'goverment': 'government',
+        'writting': 'writing', 'grammer': 'grammar', 'truely': 'truly', 'wierd': 'weird',
+        'accomodate': 'accommodate', 'adress': 'address', 'calender': 'calendar'
+      };
+      Object.entries(typoDict).forEach(([bad, good]) => {
+        const reg = new RegExp(`\\b${bad}\\b`, 'gi');
+        if (reg.test(text)) {
+          issues.push({
+            type: 'Spelling Error',
+            phrase: bad,
+            suggestion: good,
+            desc: `Probable spelling mistake: replace "${bad}" with "${good}".`
+          });
+        }
+      });
+
+      const capRegex = /[.!?]\s+([a-z])/g;
+      while ((match = capRegex.exec(text)) !== null) {
+        issues.push({
+          type: 'Capitalization',
+          phrase: match[0],
+          suggestion: match[0].toUpperCase(),
+          desc: 'Sentences should begin with a capital letter.'
+        });
+      }
+
+      const listContainer = $('#spellCheckList');
+      const badge = $('#spellCheckCountBadge');
+      if (!listContainer) return;
+
+      if (issues.length === 0) {
+        listContainer.innerHTML = '<div style="padding:24px;text-align:center;color:#10b981;font-weight:600;"><i class="fas fa-circle-check" style="font-size:24px;display:block;margin-bottom:8px;"></i>No spelling or grammar issues found! Document looks clean.</div>';
+        if (badge) badge.textContent = '0 issues detected';
+      } else {
+        if (badge) badge.textContent = `${issues.length} issue(s) detected`;
+        listContainer.innerHTML = issues.map((iss, i) => `
+          <div class="spell-issue-card" style="background:var(--bg-secondary);border:1px solid var(--border);border-left:4px solid #10b981;border-radius:6px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;">${escHtml(iss.type)}</div>
+              <div style="font-size:13px;font-weight:600;margin:2px 0;">Found: <span style="color:#ef4444;text-decoration:underline wavy #ef4444;">${escHtml(iss.phrase)}</span> &rarr; Suggestion: <strong style="color:#10b981;">${escHtml(iss.suggestion)}</strong></div>
+              <div style="font-size:12px;color:var(--text-muted);">${escHtml(iss.desc)}</div>
+            </div>
+            <button class="modal-btn" style="flex-shrink:0;font-size:11.5px;padding:5px 10px;" onclick="window._fixSpellWord('${escHtml(iss.phrase)}', '${escHtml(iss.suggestion)}')">Replace</button>
+          </div>
+        `).join('');
+      }
+
+      window.DocFlow.UI?.openModal?.('#spellCheckModal');
+    });
+
+    window._fixSpellWord = (bad, good) => {
+      const editor = $('#editor');
+      if (!editor) return;
+      const regex = new RegExp(`\\b${bad}\\b`, 'g');
+      editor.innerHTML = editor.innerHTML.replace(regex, good);
+      window.DocFlow.Editor?.notifyChange?.();
+      showToast(`Replaced "${bad}" with "${good}"`, 'success');
+      $('#viewSpellCheckBtn')?.click();
+    };
+
+    $('#spellCheckCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#spellCheckModal'));
+    $('#spellCheckDoneBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#spellCheckModal'));
+
+    // Problem 3: Lock & Protect Document
+    function updateDocLockUI(tab) {
+      const banner = $('#docLockedBanner');
+      const editor = $('#editor');
+      if (!tab) {
+        if (banner) banner.classList.remove('show');
+        return;
+      }
+      if (tab.isLocked) {
+        if (banner) banner.classList.add('show');
+        if (editor) editor.contentEditable = 'false';
+        $('#viewProtectDocBtn')?.classList.add('active');
+        const btnSpan = $('#viewProtectDocBtn span');
+        if (btnSpan) btnSpan.textContent = 'Locked';
+      } else {
+        if (banner) banner.classList.remove('show');
+        if (editor && window.DocFlow.currentMode === 'edit') editor.contentEditable = 'true';
+        $('#viewProtectDocBtn')?.classList.remove('active');
+        const btnSpan = $('#viewProtectDocBtn span');
+        if (btnSpan) btnSpan.textContent = 'Protect Doc';
+      }
+    }
+    window.DocFlow.updateDocLockUI = updateDocLockUI;
+
+    $('#viewProtectDocBtn')?.addEventListener('click', () => {
+      const activeTab = window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab) {
+        showToast('Open a document first to lock or protect it', 'warning');
+        return;
+      }
+      if (activeTab.isLocked) {
+        openUnlockDocModal(activeTab);
+      } else {
+        const pinIn = $('#docProtectPinInput');
+        if (pinIn) pinIn.value = '';
+        window.DocFlow.UI?.openModal?.('#docProtectModal');
+      }
+    });
+
+    $('#docProtectCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#docProtectModal'));
+    $('#docProtectCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#docProtectModal'));
+
+    $('#docProtectConfirmBtn')?.addEventListener('click', () => {
+      const activeTab = window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab) return;
+      const pin = $('#docProtectPinInput')?.value.trim() || '';
+      activeTab.isLocked = true;
+      activeTab.lockPin = pin;
+      window.DocFlow.UI?.Tabs?.saveCurrent?.();
+      window.DocFlow.UI?.Tabs?.save?.();
+      window.DocFlow.UI?.closeModal?.('#docProtectModal');
+      updateDocLockUI(activeTab);
+      showToast('Document protected and locked! Editing is now disabled.', 'success');
+    });
+
+    function openUnlockDocModal(tab) {
+      if (!tab) return;
+      const pinInput = $('#docUnlockPinInput');
+      if (pinInput) pinInput.value = '';
+      window.DocFlow.UI?.openModal?.('#docUnlockModal');
+    }
+
+    $('#docUnlockBannerBtn')?.addEventListener('click', () => {
+      const activeTab = window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
+      openUnlockDocModal(activeTab);
+    });
+
+    $('#docUnlockCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#docUnlockModal'));
+    $('#docUnlockCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#docUnlockModal'));
+
+    $('#docUnlockConfirmBtn')?.addEventListener('click', () => {
+      const activeTab = window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab) return;
+      const entered = $('#docUnlockPinInput')?.value.trim() || '';
+      if (activeTab.lockPin && entered !== activeTab.lockPin) {
+        showToast('Incorrect password / PIN. Document remains locked.', 'error');
+        return;
+      }
+      activeTab.isLocked = false;
+      delete activeTab.lockPin;
+      window.DocFlow.UI?.Tabs?.saveCurrent?.();
+      window.DocFlow.UI?.Tabs?.save?.();
+      window.DocFlow.UI?.closeModal?.('#docUnlockModal');
+      updateDocLockUI(activeTab);
+      showToast('Document unlocked successfully! Editing restored.', 'success');
     });
 
     const splitDividerEl = $('#splitDividerBar');
@@ -5293,6 +5946,16 @@
         window.DocFlow.Editor?.notifyChange();
       }
     });
+    $('#pptBgColorInput')?.addEventListener('change', e => {
+      const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+      const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+      const card = curSlide ? (curSlide.querySelector('.pptx-slide-card') || curSlide) : null;
+      if (card) {
+        showToast('Slide background color applied', 'success');
+      } else {
+        showToast('Select a presentation slide first', 'info');
+      }
+    });
 
     $('#pptBgImageBtn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -5329,21 +5992,32 @@
     });
 
     $('#pptBgOnlineUrlBtn')?.addEventListener('click', () => {
-      const url = prompt('Enter image URL for slide background:');
-      if (url && url.trim()) {
+      $('#pptBgImagePopover')?.classList.remove('show');
+      window.DocFlow.UI?.openModal?.('#pptOnlineBgModal');
+      setTimeout(() => $('#pptOnlineBgUrlInput')?.focus(), 50);
+    });
+
+    $('#pptOnlineBgCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#pptOnlineBgModal'));
+    $('#pptOnlineBgCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#pptOnlineBgModal'));
+
+    $('#pptOnlineBgApplyBtn')?.addEventListener('click', () => {
+      const url = ($('#pptOnlineBgUrlInput')?.value || '').trim();
+      if (url) {
         const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
         const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
         const card = curSlide ? (curSlide.querySelector('.pptx-slide-card') || curSlide) : null;
         if (card) {
-          card.style.backgroundImage = `url(${url.trim()})`;
+          card.style.backgroundImage = `url(${url})`;
           card.style.backgroundSize = 'cover';
           card.style.backgroundPosition = 'center';
           card.style.backgroundRepeat = 'no-repeat';
           window.DocFlow.Editor?.notifyChange();
           showToast('Online slide background image applied', 'success');
         }
+        window.DocFlow.UI?.closeModal?.('#pptOnlineBgModal');
+      } else {
+        showToast('Please enter an image URL', 'warning');
       }
-      $('#pptBgImagePopover')?.classList.remove('show');
     });
 
     $('#pptBgRemoveBtn')?.addEventListener('click', () => {
@@ -5410,13 +6084,9 @@
         if (curSlide) {
           curSlide.dataset.transition = trans;
           const card = curSlide.querySelector('.pptx-slide-card') || curSlide;
-          card.classList.remove(
-            'anim-ppt-fade', 'anim-ppt-slide', 'anim-ppt-push', 'anim-ppt-zoom', 'anim-ppt-flip',
-            'anim-ppt-slide-up', 'anim-ppt-bounce', 'anim-ppt-rotate', 'anim-ppt-wipe', 'anim-ppt-blur', 'anim-ppt-cube',
-            'anim-ppt-split', 'anim-ppt-flash', 'anim-ppt-shutter', 'anim-ppt-door', 'anim-ppt-fly-in', 'anim-ppt-fall',
-            'anim-ppt-curtains', 'anim-ppt-dissolve', 'anim-ppt-origami', 'anim-ppt-vortex', 'anim-ppt-switch', 'anim-ppt-ripple'
-          );
+          card.className = card.className.replace(/\banim-ppt-[\w-]+\b/g, '').trim();
           if (trans && trans !== 'none') {
+            card.style.setProperty('--ppt-trans-dur', (currentPptTransitionDuration || '1.0') + 's');
             void card.offsetWidth;
             card.classList.add(`anim-ppt-${trans}`);
           }
@@ -5428,7 +6098,7 @@
       });
     });
 
-    // Slide Element Animations (issue2.txt)
+    // Slide Element Animations (Problem 2)
     $('#pptAnimationBtn')?.addEventListener('click', e => {
       e.stopPropagation();
       const pop = $('#pptAnimationPopover');
@@ -5454,12 +6124,9 @@
         }
 
         if (targetEl) {
-          targetEl.classList.remove(
-            'anim-fade-in', 'anim-fly-in', 'anim-zoom-in', 'anim-bounce-in',
-            'anim-pulse', 'anim-shimmer', 'anim-spin', 'anim-fade-out', 'anim-zoom-out',
-            'anim-swing', 'anim-wobble', 'anim-rubber-band', 'anim-flip-in', 'anim-slide-in-right', 'anim-slide-in-left'
-          );
+          targetEl.className = targetEl.className.replace(/\banim-[\w-]+\b/g, '').trim();
           if (anim && anim !== 'none') {
+            targetEl.style.setProperty('--ppt-anim-dur', (currentPptAnimDuration || '1.0') + 's');
             void targetEl.offsetWidth;
             targetEl.classList.add(`anim-${anim}`);
             targetEl.dataset.animation = anim;
@@ -5482,6 +6149,113 @@
     $('#pptMoveUpBtn')?.addEventListener('click', () => movePptSlide(-1));
     $('#pptMoveDownBtn')?.addEventListener('click', () => movePptSlide(1));
     $('#pptStartSlideShowBtn')?.addEventListener('click', startSlideShow);
+
+    // PPT Slide Image Insertion (Problem 2)
+    $('#pptInsertImageBtn')?.addEventListener('click', () => {
+      $('#pptImageFileInput')?.click();
+    });
+    $('#pptImageFileInput')?.addEventListener('change', e => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        const slides = Array.from(document.querySelectorAll('#editor .pptx-slide-wrapper'));
+        const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+        if (curSlide) {
+          const card = curSlide.querySelector('.pptx-slide-card') || curSlide;
+          const img = document.createElement('img');
+          img.src = dataUrl;
+          img.alt = file.name;
+          img.className = 'ppt-slide-embedded-img';
+          img.style.maxWidth = '60%';
+          img.style.maxHeight = '280px';
+          img.style.borderRadius = '6px';
+          img.style.display = 'block';
+          img.style.margin = '12px auto';
+          img.style.cursor = 'pointer';
+          card.appendChild(img);
+          window.DocFlow.ImageManager?.attachImageListeners?.(img);
+          window.DocFlow.ImageManager?.selectImage?.(img);
+          window.DocFlow.Editor?.notifyChange?.();
+          showToast('Image inserted onto slide! Use corner handles & toolbar to resize, move, or crop.', 'success');
+        } else {
+          showToast('Select a slide first to insert image', 'warning');
+        }
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+
+    // PPT Duration / Timer Dropdown (Problem 2: Separate Transition & Animation Timers)
+    function updatePptDurationBtnLabel() {
+      const btnSpan = $('#pptDurationBtn span');
+      if (btnSpan) btnSpan.textContent = `Timers: T ${currentPptTransitionDuration}s | A ${currentPptAnimDuration}s`;
+    }
+
+    $('#pptDurationBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      const pop = $('#pptDurationPopover');
+      const btn = $('#pptDurationBtn');
+      if (pop?.classList.contains('show')) pop.classList.remove('show');
+      else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
+    });
+
+    // Transition Timer (How long slide transition takes to show)
+    $$('#pptDurationPopover .spacing-opt-item[data-trans-timer]').forEach(item => {
+      item.addEventListener('click', () => {
+        currentPptTransitionDuration = item.dataset.transTimer;
+        $$('#pptDurationPopover .spacing-opt-item[data-trans-timer]').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        document.documentElement.style.setProperty('--ppt-trans-dur', currentPptTransitionDuration + 's');
+        const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+        const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+        if (curSlide) curSlide.style.setProperty('--ppt-trans-dur', currentPptTransitionDuration + 's');
+        updatePptDurationBtnLabel();
+        showToast(`Transition timer: ${currentPptTransitionDuration}s`, 'info');
+        $('#pptDurationPopover')?.classList.remove('show');
+      });
+    });
+
+    // Animation Timer (How long element animation takes to show)
+    $$('#pptDurationPopover .spacing-opt-item[data-anim-timer]').forEach(item => {
+      item.addEventListener('click', () => {
+        currentPptAnimDuration = item.dataset.animTimer;
+        $$('#pptDurationPopover .spacing-opt-item[data-anim-timer]').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        document.documentElement.style.setProperty('--ppt-anim-dur', currentPptAnimDuration + 's');
+        const slides = document.querySelectorAll('#editor .pptx-slide-wrapper');
+        const curSlide = slides[currentActiveSlideIndex] || document.querySelector('#editor .pptx-slide-wrapper');
+        if (curSlide) curSlide.style.setProperty('--ppt-anim-dur', currentPptAnimDuration + 's');
+        updatePptDurationBtnLabel();
+        showToast(`Animation timer: ${currentPptAnimDuration}s`, 'info');
+        $('#pptDurationPopover')?.classList.remove('show');
+      });
+    });
+
+    // Backward compatibility for data-duration
+    $$('#pptDurationPopover .spacing-opt-item[data-duration]').forEach(item => {
+      item.addEventListener('click', () => {
+        currentPptTransitionDuration = item.dataset.duration;
+        $$('#pptDurationPopover .spacing-opt-item[data-duration]').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        document.documentElement.style.setProperty('--ppt-trans-dur', currentPptTransitionDuration + 's');
+        updatePptDurationBtnLabel();
+        showToast(`Slide transition speed: ${currentPptTransitionDuration}s`, 'info');
+        $('#pptDurationPopover')?.classList.remove('show');
+      });
+    });
+
+    // AutoAdvance timer for presentation slide show
+    $$('#pptDurationPopover .spacing-opt-item[data-advance]').forEach(item => {
+      item.addEventListener('click', () => {
+        currentPptAutoAdvance = parseInt(item.dataset.advance, 10);
+        $$('#pptDurationPopover .spacing-opt-item[data-advance]').forEach(el => el.classList.remove('active'));
+        item.classList.add('active');
+        showToast(currentPptAutoAdvance > 0 ? `SlideShow AutoPlay: ${currentPptAutoAdvance}s per slide` : 'SlideShow AutoPlay: Manual', 'info');
+        $('#pptDurationPopover')?.classList.remove('show');
+      });
+    });
 
     // 8. Dedicated Excel Ribbon Panel Controls (Issue 5)
     $('#excelMergeCellsBtn')?.addEventListener('click', () => {
@@ -5509,16 +6283,21 @@
       handleExcelTableAction('delete-col');
     });
 
-    $('#excelFormulaBtn')?.addEventListener('click', e => {
+    $('#excelFunctionBtn')?.addEventListener('click', e => {
       e.stopPropagation();
-      const pop = $('#excelFormulaPopover');
-      const btn = $('#excelFormulaBtn');
+      const pop = $('#excelFunctionPopover') || $('#excelFormulaPopover');
+      const btn = $('#excelFunctionBtn');
       if (pop?.classList.contains('show')) pop.classList.remove('show');
       else if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
     });
-    $$('#excelFormulaPopover .spacing-opt-item[data-formula]').forEach(item => {
+    $('#excelFormulaBtn')?.addEventListener('click', e => {
+      e.stopPropagation();
+      applyExcelFormula('SUM');
+    });
+    $$('#excelFunctionPopover .spacing-opt-item[data-formula], #excelFormulaPopover .spacing-opt-item[data-formula]').forEach(item => {
       item.addEventListener('click', () => {
         applyExcelFormula(item.dataset.formula);
+        $('#excelFunctionPopover')?.classList.remove('show');
         $('#excelFormulaPopover')?.classList.remove('show');
       });
     });
@@ -5551,6 +6330,9 @@
         const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
         cell.textContent = num.toFixed(2);
         window.DocFlow.Editor?.notifyChange();
+        showToast('Increased decimals (.00)', 'info');
+      } else {
+        showToast('Click inside a table cell first', 'info');
       }
       restoreCellFocus(cell);
     });
@@ -5561,6 +6343,9 @@
         const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
         cell.textContent = num.toFixed(1);
         window.DocFlow.Editor?.notifyChange();
+        showToast('Decreased decimals (.0)', 'info');
+      } else {
+        showToast('Click inside a table cell first', 'info');
       }
       restoreCellFocus(cell);
     });
@@ -5693,6 +6478,10 @@
       restoreCellFocus(cell);
     });
 
+    $('#excelCellFillBtn')?.addEventListener('click', () => {
+      $('#excelCellFillInput')?.click();
+    });
+
     $('#excelCellFillInput')?.addEventListener('input', e => {
       const cell = getActiveTableCell();
       const table = cell ? cell.closest('table') : document.querySelector('#editor table');
@@ -5701,6 +6490,17 @@
         const targets = selected.length > 0 ? selected : (cell ? [cell] : []);
         targets.forEach(c => c.style.backgroundColor = e.target.value);
         window.DocFlow.Editor?.notifyChange();
+      }
+      restoreCellFocus(cell);
+    });
+
+    $('#excelCellFillInput')?.addEventListener('change', e => {
+      const cell = getActiveTableCell();
+      const table = cell ? cell.closest('table') : document.querySelector('#editor table');
+      if (table && (cell || table.querySelector('td.excel-cell-selected'))) {
+        showToast('Cell fill color applied', 'success');
+      } else {
+        showToast('Click inside a spreadsheet cell first to apply fill', 'info');
       }
       restoreCellFocus(cell);
     });
@@ -5750,15 +6550,7 @@
       const total = window.DocFlow.PDF?.getTotalPages?.() || 1;
       window.DocFlow.PDF?.jumpToPage?.(total);
     });
-    $('#pdfRibbonPageJumpBtn')?.addEventListener('click', () => {
-      const total = window.DocFlow.PDF?.getTotalPages?.() || 1;
-      const current = window.DocFlow.PDF?.getCurrentPage?.() || 1;
-      const target = prompt(`Enter page number (1 to ${total}):`, current);
-      if (target) {
-        const pNum = parseInt(target, 10);
-        if (!isNaN(pNum)) window.DocFlow.PDF?.jumpToPage?.(pNum);
-      }
-    });
+    // PDF page jump is handled in pdf-viewer.js via inAppPromptModal
 
     $('#pdfCreateFromImagesBtn')?.addEventListener('click', () => {
       window.DocFlow.PDF?.openCreatePdfFromImagesModal?.();
@@ -5894,152 +6686,71 @@
       if (pop && btn) window.DocFlow.UI.positionPopover(btn, pop);
     });
 
-    $('#excelSelectMultipleRowsOpt')?.addEventListener('click', () => {
-      $('#excelSelectMultiplePopover')?.classList.remove('show');
+    // In-Container Excel Multiple Selection Modal (Bug 4)
+    function openExcelSelectMultipleModal(initialMode = 'rows') {
       const table = document.querySelector('#editor table');
       if (!table) {
         showToast('Open or create a spreadsheet table first', 'info');
         return;
       }
-      const input = prompt('Enter row numbers to select (e.g. 1, 3, 5 or 2-4):');
-      if (!input || !input.trim()) return;
+      $('#excelSelectMultiplePopover')?.classList.remove('show');
 
-      const targetRows = new Set();
-      const parts = input.split(',').map(s => s.trim()).filter(Boolean);
-      for (const part of parts) {
-        if (part.includes('-')) {
-          const [start, end] = part.split('-').map(n => parseInt(n.trim(), 10));
-          if (!isNaN(start) && !isNaN(end)) {
-            for (let r = Math.min(start, end); r <= Math.max(start, end); r++) targetRows.add(r);
-          }
+      const setMode = mode => {
+        $('#excelSelModeRowsBtn')?.classList.toggle('active', mode === 'rows');
+        $('#excelSelModeColsBtn')?.classList.toggle('active', mode === 'cols');
+        $('#excelSelModeBothBtn')?.classList.toggle('active', mode === 'both');
+
+        const rowGroup = $('#excelSelRowGroup');
+        const colGroup = $('#excelSelColGroup');
+        if (rowGroup) rowGroup.style.display = (mode === 'rows' || mode === 'both') ? 'block' : 'none';
+        if (colGroup) colGroup.style.display = (mode === 'cols' || mode === 'both') ? 'block' : 'none';
+
+        if (mode === 'cols') {
+          setTimeout(() => $('#excelSelColInput')?.focus(), 50);
         } else {
-          const num = parseInt(part, 10);
-          if (!isNaN(num)) targetRows.add(num);
+          setTimeout(() => $('#excelSelRowInput')?.focus(), 50);
         }
-      }
-
-      if (targetRows.size === 0) {
-        showToast('No valid row numbers provided', 'warning');
-        return;
-      }
-
-      clearExcelSelections(table);
-      const tbody = table.querySelector('tbody') || table;
-      const allRows = Array.from(tbody.querySelectorAll('tr'));
-      let selectedCount = 0;
-
-      allRows.forEach((tr, rIdx) => {
-        const rowHdr = tr.querySelector('.excel-row-hdr') || tr.querySelector('th');
-        const rowNum = rowHdr ? parseInt(rowHdr.textContent.trim(), 10) : (rIdx + 1);
-        if (targetRows.has(rowNum)) {
-          tr.classList.add('excel-row-selected');
-          if (rowHdr) rowHdr.classList.add('excel-row-selected');
-          tr.querySelectorAll('td').forEach(td => {
-            td.classList.add('excel-cell-selected', 'excel-row-selected');
-          });
-          selectedCount++;
-        }
-      });
-
-      if (selectedCount > 0) {
-        showToast(`Selected ${selectedCount} row(s)`, 'success');
-      } else {
-        showToast('No matching rows found in table', 'warning');
-      }
-    });
-
-    $('#excelSelectMultipleColsOpt')?.addEventListener('click', () => {
-      $('#excelSelectMultiplePopover')?.classList.remove('show');
-      const table = document.querySelector('#editor table');
-      if (!table) {
-        showToast('Open or create a spreadsheet table first', 'info');
-        return;
-      }
-      const input = prompt('Enter column letters or numbers to select (e.g. A, C, E or A-C or 1, 3):');
-      if (!input || !input.trim()) return;
-
-      const theadTr = table.querySelector('thead tr');
-      const tbody = table.querySelector('tbody') || table;
-      if (!theadTr) {
-        showToast('No spreadsheet table headers found', 'warning');
-        return;
-      }
-
-      const parseCol = token => {
-        token = token.trim().toUpperCase();
-        if (/^\d+$/.test(token)) return parseInt(token, 10);
-        let col = 0;
-        for (let i = 0; i < token.length; i++) {
-          col = col * 26 + (token.charCodeAt(i) - 64);
-        }
-        return col;
       };
 
-      const targetIndices = new Set();
-      const parts = input.split(',').map(s => s.trim()).filter(Boolean);
-      for (const part of parts) {
-        if (part.includes('-')) {
-          const [startStr, endStr] = part.split('-');
-          const start = parseCol(startStr);
-          const end = parseCol(endStr);
-          if (start > 0 && end > 0) {
-            for (let c = Math.min(start, end); c <= Math.max(start, end); c++) targetIndices.add(c);
-          }
-        } else {
-          const col = parseCol(part);
-          if (col > 0) targetIndices.add(col);
-        }
-      }
+      const btnRows = $('#excelSelModeRowsBtn');
+      if (btnRows) btnRows.onclick = () => setMode('rows');
+      const btnCols = $('#excelSelModeColsBtn');
+      if (btnCols) btnCols.onclick = () => setMode('cols');
+      const btnBoth = $('#excelSelModeBothBtn');
+      if (btnBoth) btnBoth.onclick = () => setMode('both');
 
-      if (targetIndices.size === 0) {
-        showToast('No valid column identifiers provided', 'warning');
+      setMode(initialMode);
+      window.DocFlow.UI?.openModal?.('#excelSelectMultipleModal');
+    }
+
+    $('#excelSelectMultipleRowsOpt')?.addEventListener('click', () => openExcelSelectMultipleModal('rows'));
+    $('#excelSelectMultipleColsOpt')?.addEventListener('click', () => openExcelSelectMultipleModal('cols'));
+    $('#excelSelectMultipleBothOpt')?.addEventListener('click', () => openExcelSelectMultipleModal('both'));
+
+    $('#excelSelectMultipleCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#excelSelectMultipleModal'));
+    $('#excelSelectMultipleCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#excelSelectMultipleModal'));
+
+    $('#excelSelectMultipleApplyBtn')?.addEventListener('click', () => {
+      const table = document.querySelector('#editor table');
+      if (!table) return;
+
+      const theadTr = table.querySelector('thead tr');
+      const tbody = table.querySelector('tbody') || table;
+
+      const isRowsActive = $('#excelSelModeRowsBtn')?.classList.contains('active') || $('#excelSelModeBothBtn')?.classList.contains('active');
+      const isColsActive = $('#excelSelModeColsBtn')?.classList.contains('active') || $('#excelSelModeBothBtn')?.classList.contains('active');
+
+      const rowInput = isRowsActive ? ($('#excelSelRowInput')?.value || '').trim() : '';
+      const colInput = isColsActive ? ($('#excelSelColInput')?.value || '').trim() : '';
+
+      if (!rowInput && !colInput) {
+        showToast('Please enter row numbers or column letters to select', 'warning');
         return;
       }
 
       clearExcelSelections(table);
-      let selectedCount = 0;
-
-      targetIndices.forEach(colIndex => {
-        if (theadTr.children[colIndex]) {
-          theadTr.children[colIndex].classList.add('excel-col-selected');
-          tbody.querySelectorAll('tr').forEach(r => {
-            const td = r.children[colIndex];
-            if (td && td.tagName === 'TD') {
-              td.classList.add('excel-cell-selected', 'excel-col-selected');
-            }
-          });
-          selectedCount++;
-        }
-      });
-
-      if (selectedCount > 0) {
-        showToast(`Selected ${selectedCount} column(s)`, 'success');
-      } else {
-        showToast('No matching columns found in table', 'warning');
-      }
-    });
-
-    // Select Both (Row & Column together - Issue 2)
-    $('#excelSelectMultipleBothOpt')?.addEventListener('click', () => {
-      $('#excelSelectMultiplePopover')?.classList.remove('show');
-      const table = document.querySelector('#editor table');
-      if (!table) {
-        showToast('Open or create a spreadsheet table first', 'info');
-        return;
-      }
-      const theadTr = table.querySelector('thead tr');
-      const tbody = table.querySelector('tbody') || table;
-      if (!theadTr) {
-        showToast('No spreadsheet table headers found', 'warning');
-        return;
-      }
-
-      const input = prompt('Enter rows and columns to select (format: "Rows; Cols", e.g. "1-3; A-C" or "1,2; A,B"):');
-      if (!input || !input.trim()) return;
-
-      const segments = input.split(';');
-      const rowPart = segments[0] ? segments[0].trim() : '';
-      const colPart = segments[1] ? segments[1].trim() : '';
+      let selectedRowsCount = 0;
+      let selectedColsCount = 0;
 
       const parseCol = token => {
         token = token.trim().toUpperCase();
@@ -6049,14 +6760,10 @@
         return col;
       };
 
-      clearExcelSelections(table);
-      let selectedRowsCount = 0;
-      let selectedColsCount = 0;
-
-      // Parse & select rows
-      if (rowPart) {
+      // Select Rows
+      if (rowInput) {
         const targetRows = new Set();
-        const rParts = rowPart.split(',').map(s => s.trim()).filter(Boolean);
+        const rParts = rowInput.split(',').map(s => s.trim()).filter(Boolean);
         rParts.forEach(p => {
           if (p.includes('-')) {
             const [s, e] = p.split('-').map(n => parseInt(n.trim(), 10));
@@ -6084,10 +6791,10 @@
         });
       }
 
-      // Parse & select columns
-      if (colPart) {
+      // Select Columns
+      if (colInput && theadTr) {
         const targetCols = new Set();
-        const cParts = colPart.split(',').map(s => s.trim()).filter(Boolean);
+        const cParts = colInput.split(',').map(s => s.trim()).filter(Boolean);
         cParts.forEach(p => {
           if (p.includes('-')) {
             const [sStr, eStr] = p.split('-');
@@ -6116,10 +6823,16 @@
         });
       }
 
-      if (selectedRowsCount > 0 || selectedColsCount > 0) {
-        showToast(`Selected ${selectedRowsCount} row(s) and ${selectedColsCount} column(s) together`, 'success');
+      window.DocFlow.UI?.closeModal?.('#excelSelectMultipleModal');
+
+      if (selectedRowsCount > 0 && selectedColsCount > 0) {
+        showToast(`Selected ${selectedRowsCount} row(s) and ${selectedColsCount} column(s)`, 'success');
+      } else if (selectedRowsCount > 0) {
+        showToast(`Selected ${selectedRowsCount} row(s)`, 'success');
+      } else if (selectedColsCount > 0) {
+        showToast(`Selected ${selectedColsCount} column(s)`, 'success');
       } else {
-        showToast('No matching rows or columns found', 'warning');
+        showToast('No matching rows or columns found in table', 'warning');
       }
     });
 
@@ -6320,12 +7033,170 @@
           case 'math': insertSnippetIntoEditor('\n$$\nf(x) = \\int_{-\\infty}^\\infty \\hat{f}(\\xi)\\,e^{2 \\pi i \\xi x}\\,d\\xi\n$$\n'); showToast('LaTeX math block inserted', 'info'); break;
           case 'mermaid': insertSnippetIntoEditor('\n```mermaid\ngraph TD\n    A[Start] --> B{Process}\n    B -->|Success| C[Finish]\n    B -->|Retry| A\n```\n'); showToast('Mermaid diagram inserted', 'info'); break;
           case 'footnote': insertSnippetIntoEditor('[^1]', '', '\n\n[^1]: Footnote description here.\n'); showToast('Footnote reference inserted', 'info'); break;
+          case 'footnote-def': insertSnippetIntoEditor('\n[^1]: Detailed footnote explanation and reference source.\n'); showToast('Footnote definition block inserted', 'info'); break;
           case 'badge': insertSnippetIntoEditor('![Status](https://img.shields.io/badge/status-active-brightgreen)\n'); showToast('Status shield badge inserted', 'info'); break;
           case 'details': insertSnippetIntoEditor('\n<details>\n<summary>Click to view details</summary>\n\nDetailed content goes here...\n\n</details>\n'); showToast('Collapsible details inserted', 'info'); break;
+          case 'callout-warn': insertSnippetIntoEditor('> [!WARNING]\n> High-priority warning or critical instruction here.\n'); showToast('Warning callout inserted', 'info'); break;
+          case 'callout-tip': insertSnippetIntoEditor('> [!TIP]\n> Helpful hint or performance best practice here.\n'); showToast('Tip callout inserted', 'info'); break;
+          case 'task-done': insertSnippetIntoEditor('- [x] Completed task item\n'); break;
           case 'hr': insertSnippetIntoEditor('\n---\n'); break;
         }
       });
     });
+
+    // Helper: Clean & Beautify Markdown (Bug 1)
+    function cleanMarkdown(raw) {
+      if (!raw || typeof raw !== 'string') return '';
+      let text = raw.replace(/\r\n/g, '\n');
+
+      // 1. Remove trailing spaces on lines
+      let lines = text.split('\n').map(l => l.trimEnd());
+
+      // 2. Normalize headings (ensure clean blank line before and after # headings)
+      const formattedLines = [];
+      for (let i = 0; i < lines.length; i++) {
+        const l = lines[i];
+        const isHeading = /^#{1,6}\s+/.test(l.trim());
+        if (isHeading && formattedLines.length > 0 && formattedLines[formattedLines.length - 1].trim() !== '') {
+          formattedLines.push('');
+        }
+        formattedLines.push(l);
+        if (isHeading && i < lines.length - 1 && lines[i + 1].trim() !== '') {
+          formattedLines.push('');
+        }
+      }
+
+      // 3. Normalize multiple blank lines (max 2 consecutive newlines)
+      let cleaned = formattedLines.join('\n').replace(/\n{3,}/g, '\n\n');
+
+      // 4. Align & format markdown tables
+      cleaned = formatMarkdownTables(cleaned);
+
+      return cleaned.trim() + '\n';
+    }
+
+    // Helper: Robust HTML to Markdown Converter (Bug 1)
+    function htmlToMarkdown(input) {
+      if (!input) return '';
+      let str = input.trim();
+
+      // Check if input is escaped HTML inside pre
+      const parser = new DOMParser();
+      let doc = parser.parseFromString(str, 'text/html');
+      const singlePre = doc.body.querySelector('pre.md-code-view, pre.html-code-view, pre');
+      if (singlePre && doc.body.children.length === 1) {
+        const inner = singlePre.innerText || singlePre.textContent || '';
+        if (/<[a-zA-Z][\s\S]*>/i.test(inner)) {
+          doc = parser.parseFromString(inner, 'text/html');
+        }
+      }
+
+      function walk(node) {
+        if (!node) return '';
+        if (node.nodeType === Node.TEXT_NODE) return node.nodeValue;
+        if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+        const tag = node.tagName.toLowerCase();
+        const children = Array.from(node.childNodes).map(walk).join('');
+
+        switch (tag) {
+          case 'h1': return `\n\n# ${children.trim()}\n\n`;
+          case 'h2': return `\n\n## ${children.trim()}\n\n`;
+          case 'h3': return `\n\n### ${children.trim()}\n\n`;
+          case 'h4': return `\n\n#### ${children.trim()}\n\n`;
+          case 'h5': return `\n\n##### ${children.trim()}\n\n`;
+          case 'h6': return `\n\n###### ${children.trim()}\n\n`;
+          case 'p': return `\n\n${children.trim()}\n\n`;
+          case 'br': return '  \n';
+          case 'hr': return '\n\n---\n\n';
+          case 'strong':
+          case 'b': return `**${children.trim()}**`;
+          case 'em':
+          case 'i': return `*${children.trim()}*`;
+          case 's':
+          case 'del':
+          case 'strike': return `~~${children.trim()}~~`;
+          case 'mark': return `==${children.trim()}==`;
+          case 'sub': return `~${children.trim()}~`;
+          case 'sup': return `^${children.trim()}^`;
+          case 'kbd': return `<kbd>${children.trim()}</kbd>`;
+          case 'code':
+            if (node.parentNode && node.parentNode.tagName.toLowerCase() === 'pre') return children;
+            return `\`${children.trim()}\``;
+          case 'pre': {
+            const codeEl = node.querySelector('code');
+            const langClass = (codeEl ? codeEl.className : node.className) || '';
+            const m = langClass.match(/language-([a-zA-Z0-9_-]+)/);
+            const lang = m ? m[1] : '';
+            const codeText = codeEl ? (codeEl.innerText || codeEl.textContent) : (node.innerText || node.textContent);
+            return `\n\n\`\`\`${lang}\n${codeText.replace(/^\n+|\n+$/g, '')}\n\`\`\`\n\n`;
+          }
+          case 'blockquote': {
+            const lines = children.trim().split('\n');
+            return '\n\n' + lines.map(l => `> ${l}`).join('\n') + '\n\n';
+          }
+          case 'a': {
+            const href = node.getAttribute('href') || '#';
+            const title = node.getAttribute('title');
+            const titlePart = title ? ` "${title}"` : '';
+            return `[${children.trim() || href}](${href}${titlePart})`;
+          }
+          case 'img': {
+            const src = node.getAttribute('src') || '';
+            const alt = node.getAttribute('alt') || 'image';
+            const title = node.getAttribute('title');
+            const titlePart = title ? ` "${title}"` : '';
+            return `![${alt}](${src}${titlePart})`;
+          }
+          case 'ul': {
+            const items = Array.from(node.children).filter(c => c.tagName.toLowerCase() === 'li');
+            const listText = items.map(li => {
+              const ch = Array.from(li.childNodes).map(walk).join('').trim();
+              return `- ${ch}`;
+            }).join('\n');
+            return `\n\n${listText}\n\n`;
+          }
+          case 'ol': {
+            const items = Array.from(node.children).filter(c => c.tagName.toLowerCase() === 'li');
+            let idx = 1;
+            const listText = items.map(li => {
+              const ch = Array.from(li.childNodes).map(walk).join('').trim();
+              return `${idx++}. ${ch}`;
+            }).join('\n');
+            return `\n\n${listText}\n\n`;
+          }
+          case 'table': {
+            const rows = Array.from(node.querySelectorAll('tr'));
+            if (!rows.length) return '';
+            const matrix = rows.map(r => {
+              const cells = Array.from(r.querySelectorAll('th, td'));
+              return cells.map(c => Array.from(c.childNodes).map(walk).join('').trim().replace(/\|/g, '\\|').replace(/\n+/g, ' '));
+            });
+            const colCount = Math.max(...matrix.map(r => r.length), 1);
+            const headerRow = matrix[0] || [];
+            while (headerRow.length < colCount) headerRow.push('');
+            let mdTable = '\n\n| ' + headerRow.join(' | ') + ' |\n';
+            mdTable += '| ' + Array(colCount).fill('---').join(' | ') + ' |\n';
+            for (let i = 1; i < matrix.length; i++) {
+              const dataRow = matrix[i];
+              while (dataRow.length < colCount) dataRow.push('');
+              mdTable += '| ' + dataRow.join(' | ') + ' |\n';
+            }
+            return mdTable + '\n';
+          }
+          case 'script':
+          case 'style':
+          case 'head':
+          case 'meta':
+          case 'link':
+            return '';
+          default:
+            return children;
+        }
+      }
+
+      return walk(doc.body).replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    }
 
     // Unique Markdown Productivity Tools (No Duplicates Anywhere)
     $('#mdStatsBtn')?.addEventListener('click', () => {
@@ -6342,19 +7213,124 @@
       const ed = $('#editor');
       if (!ed) return;
       const pre = ed.querySelector('pre.md-code-view');
-      let raw = pre ? pre.textContent : getCodeEditorContent('md');
+      let raw = pre ? (pre.innerText || pre.textContent) : (ed.innerText || ed.textContent || '');
       if (raw.trim()) {
         window.DocFlow.Editor?.saveSnapshot?.();
-        let cleaned = raw.split('\n').map(l => l.trimEnd()).join('\n');
-        cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-        cleaned = formatMarkdownTables(cleaned);
+        const cleaned = cleanMarkdown(raw);
         if (pre) pre.textContent = cleaned;
         else ed.textContent = cleaned;
         window.DocFlow.Editor?.notifyChange?.();
         window.DocFlow.Editor?.saveSnapshot?.();
         showToast('Markdown cleaned, formatted and normalized', 'success');
+      } else {
+        showToast('No Markdown content to clean', 'info');
       }
     });
+
+    // Unique Tool: Extract all links & references from Markdown
+    $('#mdExtractLinksBtn')?.addEventListener('click', async () => {
+      const content = getCodeEditorContent('md');
+      if (!content.trim()) {
+        showToast('No Markdown content to extract links from', 'info');
+        return;
+      }
+      const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s\)]+|[^\s\)]+)\)/g;
+      const imgRegex = /!\[([^\]]*)\]\((https?:\/\/[^\s\)]+|[^\s\)]+)\)/g;
+      const links = [];
+      let m;
+      while ((m = linkRegex.exec(content)) !== null) {
+        links.push({ type: 'Link', text: m[1], url: m[2] });
+      }
+      while ((m = imgRegex.exec(content)) !== null) {
+        links.push({ type: 'Image', text: m[1] || '(no alt)', url: m[2] });
+      }
+
+      if (links.length === 0) {
+        showToast('No Markdown links or images found in document', 'info');
+        return;
+      }
+
+      const summary = links.map((l, i) => `${i + 1}. [${l.type}] ${l.text} -> ${l.url}`).join('\n');
+      try {
+        await navigator.clipboard.writeText(summary);
+        showToast(`Extracted ${links.length} link(s) to clipboard!`, 'success');
+      } catch (_) {
+        showToast(`Found ${links.length} link(s) in document`, 'info');
+      }
+    });
+
+    // Unique Tool: Strip Markdown syntax to Clean Plain Text
+    $('#mdStripToTextBtn')?.addEventListener('click', () => {
+      const content = getCodeEditorContent('md');
+      if (!content.trim()) {
+        showToast('No Markdown content to strip', 'info');
+        return;
+      }
+      window.DocFlow.Editor?.saveSnapshot?.();
+      let plain = content
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/\*([^*]+)\*/g, '$1')
+        .replace(/~~([^~]+)~~/g, '$1')
+        .replace(/==([^=]+)==/g, '$1')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/^\s*[-*+]\s+/gm, '')
+        .replace(/^\s*\d+\.\s+/gm, '')
+        .replace(/^\s*>\s+/gm, '')
+        .replace(/\|/g, ' ')
+        .replace(/[-]{3,}/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+
+      const ed = $('#editor');
+      const pre = ed?.querySelector('pre.md-code-view');
+      if (pre) pre.textContent = plain;
+      else if (ed) ed.textContent = plain;
+
+      window.DocFlow.Editor?.notifyChange?.();
+      window.DocFlow.Editor?.saveSnapshot?.();
+      showToast('Markdown stripped to clean plain text', 'success');
+    });
+
+    // Unique Tool: Markdown Cheat Sheet Reference Modal
+    $('#mdCheatSheetBtn')?.addEventListener('click', () => {
+      const tbody = $('#mdCheatSheetTableBody');
+      if (tbody && !tbody.children.length) {
+        const cheats = [
+          { el: 'Heading 1', syn: '# Heading 1', snip: '# Heading 1\n' },
+          { el: 'Heading 2', syn: '## Heading 2', snip: '## Heading 2\n' },
+          { el: 'Bold Text', syn: '**bold**', snip: '**Bold**' },
+          { el: 'Italic Text', syn: '*italic*', snip: '*Italic*' },
+          { el: 'Strikethrough', syn: '~~strikethrough~~', snip: '~~Strikethrough~~' },
+          { el: 'Inline Code', syn: '`code`', snip: '`code`' },
+          { el: 'Code Block', syn: '```javascript ... ```', snip: '```javascript\nconsole.log("Hello");\n```\n' },
+          { el: 'Mermaid Graph', syn: '```mermaid graph TD ... ```', snip: '```mermaid\ngraph TD\nA[Start] --> B{Decision}\nB -->|Yes| C[Finish]\nB -->|No| D[Alternate]\n```\n' },
+          { el: 'Blockquote', syn: '> Quote text', snip: '> Quote text\n' },
+          { el: 'Task Todo', syn: '- [ ] Task item', snip: '- [ ] Task item\n' },
+          { el: 'Task Done', syn: '- [x] Completed task', snip: '- [x] Completed task\n' },
+          { el: 'Table', syn: '| Col 1 | Col 2 |\n| --- | --- |', snip: '| Col 1 | Col 2 |\n| :--- | :--- |\n| Val 1 | Val 2 |\n' },
+          { el: 'Link', syn: '[Text](https://url.com)', snip: '[Text](https://url.com)' },
+          { el: 'Image', syn: '![Alt](https://image.url)', snip: '![Alt](https://image.url)' },
+          { el: 'Math LaTeX', syn: '$$ f(x) = \\int ... $$', snip: '$$\nf(x) = \\int_{-\\infty}^\\infty \\hat{f}(\\xi)\\,e^{2 \\pi i \\xi x}\\,d\\xi\n$$\n' }
+        ];
+        tbody.innerHTML = cheats.map(c => `
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:7px 8px;font-weight:600;color:var(--text-primary);">${c.el}</td>
+            <td style="padding:7px 8px;font-family:var(--font-mono, monospace);font-size:11.5px;color:var(--accent);">${escHtml(c.syn)}</td>
+            <td style="padding:7px 8px;">
+              <button type="button" class="fmt-btn" style="padding:3px 8px;font-size:11px;" onclick="window.DocFlow?.insertSnippetIntoEditor?.(${JSON.stringify(c.snip)}); window.DocFlow?.UI?.closeModal?.('#mdCheatSheetModal'); window.DocFlow?.UI?.showToast?.('Inserted ${c.el} snippet', 'info');">Insert</button>
+            </td>
+          </tr>
+        `).join('');
+      }
+      window.DocFlow.UI?.openModal?.('#mdCheatSheetModal');
+    });
+
+    $('#mdCheatSheetCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#mdCheatSheetModal'));
+    $('#mdCheatSheetDoneBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#mdCheatSheetModal'));
 
     function lintMarkdown(content) {
       const issues = [];
@@ -6446,30 +7422,14 @@
     $('#mdHtmlToMdBtn')?.addEventListener('click', () => {
       const ed = $('#editor');
       if (!ed) return;
-      const rawHtml = ed.innerHTML;
-      if (!rawHtml.trim() || rawHtml === '<p><br></p>') {
+      const pre = ed.querySelector('pre.md-code-view');
+      let raw = pre ? (pre.innerText || pre.textContent) : (ed.innerText || ed.textContent || ed.innerHTML || '');
+      if (!raw || !raw.trim()) {
         showToast('No HTML markup in editor to convert', 'info');
         return;
       }
       window.DocFlow.Editor?.saveSnapshot?.();
-
-      const div = document.createElement('div');
-      div.innerHTML = rawHtml;
-      div.querySelectorAll('h1').forEach(h => h.replaceWith(`\n# ${h.textContent.trim()}\n`));
-      div.querySelectorAll('h2').forEach(h => h.replaceWith(`\n## ${h.textContent.trim()}\n`));
-      div.querySelectorAll('h3').forEach(h => h.replaceWith(`\n### ${h.textContent.trim()}\n`));
-      div.querySelectorAll('h4').forEach(h => h.replaceWith(`\n#### ${h.textContent.trim()}\n`));
-      div.querySelectorAll('strong, b').forEach(b => b.replaceWith(`**${b.textContent.trim()}**`));
-      div.querySelectorAll('em, i').forEach(i => i.replaceWith(`*${i.textContent.trim()}*`));
-      div.querySelectorAll('code').forEach(c => c.replaceWith(`\`${c.textContent.trim()}\``));
-      div.querySelectorAll('a').forEach(a => a.replaceWith(`[${a.textContent.trim()}](${a.getAttribute('href') || '#'})`));
-      div.querySelectorAll('img').forEach(img => img.replaceWith(`![${img.getAttribute('alt') || 'image'}](${img.getAttribute('src') || ''})`));
-      div.querySelectorAll('li').forEach(li => li.replaceWith(`\n- ${li.textContent.trim()}`));
-      div.querySelectorAll('p').forEach(p => p.replaceWith(`\n${p.textContent.trim()}\n`));
-      div.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
-
-      const convertedMd = div.textContent.replace(/\n{3,}/g, '\n\n').trim();
-      const pre = ed.querySelector('pre.md-code-view');
+      const convertedMd = htmlToMarkdown(raw);
       if (pre) pre.textContent = convertedMd;
       else ed.textContent = convertedMd;
       window.DocFlow.Editor?.notifyChange?.();
@@ -6656,6 +7616,16 @@
           case 'audio': insertSnippetIntoEditor('<audio controls>\n  <source src="audio.mp3" type="audio/mpeg">\n  Your browser does not support the audio element.\n</audio>\n'); break;
           case 'ul': insertSnippetIntoEditor('<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>\n'); break;
           case 'ol': insertSnippetIntoEditor('<ol>\n  <li>First step</li>\n  <li>Second step</li>\n</ol>\n'); break;
+          case 'h5': insertSnippetIntoEditor('<h5>Minor Heading</h5>\n'); break;
+          case 'h6': insertSnippetIntoEditor('<h6>Sub-minor Heading</h6>\n'); break;
+          case 'kbd': insertSnippetIntoEditor('<kbd>Ctrl</kbd>'); break;
+          case 'time': insertSnippetIntoEditor('<time datetime="2026-10-14">October 14, 2026</time>'); break;
+          case 'details': insertSnippetIntoEditor('<details>\n  <summary>Click to view details</summary>\n  <p>Expanded details content goes here...</p>\n</details>\n'); break;
+          case 'dialog': insertSnippetIntoEditor('<dialog id="sampleDialog">\n  <h2>Dialog Title</h2>\n  <p>Native modal dialog content.</p>\n  <button onclick="this.closest(\'dialog\').close()">Close</button>\n</dialog>\n'); break;
+          case 'figure': insertSnippetIntoEditor('<figure>\n  <img src="https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=500" alt="Illustration" />\n  <figcaption>Caption describing the figure.</figcaption>\n</figure>\n'); break;
+          case 'hr': insertSnippetIntoEditor('<hr />\n'); break;
+          case 'progress': insertSnippetIntoEditor('<progress value="70" max="100">70%</progress>\n'); break;
+          case 'datalist': insertSnippetIntoEditor('<input list="fruitOptions" placeholder="Choose a fruit..." />\n<datalist id="fruitOptions">\n  <option value="Apple">\n  <option value="Banana">\n  <option value="Cherry">\n</datalist>\n'); break;
         }
       });
     });
@@ -6738,25 +7708,511 @@
       }
     });
 
+    // In-Container HTML Entities & Special Characters Modal (Bug 4)
+    const HTML_ENTITIES_DATA = [
+      { name: 'Copyright', code: '&copy;', char: '©', cat: 'symbols' },
+      { name: 'Registered', code: '&reg;', char: '®', cat: 'symbols' },
+      { name: 'Trademark', code: '&trade;', char: '™', cat: 'symbols' },
+      { name: 'Section', code: '&sect;', char: '§', cat: 'symbols' },
+      { name: 'Paragraph', code: '&para;', char: '¶', cat: 'symbols' },
+      { name: 'Dagger', code: '&dagger;', char: '†', cat: 'symbols' },
+      { name: 'Double Dagger', code: '&Dagger;', char: '‡', cat: 'symbols' },
+      { name: 'Per Mille', code: '&permil;', char: '‰', cat: 'symbols' },
+      { name: 'Spade Suit', code: '&spades;', char: '♠', cat: 'symbols' },
+      { name: 'Club Suit', code: '&clubs;', char: '♣', cat: 'symbols' },
+      { name: 'Heart Suit', code: '&hearts;', char: '♥', cat: 'symbols' },
+      { name: 'Diamond Suit', code: '&diams;', char: '♦', cat: 'symbols' },
+      { name: 'Checkmark', code: '&#10003;', char: '✓', cat: 'symbols' },
+      { name: 'Cross Mark', code: '&#10007;', char: '✗', cat: 'symbols' },
+
+      { name: 'Euro Sign', code: '&euro;', char: '€', cat: 'currency' },
+      { name: 'Pound Sterling', code: '&pound;', char: '£', cat: 'currency' },
+      { name: 'Yen Sign', code: '&yen;', char: '¥', cat: 'currency' },
+      { name: 'Cent Sign', code: '&cent;', char: '¢', cat: 'currency' },
+      { name: 'Indian Rupee', code: '&#8377;', char: '₹', cat: 'currency' },
+      { name: 'Currency Sign', code: '&curren;', char: '¤', cat: 'currency' },
+      { name: 'Florin', code: '&fnof;', char: 'ƒ', cat: 'currency' },
+
+      { name: 'Left Arrow', code: '&larr;', char: '←', cat: 'arrows' },
+      { name: 'Right Arrow', code: '&rarr;', char: '→', cat: 'arrows' },
+      { name: 'Up Arrow', code: '&uarr;', char: '↑', cat: 'arrows' },
+      { name: 'Down Arrow', code: '&darr;', char: '↓', cat: 'arrows' },
+      { name: 'Left-Right Arrow', code: '&harr;', char: '↔', cat: 'arrows' },
+      { name: 'Return Arrow', code: '&crarr;', char: '↵', cat: 'arrows' },
+      { name: 'Double Left Arrow', code: '&lArr;', char: '⇐', cat: 'arrows' },
+      { name: 'Double Right Arrow', code: '&rArr;', char: '⇒', cat: 'arrows' },
+      { name: 'Double Up Arrow', code: '&uArr;', char: '⇑', cat: 'arrows' },
+      { name: 'Double Down Arrow', code: '&dArr;', char: '⇓', cat: 'arrows' },
+      { name: 'Double Left-Right', code: '&hArr;', char: '⇔', cat: 'arrows' },
+
+      { name: 'Plus-Minus', code: '&plusmn;', char: '±', cat: 'math' },
+      { name: 'Multiplication', code: '&times;', char: '×', cat: 'math' },
+      { name: 'Division', code: '&divide;', char: '÷', cat: 'math' },
+      { name: 'Less-than or Equal', code: '&le;', char: '≤', cat: 'math' },
+      { name: 'Greater-than or Equal', code: '&ge;', char: '≥', cat: 'math' },
+      { name: 'Not Equal', code: '&ne;', char: '≠', cat: 'math' },
+      { name: 'Identical To', code: '&equiv;', char: '≡', cat: 'math' },
+      { name: 'Almost Equal To', code: '&asymp;', char: '≈', cat: 'math' },
+      { name: 'Square Root', code: '&radic;', char: '√', cat: 'math' },
+      { name: 'Infinity', code: '&infin;', char: '∞', cat: 'math' },
+      { name: 'Summation', code: '&sum;', char: '∑', cat: 'math' },
+      { name: 'Product', code: '&prod;', char: '∏', cat: 'math' },
+      { name: 'Integral', code: '&int;', char: '∫', cat: 'math' },
+      { name: 'Degree', code: '&deg;', char: '°', cat: 'math' },
+
+      { name: 'Em Dash', code: '&mdash;', char: '—', cat: 'punctuation' },
+      { name: 'En Dash', code: '&ndash;', char: '–', cat: 'punctuation' },
+      { name: 'Bullet Point', code: '&bull;', char: '•', cat: 'punctuation' },
+      { name: 'Horizontal Ellipsis', code: '&hellip;', char: '…', cat: 'punctuation' },
+      { name: 'Left Single Quote', code: '&lsquo;', char: '‘', cat: 'punctuation' },
+      { name: 'Right Single Quote', code: '&rsquo;', char: '’', cat: 'punctuation' },
+      { name: 'Left Double Quote', code: '&ldquo;', char: '“', cat: 'punctuation' },
+      { name: 'Right Double Quote', code: '&rdquo;', char: '”', cat: 'punctuation' },
+      { name: 'Left Guils', code: '&laquo;', char: '«', cat: 'punctuation' },
+      { name: 'Right Guils', code: '&raquo;', char: '»', cat: 'punctuation' },
+
+      { name: 'Alpha', code: '&alpha;', char: 'α', cat: 'greek' },
+      { name: 'Beta', code: '&beta;', char: 'β', cat: 'greek' },
+      { name: 'Gamma', code: '&gamma;', char: 'γ', cat: 'greek' },
+      { name: 'Delta', code: '&delta;', char: 'δ', cat: 'greek' },
+      { name: 'Theta', code: '&theta;', char: 'θ', cat: 'greek' },
+      { name: 'Lambda', code: '&lambda;', char: 'λ', cat: 'greek' },
+      { name: 'Pi', code: '&pi;', char: 'π', cat: 'greek' },
+      { name: 'Omega', code: '&omega;', char: 'ω', cat: 'greek' },
+      { name: 'Delta Capital', code: '&Delta;', char: 'Δ', cat: 'greek' },
+      { name: 'Omega Capital', code: '&Omega;', char: 'Ω', cat: 'greek' }
+    ];
+
+    let activeEntityCategory = 'all';
+
+    function renderHtmlEntitiesGrid(filterText = '', category = 'all') {
+      const container = $('#htmlEntitiesGridContainer');
+      if (!container) return;
+
+      const q = filterText.toLowerCase().trim();
+      const filtered = HTML_ENTITIES_DATA.filter(e => {
+        const matchesCat = category === 'all' || e.cat === category;
+        const matchesQuery = !q || e.name.toLowerCase().includes(q) || e.code.toLowerCase().includes(q) || e.char.includes(q);
+        return matchesCat && matchesQuery;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="grid-column:1/-1;padding:32px;text-align:center;color:var(--text-muted);font-size:12.5px;">No entities matching search filter</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(e => `
+        <div class="html-entity-card" data-code="${escHtml(e.code)}" data-char="${escHtml(e.char)}" title="${escHtml(e.name)} (${escHtml(e.code)})">
+          <div class="html-entity-char">${escHtml(e.char)}</div>
+          <div class="html-entity-code">${escHtml(e.code)}</div>
+          <div class="html-entity-name">${escHtml(e.name)}</div>
+        </div>
+      `).join('');
+
+      container.querySelectorAll('.html-entity-card').forEach(card => {
+        card.onclick = () => {
+          const code = card.dataset.code;
+          const char = card.dataset.char;
+          insertSnippetIntoEditor(code);
+          window.DocFlow.UI?.closeModal?.('#htmlEntitiesModal');
+          showToast(`Inserted entity ${code} (${char})`, 'info');
+        };
+      });
+    }
+
     $('#htmlEntitiesBtn')?.addEventListener('click', () => {
-      const entityMap = [
-        { name: '&copy; Copyright', char: '&copy;' },
-        { name: '&trade; Trademark', char: '&trade;' },
-        { name: '&euro; Euro Sign', char: '&euro;' },
-        { name: '&mdash; Em Dash', char: '&mdash;' },
-        { name: '&bull; Bullet Point', char: '&bull;' },
-        { name: '&rarr; Right Arrow', char: '&rarr;' },
-        { name: '&hearts; Heart', char: '&hearts;' }
-      ];
-      const choice = prompt('Enter entity number to insert:\n' + entityMap.map((e, idx) => `${idx + 1}. ${e.name} (${e.char})`).join('\n'), '1');
-      if (choice) {
-        const idx = parseInt(choice, 10) - 1;
-        if (entityMap[idx]) {
-          insertSnippetIntoEditor(entityMap[idx].char);
-          showToast(`Inserted entity ${entityMap[idx].char}`, 'info');
+      const searchInput = $('#htmlEntitySearchInput');
+      if (searchInput) searchInput.value = '';
+      activeEntityCategory = 'all';
+      $$('#htmlEntityCategoryPills button').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+      renderHtmlEntitiesGrid('', 'all');
+      window.DocFlow.UI?.openModal?.('#htmlEntitiesModal');
+      setTimeout(() => $('#htmlEntitySearchInput')?.focus(), 50);
+    });
+
+    $('#htmlEntitySearchInput')?.addEventListener('input', e => {
+      renderHtmlEntitiesGrid(e.target.value, activeEntityCategory);
+    });
+
+    $$('#htmlEntityCategoryPills button').forEach(pill => {
+      pill.addEventListener('click', () => {
+        $$('#htmlEntityCategoryPills button').forEach(b => b.classList.remove('active'));
+        pill.classList.add('active');
+        activeEntityCategory = pill.dataset.cat;
+        renderHtmlEntitiesGrid($('#htmlEntitySearchInput')?.value || '', activeEntityCategory);
+      });
+    });
+
+    $('#htmlEntitiesCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#htmlEntitiesModal'));
+    $('#htmlEntitiesCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#htmlEntitiesModal'));
+
+    // Problem 3: Robust HTML, CSS, and JS Comment / Uncomment Toggle
+    $('#htmlCommentBtn')?.addEventListener('mousedown', e => {
+      e.preventDefault(); // Retain editor focus & cursor/selection position
+    });
+
+    $('#htmlCommentBtn')?.addEventListener('click', () => {
+      const ed = $('#editor');
+      if (!ed) return;
+
+      const activeTab = window.DocFlow?.getActiveTab?.() || window.DocFlow?.Tabs?.getActive?.();
+      const isHtmlDoc = (activeTab?.fileType || '').toUpperCase() === 'HTML' ||
+                        (activeTab?.name || '').toLowerCase().endsWith('.html') ||
+                        (activeTab?.name || '').toLowerCase().endsWith('.htm') ||
+                        !!ed.querySelector('pre.html-code-view') ||
+                        document.querySelector('.ribbon-tab-btn[data-tab="html"]')?.classList.contains('active');
+
+      if (!isHtmlDoc) {
+        showToast('Comment is only available in HTML documents', 'warning');
+        return;
+      }
+
+      window.DocFlow.Editor?.saveSnapshot?.();
+
+      const pre = ed.querySelector('pre.html-code-view');
+
+      // Mode A: WYSIWYG Formatted HTML Mode (NO pre.html-code-view)
+      // Preserves 100% of document formatting without breaking DOM structures, tables, headings, or paragraph tags
+      if (!pre) {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount || !ed.contains(sel.anchorNode)) {
+          showToast('Click or select text in the HTML document to comment', 'info');
+          return;
+        }
+
+        let node = sel.anchorNode;
+        if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+
+        // Check if cursor/selection is inside an existing HTML comment wrapper or block
+        const existingInlineComment = node.closest('.df-html-comment');
+        const existingBlockComment = node.closest('.df-html-comment-block');
+
+        if (existingInlineComment) {
+          // Uncomment inline comment cleanly without disturbing inner nodes or formatting
+          const parent = existingInlineComment.parentNode;
+          while (existingInlineComment.firstChild) {
+            parent.insertBefore(existingInlineComment.firstChild, existingInlineComment);
+          }
+          existingInlineComment.remove();
+          window.DocFlow.Editor?.notifyChange?.();
+          showToast('HTML Comment removed', 'info');
+          return;
+        }
+
+        if (existingBlockComment) {
+          // Uncomment block comment cleanly by removing comment class & attribute
+          existingBlockComment.classList.remove('df-html-comment-block');
+          existingBlockComment.removeAttribute('data-df-comment');
+          window.DocFlow.Editor?.notifyChange?.();
+          showToast('HTML Comment removed from line', 'info');
+          return;
+        }
+
+        const range = sel.getRangeAt(0);
+        if (range.collapsed) {
+          // Caret is on a line without selection: comment current block element cleanly without changing layout
+          const block = node.closest('p, h1, h2, h3, h4, h5, h6, li, tr, th, td, blockquote, pre, div') || node;
+          if (block && block !== ed) {
+            block.classList.add('df-html-comment-block');
+            block.setAttribute('data-df-comment', 'true');
+            window.DocFlow.Editor?.notifyChange?.();
+            showToast('HTML Comment applied to line without altering formatting', 'success');
+            return;
+          }
+        }
+
+        // Selected range: wrap cleanly inside a comment span if valid, otherwise toggle on enclosing block
+        try {
+          const span = document.createElement('span');
+          span.className = 'df-html-comment';
+          span.setAttribute('data-df-comment', 'true');
+          range.surroundContents(span);
+          window.DocFlow.Editor?.notifyChange?.();
+          showToast('HTML Comment applied without altering formatting', 'success');
+        } catch (err) {
+          const block = node.closest('p, h1, h2, h3, h4, h5, h6, li, tr, th, td, blockquote, pre, div') || node;
+          if (block && block !== ed) {
+            block.classList.add('df-html-comment-block');
+            block.setAttribute('data-df-comment', 'true');
+            window.DocFlow.Editor?.notifyChange?.();
+            showToast('HTML Comment applied to block without altering formatting', 'success');
+          } else {
+            showToast('Select text within a block to comment', 'warning');
+          }
+        }
+        return;
+      }
+
+      // Mode B: Code View Mode (inside pre.html-code-view)
+      const target = pre;
+      const fullText = target.textContent || '';
+
+      // Helper to compute character offset inside target
+      function getOffset(node, offset) {
+        if (!node) return 0;
+        const treeWalker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+        let charCount = 0;
+        while (treeWalker.nextNode()) {
+          const curr = treeWalker.currentNode;
+          if (curr === node) {
+            return charCount + Math.min(offset, curr.nodeValue.length);
+          }
+          charCount += curr.nodeValue.length;
+        }
+        return charCount;
+      }
+
+      const sel = window.getSelection();
+      let hasSel = sel && sel.rangeCount > 0 && target.contains(sel.anchorNode);
+      let selStart = 0;
+      let selEnd = 0;
+      let isCollapsed = true;
+
+      if (hasSel) {
+        const off1 = getOffset(sel.anchorNode, sel.anchorOffset);
+        const off2 = getOffset(sel.focusNode, sel.focusOffset);
+        selStart = Math.min(off1, off2);
+        selEnd = Math.max(off1, off2);
+        isCollapsed = sel.isCollapsed || (selStart === selEnd);
+      } else {
+        selStart = fullText.length;
+        selEnd = fullText.length;
+        isCollapsed = true;
+      }
+
+      let replaceStart = 0;
+      let replaceEnd = 0;
+      let textToToggle = '';
+
+      if (isCollapsed) {
+        // Expand to current line bounds
+        replaceStart = fullText.lastIndexOf('\n', selStart - 1) + 1;
+        let nextNl = fullText.indexOf('\n', selStart);
+        replaceEnd = nextNl === -1 ? fullText.length : nextNl;
+        textToToggle = fullText.substring(replaceStart, replaceEnd);
+      } else {
+        replaceStart = selStart;
+        replaceEnd = selEnd;
+        textToToggle = fullText.substring(replaceStart, replaceEnd);
+      }
+
+      // Check language context at toggle location (<style> = CSS, <script> = JS, otherwise HTML)
+      const textBefore = fullText.substring(0, replaceStart);
+      const lastStyleOpen = textBefore.lastIndexOf('<style');
+      const lastStyleClose = textBefore.lastIndexOf('</style>');
+      const isCss = lastStyleOpen !== -1 && lastStyleOpen > lastStyleClose;
+
+      const lastScriptOpen = textBefore.lastIndexOf('<script');
+      const lastScriptClose = textBefore.lastIndexOf('</script>');
+      const isJs = lastScriptOpen !== -1 && lastScriptOpen > lastScriptClose;
+
+      let toggled = '';
+      const trimmed = textToToggle.trim();
+
+      if (isCss) {
+        // CSS Comment Toggle (/* ... */)
+        if (/^\/\*[\s\S]*\*\/$/.test(trimmed)) {
+          toggled = textToToggle.replace(/^(\s*)\/\*\s?([\s\S]*?)\s?\*\/(\s*)$/, '$1$2$3');
+        } else {
+          toggled = textToToggle.replace(/^(\s*)([\s\S]*?)(\s*)$/, '$1/* $2 */$3');
+        }
+      } else if (isJs) {
+        // JS Comment Toggle (// or /* ... */)
+        if (textToToggle.includes('\n')) {
+          const lines = textToToggle.split('\n');
+          const allCommented = lines.every(l => !l.trim() || l.trim().startsWith('//'));
+          if (allCommented) {
+            toggled = lines.map(l => l.replace(/^(\s*)\/\/\s?/, '$1')).join('\n');
+          } else if (/^\/\*[\s\S]*\*\/$/.test(trimmed)) {
+            toggled = textToToggle.replace(/^(\s*)\/\*\s?([\s\S]*?)\s?\*\/(\s*)$/, '$1$2$3');
+          } else {
+            toggled = lines.map(l => l.trim() ? l.replace(/^(\s*)(.*)$/, '$1// $2') : l).join('\n');
+          }
+        } else {
+          if (trimmed.startsWith('//')) {
+            toggled = textToToggle.replace(/^(\s*)\/\/\s?/, '$1');
+          } else if (/^\/\*[\s\S]*\*\/$/.test(trimmed)) {
+            toggled = textToToggle.replace(/^(\s*)\/\*\s?([\s\S]*?)\s?\*\/(\s*)$/, '$1$2$3');
+          } else {
+            toggled = textToToggle.replace(/^(\s*)(.*)$/, '$1// $2');
+          }
+        }
+      } else {
+        // HTML Comment Toggle (<!-- ... -->)
+        if (textToToggle.includes('\n')) {
+          const lines = textToToggle.split('\n');
+          const allCommented = lines.every(l => !l.trim() || (/^<!--[\s\S]*-->$/.test(l.trim())));
+          if (allCommented) {
+            toggled = lines.map(l => l.replace(/^(\s*)<!--\s?([\s\S]*?)\s?-->(\s*)$/, '$1$2$3')).join('\n');
+          } else {
+            toggled = lines.map(l => {
+              if (!l.trim()) return l;
+              return l.replace(/^(\s*)([\s\S]*?)(\s*)$/, '$1<!-- $2 -->$3');
+            }).join('\n');
+          }
+        } else {
+          if (/^<!--[\s\S]*-->$/.test(trimmed)) {
+            toggled = textToToggle.replace(/^(\s*)<!--\s?([\s\S]*?)\s?-->(\s*)$/, '$1$2$3');
+          } else {
+            if (!trimmed) {
+              toggled = '<!--  -->';
+            } else {
+              toggled = textToToggle.replace(/^(\s*)([\s\S]*?)(\s*)$/, '$1<!-- $2 -->$3');
+            }
+          }
         }
       }
+
+      // Apply replacement
+      target.textContent = fullText.substring(0, replaceStart) + toggled + fullText.substring(replaceEnd);
+      window.DocFlow.Editor?.notifyChange?.();
+      window.DocFlow.Editor?.saveSnapshot?.();
+
+      // Restore caret inside target
+      try {
+        const newCaretPos = replaceStart + toggled.length;
+        const treeWalker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
+        let charCount = 0;
+        let targetNode = target;
+        let targetOffset = 0;
+        while (treeWalker.nextNode()) {
+          const curr = treeWalker.currentNode;
+          if (charCount + curr.nodeValue.length >= newCaretPos) {
+            targetNode = curr;
+            targetOffset = newCaretPos - charCount;
+            break;
+          }
+          charCount += curr.nodeValue.length;
+        }
+        const newRange = document.createRange();
+        newRange.setStart(targetNode, Math.min(targetOffset, targetNode.nodeValue ? targetNode.nodeValue.length : 0));
+        newRange.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(newRange);
+      } catch (e) { }
+
+      const langLabel = isCss ? 'CSS' : isJs ? 'JavaScript' : 'HTML tag';
+      showToast(`Comment toggled for ${langLabel}`, 'success');
     });
+
+    // Helper: Convert any CSS color (hex, rgb, rgba, hsl, name) to #rrggbb hex string
+    function cssColorToHex(colorStr) {
+      if (!colorStr) return '#000000';
+      const clean = colorStr.trim();
+      if (/^#[0-9a-fA-F]{6}$/i.test(clean)) return clean.toLowerCase();
+      if (/^#[0-9a-fA-F]{3}$/i.test(clean)) {
+        return `#${clean[1]}${clean[1]}${clean[2]}${clean[2]}${clean[3]}${clean[3]}`.toLowerCase();
+      }
+      try {
+        const dummy = document.createElement('div');
+        dummy.style.color = clean;
+        document.body.appendChild(dummy);
+        const comp = window.getComputedStyle(dummy).color;
+        document.body.removeChild(dummy);
+        const m = comp.match(/^rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (m) {
+          const r = parseInt(m[1], 10).toString(16).padStart(2, '0');
+          const g = parseInt(m[2], 10).toString(16).padStart(2, '0');
+          const b = parseInt(m[3], 10).toString(16).padStart(2, '0');
+          return `#${r}${g}${b}`.toLowerCase();
+        }
+      } catch (e) {}
+      return '#3b82f6';
+    }
+
+    // Unique HTML Tool: Extract Colors into visual palette modal with changable color picker for every color occurrence (Bug 4)
+    $('#htmlExtractColorsBtn')?.addEventListener('click', () => {
+      const content = getCodeEditorContent('html');
+      if (!content.trim()) {
+        showToast('No HTML content to extract colors from', 'info');
+        return;
+      }
+      const hexMatches = content.match(/#(?:[0-9a-fA-F]{3,4}){1,2}\b/g) || [];
+      const rgbMatches = content.match(/rgba?\([^)]+\)/g) || [];
+      const hslMatches = content.match(/hsla?\([^)]+\)/g) || [];
+
+      const colorMap = new Map();
+      [...hexMatches, ...rgbMatches, ...hslMatches].forEach(c => {
+        const norm = c.trim();
+        colorMap.set(norm, (colorMap.get(norm) || 0) + 1);
+      });
+
+      const container = $('#htmlColorsGridContainer');
+      const badge = $('#htmlColorsCountBadge');
+      if (colorMap.size === 0) {
+        if (container) container.innerHTML = '<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text-muted);font-size:12.5px;">No color codes (#hex, rgb, hsl) found in HTML document.</div>';
+        if (badge) badge.textContent = '0 colors found';
+      } else {
+        if (badge) badge.textContent = `${colorMap.size} unique color(s) found`;
+        if (container) {
+          container.innerHTML = Array.from(colorMap.entries()).map(([color, count]) => {
+            const hexVal = cssColorToHex(color);
+            return `
+            <div class="html-color-card" data-orig-color="${escHtml(color)}">
+              <div class="html-color-left" onclick="navigator.clipboard.writeText('${escHtml(color)}'); window.DocFlow?.UI?.showToast?.('Copied ${escHtml(color)} to clipboard', 'success');" title="Click to copy ${escHtml(color)}">
+                <div class="html-color-chip" style="background:${color};"></div>
+                <div class="html-color-info">
+                  <span class="html-color-hex">${escHtml(color)}</span>
+                  <span class="html-color-count">${count} occurrence(s)</span>
+                </div>
+              </div>
+              <div class="html-color-actions">
+                <label class="html-color-picker-wrap" title="Pick new color to replace all occurrences in document">
+                  <i class="fas fa-eye-dropper" style="font-size:10px;color:var(--text-muted);pointer-events:none;"></i>
+                  <input type="color" class="html-color-item-picker" value="${hexVal}" data-old-color="${escHtml(color)}">
+                </label>
+              </div>
+            </div>
+          `;
+          }).join('');
+
+          // Bind color picker change events to replace occurrences in the document
+          container.querySelectorAll('.html-color-item-picker').forEach(picker => {
+            picker.addEventListener('change', (e) => {
+              const oldColor = e.target.getAttribute('data-old-color');
+              const newColor = e.target.value;
+              if (!oldColor || !newColor || oldColor.toLowerCase() === newColor.toLowerCase()) return;
+
+              const ed = $('#editor');
+              if (!ed) return;
+              window.DocFlow.Editor?.saveSnapshot?.();
+              const pre = ed.querySelector('pre.html-code-view');
+              let currentCode = pre ? pre.textContent : (ed.innerText || ed.textContent || '');
+
+              const escapedOld = oldColor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const regex = new RegExp(escapedOld, 'gi');
+              const occurrences = (currentCode.match(regex) || []).length;
+
+              if (occurrences > 0) {
+                currentCode = currentCode.replace(regex, newColor);
+                if (pre) pre.textContent = currentCode;
+                else ed.textContent = currentCode;
+                window.DocFlow.Editor?.notifyChange?.();
+                window.DocFlow.Editor?.saveSnapshot?.();
+
+                // Update card visual elements
+                const card = e.target.closest('.html-color-card');
+                if (card) {
+                  const chip = card.querySelector('.html-color-chip');
+                  if (chip) chip.style.background = newColor;
+                  const hexSpan = card.querySelector('.html-color-hex');
+                  if (hexSpan) hexSpan.textContent = newColor;
+                  card.setAttribute('data-orig-color', newColor);
+                  e.target.setAttribute('data-old-color', newColor);
+                }
+                showToast(`Replaced ${occurrences} occurrence(s) of ${oldColor} with ${newColor}`, 'success');
+              } else {
+                showToast(`No remaining occurrences of ${oldColor} found`, 'info');
+              }
+            });
+          });
+        }
+      }
+      window.DocFlow.UI?.openModal?.('#htmlColorsModal');
+    });
+
+    $('#htmlColorsCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#htmlColorsModal'));
+    $('#htmlColorsDoneBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#htmlColorsModal'));
 
     $('#htmlExtractAssetsBtn')?.addEventListener('click', async () => {
       const content = getCodeEditorContent('html');
@@ -6836,6 +8292,337 @@
       return (ed.innerText || ed.textContent || '').trim();
     }
 
+    // ==========================================================================
+    // Mermaid & Flowchart Diagram Renderer (Bug 1: Mermaid live preview)
+    // ==========================================================================
+
+    function buildFallbackFlowchartSvg(text) {
+      if (!text) return '';
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+
+      const nodes = new Map();
+      const edges = [];
+
+      function getOrCreateNode(id, rawDef = '') {
+        const cleanId = id.trim();
+        if (!nodes.has(cleanId)) {
+          let label = cleanId;
+          let shape = 'rect';
+
+          if (rawDef) {
+            if (rawDef.includes('{') && rawDef.includes('}')) {
+              shape = 'diamond';
+              label = rawDef.substring(rawDef.indexOf('{') + 1, rawDef.lastIndexOf('}'));
+            } else if (rawDef.includes('([') && rawDef.includes('])')) {
+              shape = 'stadium';
+              label = rawDef.substring(rawDef.indexOf('([') + 2, rawDef.lastIndexOf('])'));
+            } else if (rawDef.includes('((') && rawDef.includes('))')) {
+              shape = 'circle';
+              label = rawDef.substring(rawDef.indexOf('((') + 2, rawDef.lastIndexOf('))'));
+            } else if (rawDef.includes('[') && rawDef.includes(']')) {
+              shape = 'rect';
+              label = rawDef.substring(rawDef.indexOf('[') + 1, rawDef.lastIndexOf(']'));
+            }
+          }
+          nodes.set(cleanId, { id: cleanId, label: label.trim(), shape });
+        } else if (rawDef) {
+          const existing = nodes.get(cleanId);
+          if (rawDef.includes('{') && rawDef.includes('}')) {
+            existing.shape = 'diamond';
+            existing.label = rawDef.substring(rawDef.indexOf('{') + 1, rawDef.lastIndexOf('}')).trim();
+          } else if (rawDef.includes('[') && rawDef.includes(']')) {
+            existing.label = rawDef.substring(rawDef.indexOf('[') + 1, rawDef.lastIndexOf(']')).trim();
+          }
+        }
+        return nodes.get(cleanId);
+      }
+
+      for (const line of lines) {
+        if (/^(graph|flowchart)\s+/i.test(line) || line.startsWith('%%')) continue;
+
+        const edgeMatch = line.match(/^([A-Za-z0-9_-]+(?:\[[^\]]+\]|\{[^}]+\}|\([^)]+\))?)\s*(-->|---|==>|-\.->)\s*(?:\|([^|]+)\|\s*)?([A-Za-z0-9_-]+(?:\[[^\]]+\]|\{[^}]+\}|\([^)]+\))?)$/);
+
+        if (edgeMatch) {
+          const rawA = edgeMatch[1];
+          const arrow = edgeMatch[2];
+          const edgeLabel = edgeMatch[3] ? edgeMatch[3].trim() : '';
+          const rawB = edgeMatch[4];
+
+          const idA = rawA.match(/^([A-Za-z0-9_-]+)/)[1];
+          const idB = rawB.match(/^([A-Za-z0-9_-]+)/)[1];
+
+          getOrCreateNode(idA, rawA);
+          getOrCreateNode(idB, rawB);
+
+          edges.push({ from: idA, to: idB, label: edgeLabel, arrow });
+        } else {
+          const singleMatch = line.match(/^([A-Za-z0-9_-]+)(\[[^\]]+\]|\{[^}]+\}|\([^)]+\))$/);
+          if (singleMatch) {
+            getOrCreateNode(singleMatch[1], singleMatch[0]);
+          }
+        }
+      }
+
+      if (nodes.size === 0) return '';
+
+      const inDegree = new Map();
+      nodes.forEach((_, id) => inDegree.set(id, 0));
+      edges.forEach(e => {
+        if (inDegree.has(e.to)) inDegree.set(e.to, inDegree.get(e.to) + 1);
+      });
+
+      const levels = new Map();
+      const queue = [];
+      nodes.forEach((_, id) => {
+        if (inDegree.get(id) === 0) {
+          levels.set(id, 0);
+          queue.push(id);
+        }
+      });
+
+      if (queue.length === 0) {
+        const firstId = nodes.keys().next().value;
+        levels.set(firstId, 0);
+        queue.push(firstId);
+      }
+
+      while (queue.length > 0) {
+        const curr = queue.shift();
+        const currLvl = levels.get(curr) || 0;
+        const outEdges = edges.filter(e => e.from === curr);
+        for (const e of outEdges) {
+          if (!levels.has(e.to) || levels.get(e.to) < currLvl + 1) {
+            levels.set(e.to, currLvl + 1);
+            queue.push(e.to);
+          }
+        }
+      }
+
+      nodes.forEach((_, id) => {
+        if (!levels.has(id)) levels.set(id, 0);
+      });
+
+      const levelGroups = [];
+      levels.forEach((lvl, id) => {
+        while (levelGroups.length <= lvl) levelGroups.push([]);
+        levelGroups[lvl].push(id);
+      });
+
+      const svgWidth = 480;
+      const levelHeight = 85;
+      const marginTop = 35;
+      const svgHeight = Math.max(200, levelGroups.length * levelHeight + marginTop + 25);
+
+      const nodeCoords = new Map();
+
+      levelGroups.forEach((grp, lvlIdx) => {
+        const y = marginTop + lvlIdx * levelHeight;
+        const count = grp.length;
+        const step = svgWidth / (count + 1);
+
+        grp.forEach((nodeId, idx) => {
+          const node = nodes.get(nodeId);
+          const x = step * (idx + 1);
+          const isDiamond = node.shape === 'diamond';
+          const w = isDiamond ? 105 : 95;
+          const h = isDiamond ? 48 : 36;
+          nodeCoords.set(nodeId, { x, y, w, h, node });
+        });
+      });
+
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${svgWidth} ${svgHeight}" width="100%" style="max-width:440px;height:auto;display:block;margin:0 auto;font-family:system-ui,-apple-system,sans-serif;">\n`;
+      svg += `  <defs>\n`;
+      svg += `    <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">\n`;
+      svg += `      <polygon points="0 0, 8 3, 0 6" fill="#64748b" />\n`;
+      svg += `    </marker>\n`;
+      svg += `    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n`;
+      svg += `      <stop offset="0%" stop-color="#38bdf8"/>\n`;
+      svg += `      <stop offset="100%" stop-color="#0284c7"/>\n`;
+      svg += `    </linearGradient>\n`;
+      svg += `    <linearGradient id="amberGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n`;
+      svg += `      <stop offset="0%" stop-color="#fbbf24"/>\n`;
+      svg += `      <stop offset="100%" stop-color="#d97706"/>\n`;
+      svg += `    </linearGradient>\n`;
+      svg += `    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n`;
+      svg += `      <stop offset="0%" stop-color="#34d399"/>\n`;
+      svg += `      <stop offset="100%" stop-color="#059669"/>\n`;
+      svg += `    </linearGradient>\n`;
+      svg += `    <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">\n`;
+      svg += `      <stop offset="0%" stop-color="#a855f7"/>\n`;
+      svg += `      <stop offset="100%" stop-color="#7e22ce"/>\n`;
+      svg += `    </linearGradient>\n`;
+      svg += `    <filter id="diagShadow" x="-10%" y="-10%" width="120%" height="120%">\n`;
+      svg += `      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.12"/>\n`;
+      svg += `    </filter>\n`;
+      svg += `  </defs>\n`;
+
+      edges.forEach(e => {
+        const src = nodeCoords.get(e.from);
+        const dst = nodeCoords.get(e.to);
+        if (!src || !dst) return;
+
+        const startX = src.x;
+        const startY = src.y + (src.h / 2);
+        const endX = dst.x;
+        const endY = dst.y - (dst.h / 2);
+
+        let pathD = '';
+        if (Math.abs(startX - endX) < 5) {
+          pathD = `M ${startX} ${startY} L ${endX} ${endY}`;
+        } else {
+          const midY = (startY + endY) / 2;
+          pathD = `M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`;
+        }
+
+        svg += `  <path d="${pathD}" fill="none" stroke="#64748b" stroke-width="2" marker-end="url(#arrowhead)"/>\n`;
+
+        if (e.label) {
+          const labelX = (startX + endX) / 2 + (startX < endX ? 14 : -14);
+          const labelY = (startY + endY) / 2;
+          const pillWidth = Math.max(34, e.label.length * 8 + 12);
+          svg += `  <g transform="translate(${labelX}, ${labelY})">\n`;
+          svg += `    <rect x="${-pillWidth / 2}" y="-10" width="${pillWidth}" height="20" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>\n`;
+          svg += `    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="11" font-weight="700" fill="#334155">${escHtml(e.label)}</text>\n`;
+          svg += `  </g>\n`;
+        }
+      });
+
+      nodeCoords.forEach((item, id) => {
+        const { x, y, w, h, node } = item;
+        const label = node.label || id;
+        const lowerLabel = label.toLowerCase();
+
+        let fillGrad = 'url(#blueGrad)';
+        let strokeCol = '#0284c7';
+        let textColor = '#ffffff';
+
+        if (node.shape === 'diamond') {
+          fillGrad = 'url(#amberGrad)';
+          strokeCol = '#b45309';
+          textColor = '#ffffff';
+        } else if (lowerLabel.includes('finish') || lowerLabel.includes('end') || lowerLabel.includes('success')) {
+          fillGrad = 'url(#greenGrad)';
+          strokeCol = '#047857';
+          textColor = '#ffffff';
+        } else if (lowerLabel.includes('alternate') || lowerLabel.includes('error') || lowerLabel.includes('retry')) {
+          fillGrad = 'url(#purpleGrad)';
+          strokeCol = '#6b21a8';
+          textColor = '#ffffff';
+        }
+
+        svg += `  <g transform="translate(${x}, ${y})" filter="url(#diagShadow)">\n`;
+
+        if (node.shape === 'diamond') {
+          const hw = w / 2;
+          const hh = h / 2;
+          svg += `    <polygon points="0,${-hh} ${hw},0 0,${hh} ${-hw},0" fill="${fillGrad}" stroke="${strokeCol}" stroke-width="2"/>\n`;
+          svg += `    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="700" fill="${textColor}">${escHtml(label)}</text>\n`;
+        } else if (node.shape === 'stadium' || lowerLabel.includes('start')) {
+          svg += `    <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="22" fill="${fillGrad}" stroke="${strokeCol}" stroke-width="2"/>\n`;
+          svg += `    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="700" fill="${textColor}">${escHtml(label)}</text>\n`;
+        } else {
+          svg += `    <rect x="${-w / 2}" y="${-h / 2}" width="${w}" height="${h}" rx="8" fill="${fillGrad}" stroke="${strokeCol}" stroke-width="2"/>\n`;
+          svg += `    <text x="0" y="0" text-anchor="middle" dominant-baseline="central" font-size="12" font-weight="700" fill="${textColor}">${escHtml(label)}</text>\n`;
+        }
+
+        svg += `  </g>\n`;
+      });
+
+      svg += `</svg>`;
+      return svg;
+    }
+
+    async function renderMermaidDiagramsInArea(container) {
+      if (!container) return;
+
+      if (window.mermaid) {
+        try {
+          const isDark = document.body.classList.contains('dark-theme') ||
+            document.documentElement.getAttribute('data-theme') === 'dark';
+          window.mermaid.initialize({
+            startOnLoad: false,
+            theme: isDark ? 'dark' : 'default',
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' }
+          });
+        } catch (e) {
+          console.warn('Mermaid init warning', e);
+        }
+      }
+
+      const preElements = Array.from(container.querySelectorAll('pre'));
+      let diagramCount = 0;
+
+      for (const pre of preElements) {
+        const codeEl = pre.querySelector('code');
+        const className = ((codeEl ? codeEl.className : '') + ' ' + (pre.className || '')).toLowerCase();
+        const rawCode = (codeEl ? codeEl.textContent : pre.textContent) || '';
+        const trimmed = rawCode.trim();
+
+        const isMermaidClass = /language-mermaid|lang-mermaid|\bmermaid\b/.test(className);
+        const isDiagramText = /^(graph\s+(td|tb|bt|rl|lr)|flowchart\s+(td|tb|bt|rl|lr)|sequencediagram|classdiagram|statediagram|erdiagram|journey|gantt|pie|gitgraph)/i.test(trimmed);
+
+        if (isMermaidClass || isDiagramText) {
+          diagramCount++;
+          const diagId = 'mermaid_diag_' + Date.now() + '_' + diagramCount;
+
+          const wrap = document.createElement('div');
+          wrap.className = 'mermaid-diagram-wrap';
+          wrap.innerHTML = `
+            <div class="mermaid-diagram-title">
+              <i class="fas fa-diagram-project" style="color:var(--accent,#0284c7);"></i> Mermaid Diagram
+            </div>
+            <div class="mermaid-diagram-target" id="${diagId}" style="width:100%;display:flex;justify-content:center;">
+              <div style="padding:14px;color:var(--text-muted);font-size:12px;">
+                <i class="fas fa-spinner fa-spin"></i> Rendering diagram...
+              </div>
+            </div>
+          `;
+
+          pre.parentNode.replaceChild(wrap, pre);
+          const target = wrap.querySelector('.mermaid-diagram-target');
+
+          let renderedSuccess = false;
+          if (window.mermaid && typeof window.mermaid.render === 'function') {
+            try {
+              const result = window.mermaid.render(diagId + '_svg', trimmed);
+              if (result && typeof result.then === 'function') {
+                const res = await result;
+                if (res && res.svg) {
+                  target.innerHTML = res.svg;
+                  if (res.bindFunctions) {
+                    try { res.bindFunctions(target); } catch (_) {}
+                  }
+                  renderedSuccess = true;
+                }
+              } else if (typeof result === 'string') {
+                target.innerHTML = result;
+                renderedSuccess = true;
+              }
+            } catch (mErr) {
+              console.warn('Native Mermaid render error, applying fallback builder:', mErr);
+            }
+          }
+
+          if (!renderedSuccess) {
+            try {
+              const fallbackSvg = buildFallbackFlowchartSvg(trimmed);
+              if (fallbackSvg) {
+                target.innerHTML = fallbackSvg;
+                renderedSuccess = true;
+              }
+            } catch (fErr) {
+              console.warn('Fallback flowchart generator error:', fErr);
+            }
+          }
+
+          if (!renderedSuccess) {
+            target.innerHTML = `<pre style="margin:0;padding:12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;font-size:12px;overflow-x:auto;">${escHtml(trimmed)}</pre>`;
+          }
+        }
+      }
+    }
+
     // 14. Code Preview Modal (Markdown & HTML Live Previews - Issues 3 & 4)
     function openCodePreviewModal(mode) {
       const modal = $('#codePreviewModal');
@@ -6883,6 +8670,9 @@
           } else {
             mdArea.innerHTML = renderBasicMarkdown(rawMd);
           }
+
+          // Render Mermaid Diagrams in MD Preview (Bug 1)
+          renderMermaidDiagramsInArea(mdArea);
         }
         showToast('Rendered Markdown preview loaded', 'info');
       }

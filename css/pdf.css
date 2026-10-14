@@ -265,3 +265,9 @@
   word-break: break-word;
   overflow-wrap: break-word;
 }
+
+/* PDF Grayscale / B&W Print Reading Mode (Bug 5) */
+.pdf-wrap.pdf-grayscale-mode .pdf-pages,
+.pdf-pages.pdf-grayscale-mode {
+  filter: grayscale(100%) contrast(115%) brightness(96%) !important;
+}
