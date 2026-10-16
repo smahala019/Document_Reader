@@ -1500,10 +1500,10 @@
   font-size: 11px;
 }
 
-/* Floating Find & Replace Bar (Bug 10 & Issue 4) */
+/* Floating Find & Replace Bar (Bug 10 & Issue 4 & Bug 9) */
 .find-bar {
   position: fixed !important;
-  top: 76px !important;
+  top: 156px !important;
   right: 24px !important;
   z-index: 100015 !important;
   background: var(--bg-elevated, #ffffff) !important;
@@ -2316,11 +2316,15 @@ body.reading-mode .find-bar:not(.open) {
 body.reading-mode .find-bar.open {
   display: flex !important;
   position: fixed !important;
-  top: 14px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
+  top: 56px !important;
+  right: 14px !important;
+  left: auto !important;
+  transform: none !important;
   z-index: 100025 !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22) !important;
+  border-radius: 10px !important;
+  padding: 8px 12px !important;
+  max-width: 95vw !important;
 }
 
 body.reading-mode .main-content {

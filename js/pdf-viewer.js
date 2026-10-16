@@ -363,11 +363,18 @@
       if (ed) {
         extractedPdfRotation = (extractedPdfRotation + 90) % 360;
         const richPages = ed.querySelectorAll('.pdf-rich-page, .df-page, .editor-page');
+        const isPerpendicular = (extractedPdfRotation === 90 || extractedPdfRotation === 270);
         if (richPages.length > 0) {
           richPages.forEach(p => {
             p.style.transform = `rotate(${extractedPdfRotation}deg)`;
             p.style.transformOrigin = 'center center';
-            p.style.transition = 'transform 0.25s ease';
+            p.style.transition = 'transform 0.25s ease, margin 0.25s ease';
+            if (isPerpendicular) {
+              const diff = Math.max(0, (p.offsetHeight - p.offsetWidth) / 2);
+              p.style.margin = `${diff + 20}px auto`;
+            } else {
+              p.style.margin = '';
+            }
           });
         } else {
           ed.style.transform = `rotate(${extractedPdfRotation}deg)`;
@@ -393,11 +400,9 @@
         $('#pdfQuickInvertBtn')?.classList.toggle('active', isNight);
         showToast(`PDF Night Mode: ${isNight ? 'ON' : 'OFF'}`, 'info');
       } else {
-        const ed = $('#editor');
-        if (ed) {
-          const isNight = ed.classList.toggle('pdf-night-mode');
-          const pages = ed.querySelectorAll('.editor-page, .pdf-rich-page');
-          pages.forEach(p => p.classList.toggle('pdf-night-mode', isNight));
+        const wrap = $('#editorWrap') || $('#editor');
+        if (wrap) {
+          const isNight = wrap.classList.toggle('pdf-night-mode');
           $('#pdfRibbonInvertBtn')?.classList.toggle('active', isNight);
           $('#pdfQuickInvertBtn')?.classList.toggle('active', isNight);
           showToast(`Document Night Mode: ${isNight ? 'ON' : 'OFF'}`, 'info');
@@ -582,6 +587,12 @@
         tab.pdfData = activeTab.pdfData;
         tab.pdfDoc = pdfDoc;
         tab.sourcePdfName = activeTab.name;
+      }
+      if (window.DocFlow?.PdfStore) {
+        window.DocFlow.PdfStore.set('content-' + tab.id, extractedHtml);
+        if (activeTab && activeTab.pdfData) {
+          window.DocFlow.PdfStore.set('tab-' + tab.id, activeTab.pdfData);
+        }
       }
 
       window.DocFlow.UI.Tabs.activateTab(tab);
@@ -1093,6 +1104,10 @@
 
         const tab = window.DocFlow.UI.Tabs.create(pdfName, '', 'PDF', 'pdf');
         tab.pdfData = pdfArrayBuffer;
+        if (window.DocFlow?.PdfStore) {
+          window.DocFlow.PdfStore.set(pdfName, pdfArrayBuffer);
+          window.DocFlow.PdfStore.set('tab-' + tab.id, pdfArrayBuffer);
+        }
         loadPdfTab(tab);
         window.DocFlow.UI.Tabs.activateTab(tab);
 

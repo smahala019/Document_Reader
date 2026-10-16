@@ -1032,6 +1032,11 @@
       if (isInsideModal) return;
 
       if (e.ctrlKey || e.metaKey) {
+        if (e.key === '\\') {
+          e.preventDefault();
+          openModal('#clearFormatModal');
+          return;
+        }
         const k = e.key.toLowerCase();
         switch (k) {
           case 'o':
@@ -1143,10 +1148,155 @@
       showToast('Open a document first to print', 'info');
       return;
     }
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    if (excelContainer) {
+      // Excel Document Print Modal Prompt (Bugs 1 & 2)
+      const selectedCells = Array.from(excelContainer.querySelectorAll('td.excel-cell-selected'));
+      const hasSelection = selectedCells.length > 0;
+      const selDesc = $('#excelPrintSelectionDesc');
+      if (selDesc) {
+        if (hasSelection) {
+          selDesc.textContent = `Prints only the currently selected cell range (${selectedCells.length} cells).`;
+          const selRadio = $('#excelPrintScopeSelection');
+          if (selRadio) selRadio.checked = true;
+        } else {
+          selDesc.textContent = 'No cell range currently selected (click and drag cells to select a range).';
+          const sheetRadio = $('#excelPrintScopeSheet');
+          if (sheetRadio) sheetRadio.checked = true;
+        }
+      }
+      openModal('#excelPrintModal');
+      return;
+    }
     window.print();
   }
 
-  // Multi-Page Print Watermark Replicator & Excel Full Content Scaling (Issue 1.1)
+  function doExcelBoundedPrint(scope = 'content') {
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    const table = excelContainer?.querySelector('.excel-grid-table');
+    if (!table) {
+      window.print();
+      return;
+    }
+
+    let candidateCells = [];
+    if (scope === 'selection') {
+      candidateCells = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+      if (!candidateCells.length && window._activeExcelCell) {
+        candidateCells = [window._activeExcelCell];
+      }
+    } else {
+      candidateCells = Array.from(table.querySelectorAll('tbody td')).filter(td => {
+        return (td.textContent || '').trim().length > 0 ||
+          td.dataset.customFill === 'true' ||
+          (td.style.backgroundColor && td.style.backgroundColor !== 'transparent') ||
+          td.querySelector('img, svg, canvas, .excel-text-highlight');
+      });
+    }
+
+    const rowIndices = candidateCells.map(c => (c.closest('tr')?.sectionRowIndex ?? -1) + 1).filter(r => r > 0);
+    const colIndices = candidateCells.map(c => c.cellIndex).filter(c => c > 0);
+
+    const minRow = (scope === 'selection' && rowIndices.length) ? Math.min(...rowIndices) : 1;
+    const maxRow = rowIndices.length ? Math.max(...rowIndices) : 5;
+    const minCol = (scope === 'selection' && colIndices.length) ? Math.min(...colIndices) : 1;
+    const maxCol = colIndices.length ? Math.max(...colIndices) : 5;
+
+    const allThs = Array.from(table.querySelectorAll('thead th.excel-col-hdr'));
+    const allTrs = Array.from(table.querySelectorAll('tbody tr'));
+
+    const headerThs = allThs.slice(minCol - 1, maxCol);
+    const bodyTrs = allTrs.slice(minRow - 1, maxRow);
+
+    const oldPrintArea = document.getElementById('dfExcelPrintArea');
+    if (oldPrintArea) oldPrintArea.remove();
+
+    const printArea = document.createElement('div');
+    printArea.id = 'dfExcelPrintArea';
+    printArea.className = 'excel-print-isolated-area';
+
+    let tableHtml = `<table class="excel-grid-table" style="width:100% !important;border-collapse:collapse !important;table-layout:auto !important;zoom:1 !important;">`;
+    tableHtml += `<thead><tr><th class="excel-corner" style="padding:6px 10px;border:1px solid #94a3b8;font-weight:700;background:#f1f5f9;color:#0f172a;text-align:center;">#</th>`;
+    headerThs.forEach(th => {
+      tableHtml += `<th class="excel-col-hdr" style="padding:6px 10px;border:1px solid #94a3b8;font-weight:700;background:#f1f5f9;color:#0f172a;text-align:center;">${th.textContent}</th>`;
+    });
+    tableHtml += `</tr></thead><tbody>`;
+
+    bodyTrs.forEach((tr, idx) => {
+      const rowNum = minRow + idx;
+      const tds = Array.from(tr.querySelectorAll('td')).slice(minCol - 1, maxCol);
+      tableHtml += `<tr><th class="excel-row-hdr" style="padding:6px 10px;border:1px solid #94a3b8;font-weight:700;background:#f1f5f9;color:#0f172a;text-align:center;">${rowNum}</th>`;
+      tds.forEach(td => {
+        const bg = td.style.backgroundColor || (td.dataset.customFill === 'true' ? '#fbbf24' : 'inherit');
+        const color = td.style.color || 'inherit';
+        const fw = td.style.fontWeight || 'inherit';
+        const fs = td.style.fontStyle || 'inherit';
+        const ta = td.style.textAlign || 'inherit';
+        tableHtml += `<td style="padding:6px 10px;border:1px solid #94a3b8;background-color:${bg};color:${color};font-weight:${fw};font-style:${fs};text-align:${ta};">${td.innerHTML}</td>`;
+      });
+      tableHtml += `</tr>`;
+    });
+    tableHtml += `</tbody></table>`;
+    printArea.innerHTML = tableHtml;
+
+    document.body.appendChild(printArea);
+
+    let style = document.getElementById('dfExcelPrintPageStyle');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'dfExcelPrintPageStyle';
+      document.head.appendChild(style);
+    }
+    style.textContent = `
+      @media print {
+        @page { size: auto; margin: 8mm; }
+        body.print-excel-mode .excel-spreadsheet-container,
+        body.print-excel-mode .excel-formula-bar,
+        body.print-excel-mode .excel-equation-bar,
+        body.print-excel-mode #ribbon,
+        body.print-excel-mode #header,
+        body.print-excel-mode #statusbar { display: none !important; }
+        body.print-excel-mode #dfExcelPrintArea {
+          display: block !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+        }
+        body.print-excel-mode #dfExcelPrintArea table {
+          width: 100% !important;
+          max-width: 100% !important;
+          border-collapse: collapse !important;
+          font-size: 11pt !important;
+          zoom: 1 !important;
+        }
+        body.print-excel-mode #dfExcelPrintArea th,
+        body.print-excel-mode #dfExcelPrintArea td {
+          border: 1px solid #94a3b8 !important;
+          padding: 6px 10px !important;
+          page-break-inside: avoid !important;
+        }
+      }
+    `;
+
+    document.body.classList.add('print-excel-mode');
+    setTimeout(() => {
+      window.print();
+    }, 40);
+  }
+
+  // Hook up Excel Print Modal Buttons
+  $('#excelPrintCancelBtn')?.addEventListener('click', () => {
+    closeModal('#excelPrintModal');
+  });
+
+  $('#excelPrintConfirmBtn')?.addEventListener('click', () => {
+    const scope = document.querySelector('input[name="excelPrintScope"]:checked')?.value || 'content';
+    closeModal('#excelPrintModal');
+    doExcelBoundedPrint(scope);
+  });
+
+  // Multi-Page Print Watermark Replicator & Excel Full Content Scaling
   window.addEventListener('beforeprint', () => {
     const existing = document.getElementById('dfPrintFixedWatermark');
     if (existing) existing.remove();
@@ -1157,22 +1307,6 @@
       wm.innerHTML = buildWatermarkHtml(window.DocFlow.activeWatermark);
       document.body.appendChild(wm);
     }
-    const excelContainer = document.querySelector('.excel-spreadsheet-container');
-    if (excelContainer) {
-      document.body.classList.add('print-excel-mode');
-      const colHdrs = excelContainer.querySelectorAll('thead th.excel-col-hdr');
-      const colCount = colHdrs.length || 5;
-      if (colCount > 5) {
-        document.body.classList.add('print-excel-landscape');
-        let style = document.getElementById('dfExcelPrintPageStyle');
-        if (!style) {
-          style = document.createElement('style');
-          style.id = 'dfExcelPrintPageStyle';
-          style.textContent = '@media print { @page { size: landscape; margin: 8mm; } }';
-          document.head.appendChild(style);
-        }
-      }
-    }
   });
 
   window.addEventListener('afterprint', () => {
@@ -1180,6 +1314,7 @@
     if (wm) wm.remove();
     document.body.classList.remove('print-excel-mode', 'print-excel-landscape');
     document.getElementById('dfExcelPrintPageStyle')?.remove();
+    document.getElementById('dfExcelPrintArea')?.remove();
   });
 
   // Ribbon Tab Switching & Control Coordination
@@ -3292,6 +3427,165 @@
     }
   }
 
+
+  // Formula Coordinate Parsers & Evaluation Engine (Problem 1.7 & 1.8)
+  function parseExcelCoord(str) {
+    if (!str) return null;
+    const m = str.trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+    if (!m) return null;
+    let colIdx = 0;
+    for (let i = 0; i < m[1].length; i++) {
+      colIdx = colIdx * 26 + (m[1].charCodeAt(i) - 64);
+    }
+    return { col: colIdx - 1, row: parseInt(m[2], 10), colStr: m[1] };
+  }
+
+  function getExcelCellRawValue(table, coordStr) {
+    if (!table || !coordStr) return 0;
+    const cleanCoord = coordStr.trim().toUpperCase();
+    const target = table.querySelector(`td[data-coord="${cleanCoord}"]`);
+    if (target) {
+      const txt = target.textContent.trim();
+      const num = parseFloat(txt.replace(/[^0-9.-]/g, ''));
+      return isNaN(num) ? txt : num;
+    }
+    const parsed = parseExcelCoord(cleanCoord);
+    if (parsed && table.rows[parsed.row]) {
+      const td = table.rows[parsed.row].cells[parsed.col + 1];
+      if (td) {
+        const txt = td.textContent.trim();
+        const num = parseFloat(txt.replace(/[^0-9.-]/g, ''));
+        return isNaN(num) ? txt : num;
+      }
+    }
+    return 0;
+  }
+
+  function getExcelRangeValuesList(table, startCoord, endCoord) {
+    const pStart = parseExcelCoord(startCoord);
+    const pEnd = parseExcelCoord(endCoord);
+    if (!pStart || !pEnd || !table) return [];
+    const minCol = Math.min(pStart.col, pEnd.col);
+    const maxCol = Math.max(pStart.col, pEnd.col);
+    const minRow = Math.min(pStart.row, pEnd.row);
+    const maxRow = Math.max(pStart.row, pEnd.row);
+
+    const values = [];
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        const colLetter = getExcelColLetter(c);
+        const coord = `${colLetter}${r}`;
+        values.push(getExcelCellRawValue(table, coord));
+      }
+    }
+    return values;
+  }
+
+  function evaluateFormulaExpression(expr, table) {
+    if (!expr) return '';
+    expr = expr.trim();
+    if (expr.startsWith('=')) expr = expr.substring(1).trim();
+
+    // Check function calls: e.g. SUM(A1:B5), AVERAGE(A1:A5), SQRT(A1), etc.
+    const fnMatch = expr.match(/^([A-Z]+)\s*\((.*)\)$/i);
+    if (fnMatch) {
+      const fnName = fnMatch[1].toUpperCase();
+      const argsStr = fnMatch[2].trim();
+      let values = [];
+
+      if (argsStr.includes(':')) {
+        const parts = argsStr.split(':');
+        if (parts.length === 2) {
+          values = getExcelRangeValuesList(table, parts[0].trim(), parts[1].trim());
+        }
+      } else if (argsStr.length > 0) {
+        const args = argsStr.split(',').map(s => s.trim());
+        args.forEach(a => {
+          if (/^[A-Z]+\d+$/i.test(a)) {
+            values.push(getExcelCellRawValue(table, a));
+          } else {
+            const num = parseFloat(a);
+            values.push(isNaN(num) ? a : num);
+          }
+        });
+      }
+
+      const nums = values.map(v => typeof v === 'number' ? v : parseFloat(String(v).replace(/[^0-9.-]/g, ''))).filter(v => !isNaN(v));
+
+      switch (fnName) {
+        case 'SUM':
+          return nums.reduce((a, b) => a + b, 0);
+        case 'AVERAGE':
+          return nums.length ? Number((nums.reduce((a, b) => a + b, 0) / nums.length).toFixed(2)) : 0;
+        case 'COUNT':
+          return nums.length;
+        case 'MAX':
+          return nums.length ? Math.max(...nums) : 0;
+        case 'MIN':
+          return nums.length ? Math.min(...nums) : 0;
+        case 'PRODUCT':
+          return nums.length ? nums.reduce((a, b) => a * b, 1) : 0;
+        case 'ROUND': {
+          const val = nums[0] !== undefined ? nums[0] : 0;
+          const dec = nums[1] !== undefined ? nums[1] : 0;
+          const factor = Math.pow(10, dec);
+          return Math.round(val * factor) / factor;
+        }
+        case 'SQRT':
+          return nums.length && nums[0] >= 0 ? Number(Math.sqrt(nums[0]).toFixed(4)) : 0;
+        case 'ABS':
+          return nums.length ? Math.abs(nums[0]) : 0;
+        case 'POWER':
+          return nums.length >= 2 ? Math.pow(nums[0], nums[1]) : (nums[0] || 0);
+        case 'MEDIAN': {
+          if (!nums.length) return 0;
+          const sorted = [...nums].sort((a, b) => a - b);
+          const mid = Math.floor(sorted.length / 2);
+          return sorted.length % 2 !== 0 ? sorted[mid] : Number(((sorted[mid - 1] + sorted[mid]) / 2).toFixed(2));
+        }
+        case 'CEILING':
+          return nums.length ? Math.ceil(nums[0]) : 0;
+        case 'FLOOR':
+          return nums.length ? Math.floor(nums[0]) : 0;
+        case 'INT':
+          return nums.length ? Math.floor(nums[0]) : 0;
+        case 'MOD':
+          return nums.length >= 2 && nums[1] !== 0 ? nums[0] % nums[1] : 0;
+        case 'CONCAT':
+          return values.join(' ');
+        case 'UPPER':
+          return values.join(' ').toUpperCase();
+        case 'LOWER':
+          return values.join(' ').toLowerCase();
+        default:
+          return nums.length ? nums.reduce((a, b) => a + b, 0) : 0;
+      }
+    }
+
+    // Direct math expressions with cell references (e.g. A1 + B1 * 2)
+    let mathExpr = expr.replace(/[A-Z]+\d+/gi, match => {
+      const v = getExcelCellRawValue(table, match);
+      const n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
+      return isNaN(n) ? 0 : n;
+    });
+
+    if (/^[\d\s+\-*/().%^]+$/.test(mathExpr)) {
+      try {
+        mathExpr = mathExpr.replace(/\^/g, '**');
+        // eslint-disable-next-line no-eval
+        const res = Function(`'use strict'; return (${mathExpr})`)();
+        if (typeof res === 'number') {
+          return Number.isInteger(res) ? res : Number(res.toFixed(4));
+        }
+        return res;
+      } catch (e) {
+        return expr;
+      }
+    }
+
+    return expr;
+  }
+
   function applyExcelFormula(funcName) {
     let cell = getActiveTableCell();
     const table = cell ? cell.closest('table') : (document.querySelector('.excel-grid-table') || document.querySelector('#editor table'));
@@ -3317,14 +3611,16 @@
         if (!isNaN(val)) nums.push(val);
       });
       const lastSelected = selectedCells[selectedCells.length - 1];
-      const lastTr = lastSelected.closest('tr');
-      const nextTr = lastTr?.nextElementSibling;
-      if (nextTr && nextTr.children[lastSelected.cellIndex]) {
-        targetCell = nextTr.children[lastSelected.cellIndex];
+      // Problem 1.7: Place formula answer in front/next cell instead of below cell!
+      if (lastSelected.nextElementSibling && lastSelected.nextElementSibling.tagName === 'TD') {
+        targetCell = lastSelected.nextElementSibling;
       } else {
         targetCell = lastSelected;
       }
     } else {
+      if (cell.nextElementSibling && cell.nextElementSibling.tagName === 'TD') {
+        targetCell = cell.nextElementSibling;
+      }
       const curRowIdx = cell.closest('tr')?.rowIndex || 0;
       const colIdx = cell.cellIndex;
       const rows = Array.from(table.rows);
@@ -4266,11 +4562,17 @@
 
       td.addEventListener('focus', () => {
         window._activeExcelCell = td;
+        container.querySelectorAll('td.excel-cell-focus').forEach(c => c.classList.remove('excel-cell-focus'));
+        td.classList.add('excel-cell-focus');
         if (window._activeExcelFontFamily && !td.style.fontFamily) {
           td.style.fontFamily = window._activeExcelFontFamily;
         }
         if (formulaInput) formulaInput.value = td.textContent || '';
         if (coordBox) coordBox.value = td.dataset.coord || 'A1';
+      });
+
+      td.addEventListener('blur', () => {
+        td.classList.remove('excel-cell-focus');
       });
 
       td.addEventListener('input', () => {
@@ -4284,7 +4586,65 @@
       });
 
       td.addEventListener('keydown', e => {
-        if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        // Tab / Shift+Tab Navigation
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            const prev = td.previousElementSibling;
+            if (prev && prev.tagName === 'TD') {
+              prev.focus();
+            } else {
+              const prevTr = td.closest('tr')?.previousElementSibling;
+              const tds = prevTr?.querySelectorAll('td');
+              if (tds && tds.length) tds[tds.length - 1].focus();
+            }
+          } else {
+            const next = td.nextElementSibling;
+            if (next && next.tagName === 'TD') {
+              next.focus();
+            } else {
+              const nextTr = td.closest('tr')?.nextElementSibling;
+              const firstTd = nextTr?.querySelector('td');
+              if (firstTd) firstTd.focus();
+            }
+          }
+          return;
+        }
+
+        // Enter: evaluate formula if starts with '=', else move to next row
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const text = (td.textContent || '').trim();
+          const formVal = (formulaInput?.value || '').trim();
+          const expr = text.startsWith('=') ? text : (formVal.startsWith('=') ? formVal : null);
+
+          if (expr) {
+            const table = td.closest('table') || container.querySelector('.excel-grid-table');
+            const result = evaluateFormulaExpression(expr, table);
+            // Problem 1.7 & 1.8: Put formula answer in front/next cell
+            const frontCell = td.nextElementSibling && td.nextElementSibling.tagName === 'TD' ? td.nextElementSibling : td;
+            frontCell.textContent = String(result);
+            frontCell.focus();
+            window._activeExcelCell = frontCell;
+            if (coordBox) coordBox.value = frontCell.dataset.coord || '';
+            if (formulaInput) formulaInput.value = String(result);
+            window.DocFlow.Editor?.notifyChange();
+            showToast(`Formula evaluated: ${result}`, 'success');
+          } else {
+            const tr = td.closest('tr');
+            const nextTr = tr?.nextElementSibling;
+            if (nextTr) {
+              const target = nextTr.children[td.cellIndex] || nextTr.querySelector('td');
+              if (target && target.tagName === 'TD') {
+                target.focus();
+              }
+            }
+          }
+          return;
+        }
+
+        // Arrow Navigation (Problem 1.6)
+        if (e.key === 'ArrowDown') {
           const tr = td.closest('tr');
           const nextTr = tr?.nextElementSibling;
           if (nextTr) {
@@ -4304,27 +4664,37 @@
               target.focus();
             }
           }
-        } else if (e.key === 'ArrowRight' || e.key === 'Tab') {
+        } else if (e.key === 'ArrowRight') {
           const sel = window.getSelection();
-          const isAtEnd = e.key === 'Tab' || (sel && sel.isCollapsed && sel.anchorOffset >= td.textContent.length);
+          let isAtEnd = !td.textContent || !td.textContent.trim();
+          if (!isAtEnd && sel && sel.rangeCount) {
+            const r = sel.getRangeAt(0);
+            if (r.collapsed) {
+              const postR = r.cloneRange();
+              postR.selectNodeContents(td);
+              postR.setStart(r.endContainer, r.endOffset);
+              isAtEnd = postR.toString().length === 0;
+            }
+          }
           if (isAtEnd) {
             const next = td.nextElementSibling;
             if (next && next.tagName === 'TD') {
               e.preventDefault();
               next.focus();
-            } else if (e.key === 'Tab') {
-              const tr = td.closest('tr');
-              const nextTr = tr?.nextElementSibling;
-              const firstTd = nextTr?.querySelector('td');
-              if (firstTd) {
-                e.preventDefault();
-                firstTd.focus();
-              }
             }
           }
         } else if (e.key === 'ArrowLeft') {
           const sel = window.getSelection();
-          const isAtStart = (sel && sel.isCollapsed && sel.anchorOffset === 0);
+          let isAtStart = !td.textContent || !td.textContent.trim();
+          if (!isAtStart && sel && sel.rangeCount) {
+            const r = sel.getRangeAt(0);
+            if (r.collapsed) {
+              const preR = r.cloneRange();
+              preR.selectNodeContents(td);
+              preR.setEnd(r.startContainer, r.startOffset);
+              isAtStart = preR.toString().length === 0;
+            }
+          }
           if (isAtStart) {
             const prev = td.previousElementSibling;
             if (prev && prev.tagName === 'TD') {
@@ -4579,7 +4949,25 @@
       formulaInput.addEventListener('keydown', e => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          window._activeExcelCell?.focus();
+          const cell = window._activeExcelCell || document.querySelector('.excel-grid-table td.excel-cell-selected');
+          if (!cell) return;
+          const expr = (formulaInput.value || '').trim();
+          if (expr.startsWith('=')) {
+            const table = cell.closest('table') || document.querySelector('.excel-grid-table');
+            const result = evaluateFormulaExpression(expr, table);
+            const frontCell = cell.nextElementSibling && cell.nextElementSibling.tagName === 'TD' ? cell.nextElementSibling : cell;
+            frontCell.textContent = String(result);
+            frontCell.focus();
+            window._activeExcelCell = frontCell;
+            if (coordBox) coordBox.value = frontCell.dataset.coord || '';
+            formulaInput.value = String(result);
+            window.DocFlow.Editor?.notifyChange();
+            showToast(`Formula evaluated: ${result}`, 'success');
+          } else {
+            cell.textContent = formulaInput.value;
+            cell.focus();
+            window.DocFlow.Editor?.notifyChange();
+          }
         }
       });
     }
@@ -5370,6 +5758,8 @@
       const page = $('.editor-page');
       if (!page) return;
       const wrap = $('#editorWrap');
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      const isExcel = !!excelContainer || wrap?.classList.contains('is-excel-mode');
 
       if (size === 'full') {
         if (wrap) wrap.classList.add('full-size-active');
@@ -5377,11 +5767,15 @@
         page.style.width = '100%';
         page.style.minHeight = '100%';
         page.style.height = '100%';
-        const excelContainer = document.querySelector('.excel-spreadsheet-container');
+        page.style.margin = '0';
+        page.style.padding = isExcel ? '0' : '';
         if (excelContainer) {
           excelContainer.style.maxWidth = '100%';
           excelContainer.style.width = '100%';
+          excelContainer.style.height = '100%';
+          excelContainer.style.minHeight = '100%';
           excelContainer.style.margin = '0';
+          excelContainer.style.borderRadius = '0';
           excelContainer.style.boxShadow = 'none';
         }
         showToast('Paper Size: Full Page (Full width & height edge-to-edge)', 'info');
@@ -5391,59 +5785,75 @@
       if (wrap) wrap.classList.remove('full-size-active');
       page.style.width = '';
       page.style.height = '';
+      page.style.padding = '';
 
       switch (size) {
         case 'letter':
-          page.style.maxWidth = '816px';
-          page.style.minHeight = '1056px';
+          if (isExcel) {
+            page.style.maxWidth = '1056px';
+            page.style.minHeight = '816px';
+          } else {
+            page.style.maxWidth = '816px';
+            page.style.minHeight = '1056px';
+          }
           showToast('Paper Size: Letter (8.5" × 11")', 'info');
           break;
         case 'a4':
-          page.style.maxWidth = '794px';
-          page.style.minHeight = '1123px';
+          if (isExcel) {
+            page.style.maxWidth = '1123px';
+            page.style.minHeight = '794px';
+          } else {
+            page.style.maxWidth = '794px';
+            page.style.minHeight = '1123px';
+          }
           showToast('Paper Size: A4 (210 × 297 mm)', 'info');
           break;
         case 'legal':
-          page.style.maxWidth = '816px';
-          page.style.minHeight = '1344px';
+          if (isExcel) {
+            page.style.maxWidth = '1344px';
+            page.style.minHeight = '816px';
+          } else {
+            page.style.maxWidth = '816px';
+            page.style.minHeight = '1344px';
+          }
           showToast('Paper Size: Legal (8.5" × 14")', 'info');
           break;
         case 'custom':
           openModal('#customPageSizeModal');
           break;
         case 'executive':
-          page.style.maxWidth = '696px';
-          page.style.minHeight = '1008px';
+          page.style.maxWidth = isExcel ? '1008px' : '696px';
+          page.style.minHeight = isExcel ? '696px' : '1008px';
           showToast('Paper Size: Executive (7.25" × 10.5")', 'info');
           break;
         case 'a3':
-          page.style.maxWidth = '1123px';
-          page.style.minHeight = '1587px';
+          page.style.maxWidth = '1587px';
+          page.style.minHeight = '1123px';
           showToast('Paper Size: A3 (297 × 420 mm)', 'info');
           break;
         case 'a5':
-          page.style.maxWidth = '560px';
-          page.style.minHeight = '794px';
+          page.style.maxWidth = isExcel ? '794px' : '560px';
+          page.style.minHeight = isExcel ? '560px' : '794px';
           showToast('Paper Size: A5 (148 × 210 mm)', 'info');
           break;
         case 'b4':
-          page.style.maxWidth = '945px';
-          page.style.minHeight = '1334px';
+          page.style.maxWidth = isExcel ? '1334px' : '945px';
+          page.style.minHeight = isExcel ? '945px' : '1334px';
           showToast('Paper Size: B4 (250 × 353 mm)', 'info');
           break;
         case 'b5':
-          page.style.maxWidth = '688px';
-          page.style.minHeight = '971px';
+          page.style.maxWidth = isExcel ? '971px' : '688px';
+          page.style.minHeight = isExcel ? '688px' : '971px';
           showToast('Paper Size: B5 (182 × 257 mm)', 'info');
           break;
         case 'tabloid':
-          page.style.maxWidth = '1056px';
-          page.style.minHeight = '1632px';
+          page.style.maxWidth = isExcel ? '1632px' : '1056px';
+          page.style.minHeight = isExcel ? '1056px' : '1632px';
           showToast('Paper Size: Tabloid (11" × 17")', 'info');
           break;
         case 'statement':
-          page.style.maxWidth = '528px';
-          page.style.minHeight = '816px';
+          page.style.maxWidth = isExcel ? '816px' : '528px';
+          page.style.minHeight = isExcel ? '528px' : '816px';
           showToast('Paper Size: Statement (5.5" × 8.5")', 'info');
           break;
         case 'envelope':
@@ -5453,11 +5863,10 @@
           break;
       }
 
-      // Excel container paper sizing (Issue 1.11)
-      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      // Excel container paper sizing (Problem 1.10)
       if (excelContainer) {
         excelContainer.style.maxWidth = page.style.maxWidth;
-        excelContainer.style.width = page.style.maxWidth;
+        excelContainer.style.width = '100%';
         excelContainer.style.margin = '20px auto';
         excelContainer.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
         excelContainer.style.borderRadius = '8px';
@@ -7210,7 +7619,10 @@
       if (table) {
         const selected = Array.from(table.querySelectorAll('td.excel-cell-selected'));
         const targets = selected.length > 0 ? selected : (cell ? [cell] : []);
-        targets.forEach(c => c.style.backgroundColor = e.target.value);
+        targets.forEach(c => {
+          c.dataset.customFill = 'true';
+          c.style.setProperty('background-color', e.target.value, 'important');
+        });
         window.DocFlow.Editor?.notifyChange();
       }
       restoreCellFocus(cell);
@@ -7220,6 +7632,13 @@
       const cell = getActiveTableCell();
       const table = cell ? cell.closest('table') : document.querySelector('#editor table');
       if (table && (cell || table.querySelector('td.excel-cell-selected'))) {
+        const selected = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+        const targets = selected.length > 0 ? selected : (cell ? [cell] : []);
+        targets.forEach(c => {
+          c.dataset.customFill = 'true';
+          c.style.setProperty('background-color', e.target.value, 'important');
+        });
+        window.DocFlow.Editor?.notifyChange();
         showToast('Cell fill color applied', 'success');
       } else {
         showToast('Click inside a spreadsheet cell first to apply fill', 'info');
@@ -7227,8 +7646,15 @@
       restoreCellFocus(cell);
     });
 
+    $('#excelSortAscBtn')?.addEventListener('mousedown', e => e.preventDefault());
     $('#excelSortAscBtn')?.addEventListener('click', () => {
       window.DocFlow.Editor?.sortSelectedTextOrTable('asc');
+      restoreCellFocus(getActiveTableCell());
+    });
+
+    $('#excelSortDescBtn')?.addEventListener('mousedown', e => e.preventDefault());
+    $('#excelSortDescBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.sortSelectedTextOrTable('desc');
       restoreCellFocus(getActiveTableCell());
     });
     // Excel Filter Dropdown & Functionality (Issue 1.5)

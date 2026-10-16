@@ -298,11 +298,83 @@
   let isUndoRedoing = false;
   let snapshotTimer = null;
 
+  function getCaretOffsetWithin(element) {
+    let caretOffset = 0;
+    try {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        if (element.contains(range.endContainer)) {
+          const preCaretRange = range.cloneRange();
+          preCaretRange.selectNodeContents(element);
+          preCaretRange.setEnd(range.endContainer, range.endOffset);
+          caretOffset = preCaretRange.toString().length;
+        }
+      }
+    } catch (e) { }
+    return caretOffset;
+  }
+
+  function setCaretOffsetWithin(element, offset) {
+    try {
+      const range = document.createRange();
+      const sel = window.getSelection();
+      let currentOffset = 0;
+      let nodeFound = false;
+
+      function traverse(node) {
+        if (nodeFound) return;
+        if (node.nodeType === Node.TEXT_NODE) {
+          const nextOffset = currentOffset + node.length;
+          if (offset >= currentOffset && offset <= nextOffset) {
+            range.setStart(node, Math.min(offset - currentOffset, node.length));
+            range.collapse(true);
+            nodeFound = true;
+            return;
+          }
+          currentOffset = nextOffset;
+        } else {
+          for (let i = 0; i < node.childNodes.length; i++) {
+            traverse(node.childNodes[i]);
+            if (nodeFound) return;
+          }
+        }
+      }
+
+      traverse(element);
+      if (!nodeFound) {
+        range.selectNodeContents(element);
+        range.collapse(false);
+      }
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) { }
+  }
+
   function getCurrentDocState() {
     if (!editor) return null;
+    const isExcel = !!editor.querySelector('.excel-grid-table');
+    const isPpt = !!(window.DocFlow?.isPptxDocument?.());
+    let activeCellCoord = null;
+    let caretOffset = 0;
+    let slideIdx = 0;
+
+    if (isExcel) {
+      const activeCell = window._activeExcelCell || editor.querySelector('.excel-grid-table td.excel-cell-focus, .excel-grid-table td.excel-cell-selected');
+      activeCellCoord = activeCell?.dataset?.coord || null;
+    } else if (isPpt) {
+      slideIdx = window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0;
+    } else {
+      caretOffset = getCaretOffsetWithin(editor);
+    }
+
     return {
       html: editor.innerHTML,
-      slideIdx: window.DocFlow?.getCurrentActiveSlideIndex ? window.DocFlow.getCurrentActiveSlideIndex() : 0
+      isExcel,
+      isPpt,
+      activeCellCoord,
+      slideIdx,
+      caretOffset
     };
   }
 
@@ -313,7 +385,7 @@
 
     const lastState = undoStack[undoStack.length - 1];
     // Don't push duplicate state unless forced
-    if (!force && lastState && lastState.html === currentState.html && lastState.slideIdx === currentState.slideIdx) {
+    if (!force && lastState && lastState.html === currentState.html && lastState.slideIdx === currentState.slideIdx && lastState.activeCellCoord === currentState.activeCellCoord) {
       return;
     }
 
@@ -348,11 +420,36 @@
       if (targetState && editor) {
         editor.innerHTML = targetState.html;
         notifyChange();
-        if (window.DocFlow?.isPptxDocument?.()) {
+        if (targetState.isExcel || editor.querySelector('.excel-grid-table')) {
+          if (window.DocFlow?.setupExcelInteractions) {
+            window.DocFlow.setupExcelInteractions();
+          }
+          const table = editor.querySelector('.excel-grid-table');
+          const targetCoord = targetState.activeCellCoord;
+          const targetCell = targetCoord ? table?.querySelector(`td[data-coord="${targetCoord}"]`) : (table?.querySelector('tbody td') || null);
+          if (targetCell) {
+            window._activeExcelCell = targetCell;
+            targetCell.focus();
+            table.querySelectorAll('td.excel-cell-focus').forEach(c => c.classList.remove('excel-cell-focus'));
+            targetCell.classList.add('excel-cell-focus');
+            const formulaInput = editor.querySelector('.excel-formula-input');
+            const coordBox = editor.querySelector('.excel-coord-box');
+            if (formulaInput) formulaInput.value = targetCell.textContent || '';
+            if (coordBox) coordBox.value = targetCell.dataset.coord || targetCoord || 'A1';
+          }
+        } else if (targetState.isPpt || (window.DocFlow?.isPptxDocument?.())) {
           if (window.DocFlow.selectPptSlide) window.DocFlow.selectPptSlide(targetState.slideIdx);
           else if (window.DocFlow.updatePptSidebar) window.DocFlow.updatePptSidebar();
-        } else if (window.DocFlow?.setupExcelInteractions) {
-          window.DocFlow.setupExcelInteractions();
+          const activeSlide = editor.querySelector(`.ppt-slide[data-slide-index="${targetState.slideIdx}"]`) || editor.querySelector('.ppt-slide');
+          if (activeSlide) {
+            const firstEditable = activeSlide.querySelector('[contenteditable="true"]') || activeSlide;
+            firstEditable.focus();
+          }
+        } else {
+          editor.focus();
+          if (typeof targetState.caretOffset === 'number') {
+            setCaretOffsetWithin(editor, targetState.caretOffset);
+          }
         }
       }
       isUndoRedoing = false;
@@ -381,11 +478,36 @@
       if (state && editor) {
         editor.innerHTML = state.html;
         notifyChange();
-        if (window.DocFlow?.isPptxDocument?.()) {
+        if (state.isExcel || editor.querySelector('.excel-grid-table')) {
+          if (window.DocFlow?.setupExcelInteractions) {
+            window.DocFlow.setupExcelInteractions();
+          }
+          const table = editor.querySelector('.excel-grid-table');
+          const targetCoord = state.activeCellCoord;
+          const targetCell = targetCoord ? table?.querySelector(`td[data-coord="${targetCoord}"]`) : (table?.querySelector('tbody td') || null);
+          if (targetCell) {
+            window._activeExcelCell = targetCell;
+            targetCell.focus();
+            table.querySelectorAll('td.excel-cell-focus').forEach(c => c.classList.remove('excel-cell-focus'));
+            targetCell.classList.add('excel-cell-focus');
+            const formulaInput = editor.querySelector('.excel-formula-input');
+            const coordBox = editor.querySelector('.excel-coord-box');
+            if (formulaInput) formulaInput.value = targetCell.textContent || '';
+            if (coordBox) coordBox.value = targetCell.dataset.coord || targetCoord || 'A1';
+          }
+        } else if (state.isPpt || (window.DocFlow?.isPptxDocument?.())) {
           if (window.DocFlow.selectPptSlide) window.DocFlow.selectPptSlide(state.slideIdx);
           else if (window.DocFlow.updatePptSidebar) window.DocFlow.updatePptSidebar();
-        } else if (window.DocFlow?.setupExcelInteractions) {
-          window.DocFlow.setupExcelInteractions();
+          const activeSlide = editor.querySelector(`.ppt-slide[data-slide-index="${state.slideIdx}"]`) || editor.querySelector('.ppt-slide');
+          if (activeSlide) {
+            const firstEditable = activeSlide.querySelector('[contenteditable="true"]') || activeSlide;
+            firstEditable.focus();
+          }
+        } else {
+          editor.focus();
+          if (typeof state.caretOffset === 'number') {
+            setCaretOffsetWithin(editor, state.caretOffset);
+          }
         }
       }
       isUndoRedoing = false;
@@ -545,13 +667,26 @@
             break;
           case 'foreColor':
             if (value) {
-              cell.style.color = value;
-              cell.querySelectorAll('*').forEach(child => child.style.color = value);
+              cell.style.setProperty('color', value, 'important');
+              cell.querySelectorAll('*').forEach(child => child.style.setProperty('color', value, 'important'));
             }
             break;
           case 'hiliteColor':
             if (value) {
-              cell.style.backgroundColor = value;
+              const sel = window.getSelection();
+              if (sel && !sel.isCollapsed && cell.contains(sel.anchorNode)) {
+                try {
+                  document.execCommand('styleWithCSS', false, true);
+                  document.execCommand('hiliteColor', false, value);
+                } catch (e) {
+                  document.execCommand('backColor', false, value);
+                }
+              } else {
+                const text = cell.innerHTML;
+                if (text && text.trim()) {
+                  cell.innerHTML = `<span class="excel-text-highlight" style="background-color: ${value}; padding: 1px 3px; border-radius: 2px;">${text}</span>`;
+                }
+              }
             }
             break;
           case 'removeFormat':
@@ -872,7 +1007,10 @@
         const excelCells = getSelectedExcelCells();
         if (excelCells.length > 0) {
           saveSnapshot();
-          excelCells.forEach(c => { c.style.color = this.value; });
+          excelCells.forEach(c => {
+            c.style.setProperty('color', this.value, 'important');
+            c.querySelectorAll('*').forEach(child => child.style.setProperty('color', this.value, 'important'));
+          });
           notifyChange();
           saveSnapshot();
           showToast('Cell text color applied', 'success');
@@ -908,10 +1046,27 @@
         const excelCells = getSelectedExcelCells();
         if (excelCells.length > 0) {
           saveSnapshot();
-          excelCells.forEach(c => { c.style.backgroundColor = this.value; });
+          const sel = window.getSelection();
+          const hasTextSel = sel && !sel.isCollapsed;
+          if (hasTextSel && excelCells.some(c => c.contains(sel.anchorNode))) {
+            restoreSelection();
+            try {
+              document.execCommand('styleWithCSS', false, true);
+              document.execCommand('hiliteColor', false, this.value);
+            } catch (e) {
+              document.execCommand('backColor', false, this.value);
+            }
+          } else {
+            excelCells.forEach(c => {
+              const text = c.innerHTML;
+              if (text && text.trim()) {
+                c.innerHTML = `<span class="excel-text-highlight" style="background-color: ${this.value}; padding: 1px 3px; border-radius: 2px;">${text}</span>`;
+              }
+            });
+          }
           notifyChange();
           saveSnapshot();
-          showToast('Cell background fill applied', 'success');
+          showToast('Text highlight applied', 'success');
           return;
         }
         restoreSelection();
@@ -985,24 +1140,47 @@
       });
     }
 
+    const linesBtn = $('#ribbonTableLinesBtn');
+    if (linesBtn) {
+      linesBtn.addEventListener('click', () => {
+        if (window.DocFlow.currentMode !== 'edit') {
+          showToast('Open a document in edit mode first', 'info');
+          return;
+        }
+        saveSelection();
+        openModal('#tableModal');
+      });
+    }
+
+    const bColorInput = $('#tableBorderColor');
+    const bColorLabel = $('#tableBorderColorLabel');
+    if (bColorInput && bColorLabel) {
+      bColorInput.addEventListener('input', e => {
+        bColorLabel.textContent = e.target.value;
+      });
+    }
+
     if (insertBtn) {
       insertBtn.addEventListener('click', () => {
         const rows = Math.min(25, Math.max(1, parseInt($('#tableRows').value) || 3));
         const cols = Math.min(12, Math.max(1, parseInt($('#tableCols').value) || 3));
         const includeRowHeader = $('#tableRowHeaderCheck')?.checked === true;
         const includeColHeader = $('#tableColHeaderCheck')?.checked === true;
+        const bWidth = $('#tableBorderWidth')?.value || '1px';
+        const bColor = $('#tableBorderColor')?.value || '#cbd5e1';
+        const borderRule = `${bWidth} solid ${bColor}`;
         closeModal('#tableModal');
 
         saveSnapshot();
 
-        let tableHtml = '<table class="doc-table">';
+        let tableHtml = `<table class="doc-table" style="border-collapse:collapse;border:${borderRule};">`;
         if (includeRowHeader) {
           tableHtml += '<thead><tr>';
           if (includeColHeader) {
-            tableHtml += '<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:1.5px solid var(--border);font-weight:700;"><br></th>';
+            tableHtml += `<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
           }
           for (let c = 1; c <= cols; c++) {
-            tableHtml += '<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:1.5px solid var(--border);font-weight:700;"><br></th>';
+            tableHtml += `<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
           }
           tableHtml += '</tr></thead>';
         }
@@ -1010,10 +1188,10 @@
         for (let r = 1; r <= rows; r++) {
           tableHtml += '<tr>';
           if (includeColHeader) {
-            tableHtml += '<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:1.5px solid var(--border);font-weight:700;"><br></th>';
+            tableHtml += `<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
           }
           for (let c = 1; c <= cols; c++) {
-            tableHtml += '<td style="min-width:60px;height:28px;padding:6px 10px;border:1px solid var(--border);"><br></td>';
+            tableHtml += `<td style="min-width:60px;height:28px;padding:6px 10px;border:${borderRule};"><br></td>`;
           }
           tableHtml += '</tr>';
         }
@@ -1558,49 +1736,112 @@
     let node = sel && sel.rangeCount ? sel.anchorNode : null;
     if (node && node.nodeType === 3) node = node.parentElement;
     const activeExcelCell = window._activeExcelCell || document.querySelector('.excel-grid-table td.excel-cell-selected');
-    const table = node ? node.closest('table') : (activeExcelCell ? activeExcelCell.closest('table') : null);
+    const table = (node ? node.closest('table') : null) ||
+                  (activeExcelCell ? activeExcelCell.closest('table') : null) ||
+                  document.querySelector('.excel-spreadsheet-container .excel-grid-table') ||
+                  document.querySelector('#editor table');
 
     if (table) {
       saveSnapshot(true);
       const isExcel = table.classList.contains('excel-grid-table');
       const tbody = table.querySelector('tbody') || table;
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      if (rows.length <= 1) {
+      const allRows = Array.from(tbody.querySelectorAll('tr'));
+      if (allRows.length <= 1) {
         showToast('Table needs 2 or more rows to sort', 'info');
         return;
       }
-      // Determine which column index cursor is in
-      const cell = (node ? node.closest('td, th') : null) || activeExcelCell;
+
+      let cell = (node ? node.closest('td, th') : null) || activeExcelCell;
+      if (!cell && table) {
+        cell = table.querySelector('td.excel-cell-selected') || table.querySelector('tbody td');
+      }
       let colIndex = cell ? cell.cellIndex : 1;
       if (isExcel && colIndex === 0) colIndex = 1; // Col 0 is row header in Excel
 
-      let dataRows = rows;
-      if (!isExcel) {
-        const headerRow = rows[0].querySelector('th') ? rows[0] : null;
-        dataRows = headerRow ? rows.slice(1) : rows;
+      const selectedCells = isExcel ? (window.DocFlow.getSelectedExcelCells ? window.DocFlow.getSelectedExcelCells() : []) : [];
+      const selectedRowSet = new Set(selectedCells.map(c => c.closest('tr')).filter(Boolean));
+      const hasSpecificSelection = selectedRowSet.size > 1;
+
+      let headerRow = null;
+      let rowsToSort = [];
+
+      if (hasSpecificSelection) {
+        rowsToSort = allRows.filter(r => selectedRowSet.has(r));
+      } else if (isExcel) {
+        headerRow = allRows[0];
+        rowsToSort = allRows.slice(1);
+      } else {
+        const firstRowHasTh = allRows[0].querySelector('th');
+        headerRow = firstRowHasTh ? allRows[0] : null;
+        rowsToSort = headerRow ? allRows.slice(1) : allRows;
       }
 
-      dataRows.sort((a, b) => {
-        const textA = (a.cells[colIndex]?.textContent || '').trim().toLowerCase();
-        const textB = (b.cells[colIndex]?.textContent || '').trim().toLowerCase();
+      // Sort data rows in place.
+      // Empty cells/rows MUST ALWAYS stay at the bottom, in both asc and desc!
+      rowsToSort.sort((a, b) => {
+        const textA = (a.cells[colIndex]?.textContent || '').trim();
+        const textB = (b.cells[colIndex]?.textContent || '').trim();
+
+        if (!textA && !textB) return 0;
+        if (!textA) return 1;
+        if (!textB) return -1;
+
         return isDesc
-          ? textB.localeCompare(textA, undefined, { numeric: true })
-          : textA.localeCompare(textB, undefined, { numeric: true });
+          ? textB.localeCompare(textA, undefined, { numeric: true, sensitivity: 'base' })
+          : textA.localeCompare(textB, undefined, { numeric: true, sensitivity: 'base' });
       });
 
-      dataRows.forEach(r => tbody.appendChild(r));
-
-      // In Excel: re-index row headers consecutively (1, 2, 3...) so only data was sorted!
-      if (isExcel) {
-        Array.from(tbody.querySelectorAll('tr')).forEach((r, idx) => {
-          const rh = r.querySelector('.excel-row-hdr');
-          if (rh) rh.textContent = idx + 1;
+      if (hasSpecificSelection) {
+        const sortedIndices = allRows.map((r, i) => selectedRowSet.has(r) ? i : -1).filter(i => i !== -1);
+        sortedIndices.forEach((pos, idx) => {
+          allRows[pos] = rowsToSort[idx];
         });
+        allRows.forEach(r => tbody.appendChild(r));
+      } else {
+        if (headerRow) tbody.appendChild(headerRow);
+        rowsToSort.forEach(r => tbody.appendChild(r));
+      }
+
+      // Re-index row headers consecutively (1, 2, 3...) AND update cell coordinates
+      if (isExcel) {
+        const theadThs = Array.from(table.querySelectorAll('thead th.excel-col-hdr'));
+        const getColLetter = (cIdx) => {
+          if (theadThs[cIdx - 1]) return theadThs[cIdx - 1].textContent.trim();
+          let letter = '';
+          let temp = cIdx - 1;
+          while (temp >= 0) {
+            letter = String.fromCharCode((temp % 26) + 65) + letter;
+            temp = Math.floor(temp / 26) - 1;
+          }
+          return letter || 'A';
+        };
+
+        Array.from(tbody.querySelectorAll('tr')).forEach((r, idx) => {
+          const rowNum = idx + 1;
+          r.dataset.row = rowNum;
+          const rh = r.querySelector('.excel-row-hdr');
+          if (rh) {
+            rh.textContent = rowNum;
+            rh.dataset.row = rowNum;
+          }
+          // Update all data cells in this row to strictly reflect their true geometric coordinate
+          const tds = Array.from(r.querySelectorAll('td'));
+          tds.forEach((td, cIdx) => {
+            const colLetter = getColLetter(cIdx + 1);
+            td.dataset.coord = `${colLetter}${rowNum}`;
+          });
+        });
+
+        // Update coordinate box to active cell's coordinate
+        if (window._activeExcelCell && table.contains(window._activeExcelCell)) {
+          const coordBox = table.closest('.excel-spreadsheet-container')?.querySelector('.excel-coord-box');
+          if (coordBox) coordBox.value = window._activeExcelCell.dataset.coord || '';
+        }
       }
 
       notifyChange();
       saveSnapshot(true);
-      showToast(`Sorted data rows ${isDesc ? 'Descending (Z to A)' : 'Ascending (A to Z)'} (col ${colIndex})`, 'success');
+      showToast(`Sorted spreadsheet data ${isDesc ? 'Descending (Z to A)' : 'Ascending (A to Z)'} on Column ${colIndex}`, 'success');
       return;
     }
 
@@ -1754,9 +1995,9 @@
       });
     });
 
-    // Clear All Formatting (Bug 3: With warning confirmation)
+    // Clear All Formatting (Problem 1.6 & 5: With warning confirmation dialog)
     $('#removeFormatBtn')?.addEventListener('click', () => {
-      clearFormatting();
+      openModal('#clearFormatModal');
     });
     $('#clearFormatCancel')?.addEventListener('click', () => {
       closeModal('#clearFormatModal');
@@ -2332,8 +2573,14 @@
       }
     });
 
-    // Global Keydown Handler for Ctrl+Z and Ctrl+Y (Universal across all documents - Bug 4)
+    // Global Keydown Handler for Ctrl+Z, Ctrl+Y, and Ctrl+\ (Problem 5: Clear format warning)
     document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === '\\' || e.code === 'Backslash')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openModal('#clearFormatModal');
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
           return; // Allow native form input undo

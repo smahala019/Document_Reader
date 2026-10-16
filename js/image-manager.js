@@ -879,10 +879,14 @@
           }
         });
       } else if (action === 'delete') {
+        const parentDock = img.closest('.excel-chart-dock-area');
         img.remove();
+        if (parentDock && !parentDock.querySelector('.doc-chart-container')) {
+          parentDock.remove();
+        }
         deselectImage();
         window.DocFlow.Editor.notifyChange();
-        showToast('Image removed', 'info');
+        showToast('Element removed', 'info');
       }
     });
   }
@@ -1176,7 +1180,11 @@
     document.addEventListener('keydown', e => {
       if (selectedImage && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
+        const parentDock = selectedImage.closest('.excel-chart-dock-area');
         selectedImage.remove();
+        if (parentDock && !parentDock.querySelector('.doc-chart-container')) {
+          parentDock.remove();
+        }
         deselectImage();
         window.DocFlow.Editor?.notifyChange();
         showToast('Element deleted', 'info');

@@ -1449,6 +1449,7 @@
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="ribbonInsertImageBtn"><i class="fas fa-image"></i> Picture</button>
           <button class="fmt-btn with-text" id="ribbonInsertTableBtn"><i class="fas fa-table"></i> Table</button>
+          <button class="fmt-btn with-text" id="ribbonTableLinesBtn" title="Choose Table Line Color & Width"><i class="fas fa-border-all" style="color:#0284c7;"></i> Lines</button>
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="ribbonInsertLinkBtn"><i class="fas fa-link"></i> Link</button>
@@ -2198,7 +2199,7 @@
               <div class="spacing-opt-item" data-formula="YEARFRAC"><i class="fas fa-percent" style="color:#10b981;margin-right:6px;"></i> YEARFRAC (Year Fraction)</div>
             </div>
           </div>
-          <button class="fmt-btn with-text" id="excelFormulaBtn" title="Spreadsheet AutoSum Total"><strong style="color:#16a34a;font-size:13px;margin-right:2px;">&Sigma;</strong><span>AutoSum</span></button>
+          
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn" id="excelFmtCurrencyBtn" title="Format Currency ($)" aria-label="Currency Format"><i class="fas fa-dollar-sign"></i></button>
@@ -2566,8 +2567,18 @@
         <button type="button" id="excelEquationCloseBtn" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;"><i class="fas fa-xmark"></i></button>
       </div>
       <div class="excel-equation-bar-body" style="display:flex;gap:6px;align-items:center;margin-top:6px;">
-        <input type="text" id="excelEquationInput" placeholder="e.g. 250*1.18, A1+B1, SUM(A1:A5)" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;outline:none;" />
+        <input type="text" id="excelEquationInput" placeholder="e.g. =SUM(A1:B1), AVERAGE(A1:A5), 250*1.18" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;outline:none;" />
         <button type="button" id="excelEquationSolveBtn" class="modal-btn primary" style="padding:4px 10px;font-size:11px;">Solve</button>
+      </div>
+      <div class="excel-equation-quick-pills" style="display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 4px;">
+        <button type="button" class="eq-pill" data-fn="SUM" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">SUM</button>
+        <button type="button" class="eq-pill" data-fn="AVERAGE" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">AVG</button>
+        <button type="button" class="eq-pill" data-fn="COUNT" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">COUNT</button>
+        <button type="button" class="eq-pill" data-fn="MAX" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">MAX</button>
+        <button type="button" class="eq-pill" data-fn="MIN" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">MIN</button>
+        <button type="button" class="eq-pill" data-fn="PRODUCT" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">PRODUCT</button>
+        <button type="button" class="eq-pill" data-fn="ROUND" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">ROUND</button>
+        <button type="button" class="eq-pill" data-fn="SQRT" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">SQRT</button>
       </div>
       <div class="excel-equation-bar-footer" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
         <span id="excelEquationResult" style="font-size:12px;font-weight:700;color:#16a34a;">Result: —</span>
@@ -2774,6 +2785,24 @@
       <input type="number" id="tableRows" value="3" min="1" max="25">
       <label for="tableCols">Number of Columns</label>
       <input type="number" id="tableCols" value="3" min="1" max="12">
+      <div style="display:flex;gap:12px;margin-top:8px;">
+        <div style="flex:1;">
+          <label for="tableBorderWidth" style="font-size:12px;font-weight:600;">Line Width</label>
+          <select id="tableBorderWidth" style="width:100%;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);outline:none;">
+            <option value="1px" selected>1px (Thin)</option>
+            <option value="2px">2px (Medium)</option>
+            <option value="3px">3px (Thick)</option>
+            <option value="4px">4px (Heavy)</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label for="tableBorderColor" style="font-size:12px;font-weight:600;">Line Color</label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+            <input type="color" id="tableBorderColor" value="#cbd5e1" style="width:38px;height:32px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg-primary);">
+            <span id="tableBorderColorLabel" style="font-size:11.5px;color:var(--text-muted);">#cbd5e1</span>
+          </div>
+        </div>
+      </div>
       <div style="margin: 12px 0 8px;display:flex;flex-direction:column;gap:8px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-primary);">
           <input type="checkbox" id="tableRowHeaderCheck" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;">
@@ -2788,6 +2817,41 @@
       <div class="modal-actions">
         <button class="modal-btn" id="tableCancel">Cancel</button>
         <button class="modal-btn primary" id="tableInsert">Insert Table</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Excel Print Scope Selection Modal (Bugs 1 & 2) -->
+  <div class="modal-overlay" id="excelPrintModal" role="dialog" aria-modal="true" aria-label="Print Excel Spreadsheet">
+    <div class="modal" style="width:440px;max-width:92vw;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <div style="width:36px;height:36px;border-radius:8px;background:rgba(22,163,74,0.15);display:flex;align-items:center;justify-content:center;color:#16a34a;font-size:18px;">
+          <i class="fas fa-print"></i>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:16px;">Print Spreadsheet</h3>
+          <p style="margin:2px 0 0;font-size:12px;color:var(--text-muted);">Choose what you want to print:</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin:14px 0 18px;">
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg-secondary);" id="excelPrintScopeSheetLabel">
+          <input type="radio" name="excelPrintScope" id="excelPrintScopeSheet" value="content" checked style="margin-top:3px;accent-color:#16a34a;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary);">Active Sheet Content</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Prints only up to the last content cell in full normal size (no empty blank rows/columns outside).</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;background:var(--bg-secondary);" id="excelPrintScopeSelectionLabel">
+          <input type="radio" name="excelPrintScope" id="excelPrintScopeSelection" value="selection" style="margin-top:3px;accent-color:#16a34a;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary);">Selected Area Only</div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;" id="excelPrintSelectionDesc">Prints only the currently selected cell range.</div>
+          </div>
+        </label>
+      </div>
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button class="modal-btn" id="excelPrintCancelBtn" type="button">Cancel</button>
+        <button class="modal-btn primary" id="excelPrintConfirmBtn" type="button" style="background:#16a34a;color:#fff;"><i class="fas fa-print"></i> Print</button>
       </div>
     </div>
   </div>

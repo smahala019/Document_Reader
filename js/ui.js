@@ -406,6 +406,19 @@
           }
           window.DocFlow?.updateWordOnlyTools?.(tab);
         });
+
+        if (!tab.content || tab.content === '<p><br></p>') {
+          const pdfStore = window.DocFlow?.PdfStore;
+          if (pdfStore) {
+            Promise.resolve(pdfStore.get('content-' + tab.id)).then(storedContent => {
+              if (storedContent && storedContent.length > (tab.content || '').length) {
+                tab.content = storedContent;
+                if (editor) editor.innerHTML = storedContent;
+                window.DocFlow?.Editor?.resetHistoryForTab?.(storedContent);
+              }
+            }).catch(() => {});
+          }
+        }
       } else if (tab.type === 'pdf') {
         const sidebar = $('#pptxSlideSidebar');
         if (sidebar) sidebar.style.display = 'none';
@@ -413,8 +426,28 @@
         if (tab.pdfData && window.DocFlow && window.DocFlow.PDF) {
           window.DocFlow.PDF.loadPdfTab(tab);
         } else {
-          showToast('PDF data was not persisted — please reopen the file', 'warning');
-          this.close(tab.id);
+          // Attempt recovery from PdfStore (Bug 8: PDF data persistence)
+          const pdfStore = window.DocFlow?.PdfStore;
+          if (pdfStore) {
+            Promise.resolve(pdfStore.get('tab-' + tab.id)).then(async data => {
+              if (!data) data = await pdfStore.get(tab.name);
+              if (data) {
+                tab.pdfData = data;
+                if (window.DocFlow && window.DocFlow.PDF) {
+                  window.DocFlow.PDF.loadPdfTab(tab);
+                }
+              } else {
+                showToast(`Could not restore PDF data for "${tab.name}"`, 'warning');
+                this.close(tab.id);
+              }
+            }).catch(() => {
+              showToast(`Could not restore PDF data for "${tab.name}"`, 'warning');
+              this.close(tab.id);
+            });
+          } else {
+            showToast('PDF data was not persisted — please reopen the file', 'warning');
+            this.close(tab.id);
+          }
         }
       }
     },
@@ -634,12 +667,22 @@
         localStorage.setItem('df-tabs', JSON.stringify(meta));
         localStorage.setItem('df-active', this.activeId || '');
 
+        const pdfStore = window.DocFlow?.PdfStore;
+
         this.list.forEach(t => {
           if (t.type === 'edit') {
             try {
               localStorage.setItem('df-tab-' + t.id, t.content);
             } catch (err) {
               console.warn('Quota warning for tab ' + t.id + ':', err);
+            }
+            if (pdfStore && t.content) {
+              pdfStore.set('content-' + t.id, t.content);
+            }
+          } else if (t.type === 'pdf') {
+            if (pdfStore && t.pdfData) {
+              pdfStore.set(t.name, t.pdfData);
+              pdfStore.set('tab-' + t.id, t.pdfData);
             }
           }
         });
@@ -655,26 +698,30 @@
         const raw = localStorage.getItem('df-tabs');
         if (!raw) return false;
         const meta = JSON.parse(raw);
-        // Exclude binary PDF tabs from localStorage restoration (Bug #8)
-        const editable = meta.filter(m => m.type !== 'pdf');
-        if (!editable.length) return false;
+        if (!Array.isArray(meta) || !meta.length) return false;
 
-        this.list = editable.map(m => ({
-          id: m.id,
-          name: m.name,
-          fileType: m.fileType,
-          type: m.type,
-          modified: false,
-          scroll: m.scroll || 0,
-          content: localStorage.getItem('df-tab-' + m.id) || '<p><br></p>',
-          pdfData: null,
-          pdfDoc: null
-        }));
+        this.list = meta.map(m => {
+          let content = '';
+          if (m.type === 'edit') {
+            content = localStorage.getItem('df-tab-' + m.id) || '<p><br></p>';
+          }
+          return {
+            id: m.id,
+            name: m.name,
+            fileType: m.fileType,
+            type: m.type,
+            modified: false,
+            scroll: m.scroll || 0,
+            content,
+            pdfData: null,
+            pdfDoc: null
+          };
+        });
 
         const storedActive = localStorage.getItem('df-active');
         this.activeId = (storedActive && this.list.some(t => t.id === storedActive))
           ? storedActive
-          : this.list[0].id;
+          : (this.list[0] ? this.list[0].id : null);
         return true;
       } catch (e) {
         return false;
@@ -712,10 +759,18 @@
     const spaceBelow = window.innerHeight - rect.bottom - 12;
     const spaceAbove = rect.top - 12;
 
-    if (spaceBelow < maxAllowedHeight && spaceAbove > spaceBelow) {
-      popover.style.top = Math.max(8, rect.top - Math.min(popover.offsetHeight || maxAllowedHeight, spaceAbove) - 4) + 'px';
+    const isRibbonOrHeader = trigger.closest('.ribbon-container, .ribbon-panel, .ribbon-menu-bar, #toolbar, .header, #tabBar');
+
+    // Bug 9 & Problem 6: If trigger is in ribbon/header/toolbar, always open below the trigger to never cover toolbar buttons
+    if (isRibbonOrHeader) {
+      popover.style.top = (rect.bottom + 6) + 'px';
+      popover.style.maxHeight = Math.min(spaceBelow - 8, maxAllowedHeight) + 'px';
+    } else if (spaceBelow < 120 && spaceAbove > spaceBelow) {
+      popover.style.top = Math.max(8, rect.top - Math.min(popover.offsetHeight || maxAllowedHeight, spaceAbove) - 6) + 'px';
+      popover.style.maxHeight = Math.min(spaceAbove - 12, maxAllowedHeight) + 'px';
     } else {
-      popover.style.top = (rect.bottom + 4) + 'px';
+      popover.style.top = (rect.bottom + 6) + 'px';
+      popover.style.maxHeight = Math.min(spaceBelow - 8, maxAllowedHeight) + 'px';
     }
 
     const popoverWidth = popover.offsetWidth || (isMobile ? 240 : 260);

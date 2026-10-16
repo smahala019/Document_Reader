@@ -77,6 +77,10 @@
         if (!arrayBuffer || arrayBuffer.byteLength === 0) throw new Error('File is empty');
         const tab = window.DocFlow.UI.Tabs.create(name, '', 'PDF', 'pdf');
         tab.pdfData = arrayBuffer;
+        if (window.DocFlow?.PdfStore) {
+          await window.DocFlow.PdfStore.set(name, arrayBuffer);
+          await window.DocFlow.PdfStore.set('tab-' + tab.id, arrayBuffer);
+        }
         await window.DocFlow.PDF.loadPdfTab(tab);
         window.DocFlow.UI.Tabs.render();
         window.DocFlow.UI.Tabs.save();
