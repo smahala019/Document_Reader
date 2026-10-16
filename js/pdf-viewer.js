@@ -93,7 +93,7 @@
     pdfUndoStack.length = 0;
     pdfRedoStack.length = 0;
 
-    const wrap = $('#pdfWrap') || pdfWrap;
+    const wrap = $('#pdfViewer') || $('#pdfWrap') || pdfWrap;
     const pages = $('#pdfPages') || pdfPages;
     if (wrap) wrap.classList.remove('pdf-grayscale-mode');
     if (pages) pages.classList.remove('pdf-grayscale-mode');
@@ -349,20 +349,41 @@
     $('#pdfRibbonExtractAllBtn')?.addEventListener('click', () => extractTextFromPdf(true));
     $('#pdfQuickExtractAllBtn')?.addEventListener('click', () => extractTextFromPdf(true));
 
-    // Rotate PDF 90° Clockwise
+    // Rotate PDF 90° Clockwise (Issue 5.3: Works on both PDF view and extracted PDF documents)
+    let extractedPdfRotation = 0;
     const rotatePdfAction = () => {
-      if (!pdfDoc) {
-        showToast('Open a PDF document first', 'info');
+      if (pdfDoc && window.DocFlow.currentMode === 'view') {
+        pdfRotation = (pdfRotation + 90) % 360;
+        buildPdfPlaceholders();
+        showToast(`PDF rotated to ${pdfRotation}°`, 'success');
         return;
       }
-      pdfRotation = (pdfRotation + 90) % 360;
-      buildPdfPlaceholders();
-      showToast(`PDF rotated to ${pdfRotation}°`, 'success');
+
+      const ed = $('#editor');
+      if (ed) {
+        extractedPdfRotation = (extractedPdfRotation + 90) % 360;
+        const richPages = ed.querySelectorAll('.pdf-rich-page, .df-page, .editor-page');
+        if (richPages.length > 0) {
+          richPages.forEach(p => {
+            p.style.transform = `rotate(${extractedPdfRotation}deg)`;
+            p.style.transformOrigin = 'center center';
+            p.style.transition = 'transform 0.25s ease';
+          });
+        } else {
+          ed.style.transform = `rotate(${extractedPdfRotation}deg)`;
+          ed.style.transformOrigin = 'center center';
+          ed.style.transition = 'transform 0.25s ease';
+        }
+        showToast(`Extracted document rotated to ${extractedPdfRotation}°`, 'success');
+        return;
+      }
+
+      showToast('Open a PDF or document first', 'info');
     };
     $('#pdfRibbonRotateBtn')?.addEventListener('click', rotatePdfAction);
     $('#pdfQuickRotateBtn')?.addEventListener('click', rotatePdfAction);
 
-    // Night Mode / Invert View (with ON / OFF notification)
+    // Night Mode / Invert View (Issue 5.3: Works on both PDF view and extracted PDF documents)
     const togglePdfNightAction = () => {
       const wrap = $('#pdfWrap') || pdfWrap;
       const isPdfMode = window.DocFlow.currentMode === 'view' && !!pdfDoc;
@@ -372,10 +393,11 @@
         $('#pdfQuickInvertBtn')?.classList.toggle('active', isNight);
         showToast(`PDF Night Mode: ${isNight ? 'ON' : 'OFF'}`, 'info');
       } else {
-        // Toggle on editor document if viewing extracted/created doc
         const ed = $('#editor');
         if (ed) {
           const isNight = ed.classList.toggle('pdf-night-mode');
+          const pages = ed.querySelectorAll('.editor-page, .pdf-rich-page');
+          pages.forEach(p => p.classList.toggle('pdf-night-mode', isNight));
           $('#pdfRibbonInvertBtn')?.classList.toggle('active', isNight);
           $('#pdfQuickInvertBtn')?.classList.toggle('active', isNight);
           showToast(`Document Night Mode: ${isNight ? 'ON' : 'OFF'}`, 'info');
@@ -1032,26 +1054,19 @@
               }
 
               try {
-                const isPng = img.dataUrl.startsWith('data:image/png');
-                const isJpeg = img.dataUrl.startsWith('data:image/jpeg') || img.dataUrl.startsWith('data:image/jpg');
-                if (isPng) {
-                  pdf.addImage(img.dataUrl, 'PNG', posX, posY, renderW, renderH, undefined, 'FAST');
-                } else if (isJpeg) {
-                  pdf.addImage(img.dataUrl, 'JPEG', posX, posY, renderW, renderH, undefined, 'FAST');
-                } else {
-                  // WebP or other: render to lossless full-color PNG canvas
-                  const rgbCanvas = document.createElement('canvas');
-                  rgbCanvas.width = w;
-                  rgbCanvas.height = h;
-                  const ctx = rgbCanvas.getContext('2d');
-                  ctx.drawImage(tempImg, 0, 0, w, h);
-                  const colorPngUrl = rgbCanvas.toDataURL('image/png');
-                  pdf.addImage(colorPngUrl, 'PNG', posX, posY, renderW, renderH, undefined, 'FAST');
-                }
+                // Render image to full 24-bit/32-bit RGB canvas and encode as lossless PNG to preserve 100% color vibrancy
+                const rgbCanvas = document.createElement('canvas');
+                rgbCanvas.width = tempImg.naturalWidth || tempImg.width || w;
+                rgbCanvas.height = tempImg.naturalHeight || tempImg.height || h;
+                const ctx = rgbCanvas.getContext('2d', { willReadFrequently: false });
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+                ctx.drawImage(tempImg, 0, 0, rgbCanvas.width, rgbCanvas.height);
+                const cleanDataUrl = rgbCanvas.toDataURL('image/png');
+                pdf.addImage(cleanDataUrl, 'PNG', posX, posY, renderW, renderH, undefined, 'NONE');
               } catch (imgErr) {
                 console.warn('Direct image add fallback:', imgErr);
-                const isPng = img.dataUrl.startsWith('data:image/png');
-                pdf.addImage(img.dataUrl, isPng ? 'PNG' : 'JPEG', posX, posY, renderW, renderH);
+                pdf.addImage(img.dataUrl, 'PNG', posX, posY, renderW, renderH, undefined, 'NONE');
               }
               resolve();
             };
@@ -1115,90 +1130,6 @@
     };
   }
 
-  // Problem 5: New Unique PDF Functionality
-  function setupPdfSplitModal() {
-    $('#pdfSplitPagesBtn')?.addEventListener('click', () => {
-      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfData) {
-        showToast('Open a PDF document first to split pages', 'warning');
-        return;
-      }
-      const totalBadge = $('#pdfSplitTotalPagesBadge');
-      if (totalBadge) totalBadge.textContent = `${pdfTotalPages} Page${pdfTotalPages > 1 ? 's' : ''}`;
-      const input = $('#pdfSplitRangeInput');
-      if (input) input.value = `1-${Math.min(pdfTotalPages, 2)}`;
-      openModal('#pdfSplitModal');
-    });
-
-    $('#pdfSplitCloseBtn')?.addEventListener('click', () => closeModal('#pdfSplitModal'));
-    $('#pdfSplitCancelBtn')?.addEventListener('click', () => closeModal('#pdfSplitModal'));
-
-    $('#pdfSplitConfirmBtn')?.addEventListener('click', async () => {
-      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfData) return;
-      const rangeStr = ($('#pdfSplitRangeInput')?.value || '').trim();
-      if (!rangeStr) {
-        showToast('Please enter a page range (e.g. 1-3, 5)', 'warning');
-        return;
-      }
-
-      const pagesToExtract = new Set();
-      const parts = rangeStr.split(',');
-      for (const part of parts) {
-        const trimmed = part.trim();
-        if (trimmed.includes('-')) {
-          const [startStr, endStr] = trimmed.split('-');
-          const start = parseInt(startStr, 10);
-          const end = parseInt(endStr, 10);
-          if (!isNaN(start) && !isNaN(end) && start <= end) {
-            for (let i = start; i <= end; i++) {
-              if (i >= 1 && i <= pdfTotalPages) pagesToExtract.add(i - 1);
-            }
-          }
-        } else {
-          const p = parseInt(trimmed, 10);
-          if (!isNaN(p) && p >= 1 && p <= pdfTotalPages) {
-            pagesToExtract.add(p - 1);
-          }
-        }
-      }
-
-      const indices = Array.from(pagesToExtract).sort((a, b) => a - b);
-      if (indices.length === 0) {
-        showToast(`No valid pages selected. Document has ${pdfTotalPages} page(s).`, 'warning');
-        return;
-      }
-
-      try {
-        showToast('Splitting and generating PDF...', 'info');
-        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
-        const newPdf = await PDFLib.PDFDocument.create();
-        const copied = await newPdf.copyPages(srcPdf, indices);
-        copied.forEach(page => newPdf.addPage(page));
-        const pdfBytes = await newPdf.save();
-
-        const cleanBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-        const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
-        const newDocName = `${baseName}_split_p${rangeStr.replace(/[^0-9,-]/g, '')}.pdf`;
-        a.download = newDocName;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-        closeModal('#pdfSplitModal');
-        const splitTab = window.DocFlow.UI.Tabs.create(newDocName, '', 'PDF', 'pdf');
-        splitTab.pdfData = cleanBuffer;
-        window.DocFlow.UI.Tabs.activateTab(splitTab);
-        showToast(`Extracted ${indices.length} page(s), opened in new tab and downloaded!`, 'success');
-      } catch (err) {
-        console.error('PDF Split error:', err);
-        showToast('Failed to split PDF: ' + err.message, 'error');
-      }
-    });
-  }
 
   // Ensure PDF binary buffer is available, generating on the fly if user is in an extracted or created doc
   async function ensureTabPdfData(tab) {
@@ -1225,47 +1156,9 @@
     return null;
   }
 
-  // Problem 4: Unique PDF Engineering Tools (Flatten, Reverse Pages, Compress, Delete Page)
+  // Problem 4: Unique PDF Engineering Tools (Reverse Pages, Compress, Delete Page)
   function setupPdfEngineeringTools() {
-    // 1. Flatten Form Fields & Annotations (Permanent Read-Only Lock)
-    $('#pdfFlattenBtn')?.addEventListener('click', async () => {
-      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      const pdfBuffer = await ensureTabPdfData(activeTab);
-      if (!activeTab || !pdfBuffer) {
-        showToast('Open or create a PDF document first to flatten form fields & annotations', 'warning');
-        return;
-      }
-      try {
-        showToast('Flattening and locking all PDF form fields & annotations...', 'info');
-        const srcPdf = await PDFLib.PDFDocument.load(pdfBuffer);
-        try {
-          const form = srcPdf.getForm();
-          form.flatten();
-        } catch (fe) {
-          // Form may have no interactive AcroForm widgets, continue
-        }
-        const pdfBytes = await srcPdf.save({ useObjectStreams: true });
-        const cleanBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
-        activeTab.pdfData = cleanBuffer;
-        delete activeTab.pdfDoc;
-        await loadPdfTab(activeTab);
-
-        const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
-        a.download = `${baseName}_flattened.pdf`;
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast('PDF flattened & locked in viewer and download initiated!', 'success');
-      } catch (err) {
-        console.error('PDF Flatten error:', err);
-        showToast('Failed to flatten PDF: ' + err.message, 'error');
-      }
-    });
-
-    // 2. Reverse Page Order (1..N to N..1 for back-to-front scans)
+    // 1. Reverse Page Order (1..N to N..1 for back-to-front scans)
     $('#pdfReversePagesBtn')?.addEventListener('click', async () => {
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
       const pdfBuffer = await ensureTabPdfData(activeTab);
@@ -1289,7 +1182,20 @@
         const cleanBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
         activeTab.pdfData = cleanBuffer;
         delete activeTab.pdfDoc;
-        await loadPdfTab(activeTab);
+
+        if (activeTab.mode === 'view') {
+          await loadPdfTab(activeTab);
+        } else {
+          const ed = $('#editor');
+          if (ed) {
+            const richPages = Array.from(ed.querySelectorAll('.pdf-rich-page, .df-page'));
+            if (richPages.length > 1) {
+              richPages.reverse();
+              richPages.forEach(p => ed.appendChild(p));
+              window.DocFlow.Editor?.notifyChange?.();
+            }
+          }
+        }
 
         const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
@@ -1327,7 +1233,9 @@
         const cleanBuffer = compressedBytes.buffer.slice(compressedBytes.byteOffset, compressedBytes.byteOffset + compressedBytes.byteLength);
         activeTab.pdfData = cleanBuffer;
         delete activeTab.pdfDoc;
-        await loadPdfTab(activeTab);
+        if (activeTab.mode === 'view') {
+          await loadPdfTab(activeTab);
+        }
 
         const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
@@ -1341,7 +1249,7 @@
         const savedBytes = Math.max(0, originalSize - newSize);
         const pct = originalSize > 0 ? ((savedBytes / originalSize) * 100).toFixed(1) : 0;
         const savedKb = (savedBytes / 1024).toFixed(1);
-        showToast(`PDF compressed in document view: ${newSize < originalSize ? `Saved ${savedKb} KB (${pct}%)` : 'Optimized'}! Download started.`, 'success');
+        showToast(`PDF compressed: ${newSize < originalSize ? `Saved ${savedKb} KB (${pct}%)` : 'Optimized'}! Download started.`, 'success');
       } catch (err) {
         console.error('PDF Compress error:', err);
         showToast('Failed to compress PDF: ' + err.message, 'error');
@@ -1356,14 +1264,14 @@
         showToast('Open or create a PDF document first to delete a page', 'warning');
         return;
       }
-      const totalPages = (activeTab.pdfDoc && activeTab.pdfDoc.numPages) || pdfTotalPages;
+      const totalPages = (activeTab.pdfDoc && activeTab.pdfDoc.numPages) || pdfTotalPages || 1;
       if (totalPages <= 1) {
         showToast('Cannot delete the only page in the document', 'warning');
         return;
       }
-      const pageIndexToDelete = pdfCurrentPage - 1;
+      const pageIndexToDelete = Math.max(0, Math.min(pdfCurrentPage - 1, totalPages - 1));
       try {
-        showToast(`Deleting page ${pdfCurrentPage} of ${totalPages}...`, 'info');
+        showToast(`Deleting page ${pageIndexToDelete + 1} of ${totalPages}...`, 'info');
         const srcPdf = await PDFLib.PDFDocument.load(pdfBuffer);
         srcPdf.removePage(pageIndexToDelete);
         const pdfBytes = await srcPdf.save({ useObjectStreams: true });
@@ -1372,8 +1280,20 @@
         activeTab.pdfData = cleanBuffer;
         delete activeTab.pdfDoc;
         pdfCurrentPage = Math.max(1, Math.min(pdfCurrentPage, totalPages - 1));
-        await loadPdfTab(activeTab);
-        showToast(`Page ${pageIndexToDelete + 1} deleted. Remaining pages: ${pdfTotalPages}`, 'success');
+
+        if (activeTab.mode === 'view') {
+          await loadPdfTab(activeTab);
+        } else {
+          const ed = $('#editor');
+          if (ed) {
+            const richPages = Array.from(ed.querySelectorAll('.pdf-rich-page, .df-page'));
+            if (richPages.length > pageIndexToDelete) {
+              richPages[pageIndexToDelete].remove();
+              window.DocFlow.Editor?.notifyChange?.();
+            }
+          }
+        }
+        showToast(`Page ${pageIndexToDelete + 1} deleted. Remaining pages: ${totalPages - 1}`, 'success');
       } catch (err) {
         console.error('PDF Delete Page error:', err);
         showToast('Failed to delete page: ' + err.message, 'error');
@@ -1444,86 +1364,12 @@
     $('#pdfMetadataCloseBtn')?.addEventListener('click', () => closeModal('#pdfMetadataModal'));
     $('#pdfMetadataDoneBtn')?.addEventListener('click', () => closeModal('#pdfMetadataModal'));
 
-    // Grayscale Toggle (Works on both .pdf files and extracted/created documents with ON / OFF)
-    $('#pdfGrayscaleBtn')?.addEventListener('click', () => {
-      const wrap = $('#pdfWrap') || pdfWrap;
-      const pages = $('#pdfPages') || pdfPages;
-      const editor = $('#editor');
-      const isPdfView = window.DocFlow.currentMode === 'view' && !!pdfDoc;
-
-      if (isPdfView && (wrap || pages)) {
-        const isGray = wrap?.classList.toggle('pdf-grayscale-mode');
-        if (pages) pages.classList.toggle('pdf-grayscale-mode', isGray);
-        $('#pdfGrayscaleBtn')?.classList.toggle('active', isGray);
-        showToast(`PDF Grayscale Mode: ${isGray ? 'ON' : 'OFF'}`, 'info');
-      } else if (editor) {
-        const isGray = editor.classList.toggle('pdf-grayscale-mode');
-        $('#pdfGrayscaleBtn')?.classList.toggle('active', isGray);
-        showToast(`Document Grayscale Mode: ${isGray ? 'ON' : 'OFF'}`, 'info');
-      } else {
-        showToast('Open a PDF or document first', 'info');
-      }
-    });
-
-    // Save Page PNG (Works on both .pdf files and extracted/created documents)
-    $('#pdfExportCurrentPageImgBtn')?.addEventListener('click', async () => {
-      const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab) {
-        showToast('Open a PDF or document first', 'warning');
-        return;
-      }
-      const curDoc = activeTab.pdfDoc || pdfDoc;
-      if (curDoc && window.DocFlow.currentMode === 'view') {
-        try {
-          showToast(`Rendering Page ${pdfCurrentPage} to PNG...`, 'info');
-          const page = await curDoc.getPage(pdfCurrentPage);
-          const vp = page.getViewport({ scale: 2.0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = vp.width;
-          canvas.height = vp.height;
-          const ctx = canvas.getContext('2d');
-          await page.render({ canvasContext: ctx, viewport: vp }).promise;
-          const dataUrl = canvas.toDataURL('image/png');
-          const a = document.createElement('a');
-          a.href = dataUrl;
-          const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
-          a.download = `${baseName}_page_${pdfCurrentPage}.png`;
-          a.click();
-          showToast(`Page ${pdfCurrentPage} saved as high-res PNG!`, 'success');
-          return;
-        } catch (err) {
-          console.warn('PDF page render PNG error:', err);
-        }
-      }
-
-      // If in Editor mode (extracted PDF or HTML)
-      const editor = $('#editor');
-      if (editor && window.html2canvas) {
-        try {
-          showToast('Capturing document page to high-res PNG...', 'info');
-          const targetEl = editor.querySelector('.pdf-rich-page') || editor;
-          const canvas = await window.html2canvas(targetEl, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
-          const dataUrl = canvas.toDataURL('image/png');
-          const a = document.createElement('a');
-          a.href = dataUrl;
-          const baseName = (activeTab.name || 'document').replace(/\.[^.]+$/i, '');
-          a.download = `${baseName}_page.png`;
-          a.click();
-          showToast('Document page saved as high-res PNG!', 'success');
-        } catch (err) {
-          showToast('Failed to capture page PNG: ' + err.message, 'error');
-        }
-      } else {
-        showToast('Open a PDF document or document in edit mode to save PNG', 'warning');
-      }
-    });
   }
 
   function initPdfViewer() {
     setupPdfControls();
     setupMergePdfModal();
     setupCreatePdfFromImagesModal();
-    setupPdfSplitModal();
     setupPdfEngineeringTools();
     setupPdfMetadata();
   }

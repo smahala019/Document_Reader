@@ -1599,6 +1599,10 @@
 
     const activeBtn = $('#shapesGrid .shape-opt-btn.active');
     const shapeType = activeBtn ? activeBtn.dataset.shape : 'rectangle';
+    const shapeTitle = activeBtn ? (activeBtn.getAttribute('title') || shapeType.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())) : 'Rectangle';
+    const chosenLabel = $('#shapeChosenLabel');
+    if (chosenLabel) chosenLabel.textContent = shapeTitle;
+
     const fill = $('#shapeFillColor')?.value || '#e85d04';
     const stroke = $('#shapeStrokeColor')?.value || '#d45500';
     const strokeWidth = parseInt($('#shapeStrokeWidth')?.value || '2', 10);
@@ -1819,6 +1823,36 @@
       inner = `<ellipse cx="${w / 2}" cy="${pad + eh}" rx="${ew}" ry="${eh}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
                <path d="M ${pad} ${pad + eh} v ${h - eh * 2 - pad * 2} a ${ew} ${eh} 0 0 0 ${ew * 2} 0 v -${h - eh * 2 - pad * 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
                <ellipse cx="${w / 2}" cy="${h - pad - eh}" rx="${ew}" ry="${eh}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'parallelogram') {
+      const pts = `${w * 0.25},${pad} ${w - pad},${pad} ${w * 0.75},${h - pad} ${pad},${h - pad}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'trapezoid') {
+      const pts = `${w * 0.22},${pad} ${w * 0.78},${pad} ${w - pad},${h - pad} ${pad},${h - pad}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'octagon') {
+      const pts = `${w * 0.29},${pad} ${w * 0.71},${pad} ${w - pad},${h * 0.29} ${w - pad},${h * 0.71} ${w * 0.71},${h - pad} ${w * 0.29},${h - pad} ${pad},${h * 0.71} ${pad},${h * 0.29}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'oval') {
+      const rx = (w - pad * 2) / 2, ry = (h - pad * 2) / 2.6;
+      inner = `<ellipse cx="${w / 2}" cy="${h / 2}" rx="${rx}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'badge') {
+      const pts = `${pad},${pad} ${w - pad},${pad} ${w - pad},${h * 0.65} ${w / 2},${h - pad} ${pad},${h * 0.65}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'crescent') {
+      inner = `<path d="M ${w * 0.5} ${pad} A ${(w - pad*2)*0.48} ${(h - pad*2)*0.48} 0 1 0 ${w * 0.88} ${h * 0.78} A ${(w - pad*2)*0.38} ${(h - pad*2)*0.38} 0 1 1 ${w * 0.5} ${pad} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'check') {
+      const pts = `${pad},${h * 0.55} ${w * 0.38},${h - pad} ${w - pad},${pad + 4} ${w * 0.82},${pad} ${w * 0.36},${h * 0.72} ${w * 0.14},${h * 0.42}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'tag') {
+      const pts = `${pad},${pad} ${w * 0.72},${pad} ${w - pad},${h / 2} ${w * 0.72},${h - pad} ${pad},${h - pad}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/><circle cx="${w * 0.28}" cy="${h / 2}" r="${Math.max(4, w * 0.06)}" fill="${stroke}"/>`;
+    } else if (shapeType === 'cube') {
+      inner = `<polygon points="${w/2},${pad} ${w-pad},${h*0.28} ${w/2},${h*0.54} ${pad},${h*0.28}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+               <polygon points="${pad},${h*0.28} ${w/2},${h*0.54} ${w/2},${h-pad} ${pad},${h*0.74}" fill="${fill}" opacity="0.85" stroke="${stroke}" stroke-width="${sw}"/>
+               <polygon points="${w/2},${h*0.54} ${w-pad},${h*0.28} ${w-pad},${h*0.74} ${w/2},${h-pad}" fill="${fill}" opacity="0.7" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'double-arrow') {
+      const pts = `${pad},${h/2} ${w*0.3},${pad} ${w*0.3},${h*0.35} ${w*0.7},${h*0.35} ${w*0.7},${pad} ${w-pad},${h/2} ${w*0.7},${h-pad} ${w*0.7},${h*0.65} ${w*0.3},${h*0.65} ${w*0.3},${h-pad}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
     } else {
       // Default / Hexagon
       const pts = `${w*0.25},${pad} ${w*0.75},${pad} ${w-pad},${h/2} ${w*0.75},${h-pad} ${w*0.25},${h-pad} ${pad},${h/2}`;
@@ -1838,6 +1872,30 @@
       <div class="doc-shape-container" id="${shapeId}" data-shape="${shapeType}" data-shape-name="${shapeName}" title="Shape: ${shapeName}" data-fill="${fill}" data-stroke="${stroke}" data-stroke-width="${strokeWidth}" contenteditable="false" style="width:${w}px;height:${h}px;display:inline-block;cursor:pointer;position:relative;margin:8px 4px;vertical-align:middle;">
         ${svgHtml}
       </div>&nbsp;`;
+
+    const activeSlide = window.DocFlow?.getCurrentSlideWrapper?.() || document.querySelector('.pptx-slide-wrapper.active-slide') || document.querySelector('.pptx-slide-card.active-slide') || document.querySelector('.pptx-slide-card');
+    const isPpt = !!activeSlide && (document.body.classList.contains('slide-deck-mode') || window.DocFlow?.isPptxDocument?.());
+
+    if (isPpt && activeSlide) {
+      const slideContent = activeSlide.querySelector('.pptx-slide-content') || activeSlide.querySelector('.pptx-slide-card') || activeSlide;
+      const temp = document.createElement('div');
+      temp.innerHTML = shapeHtml;
+      const node = temp.firstElementChild;
+      if (node) {
+        node.style.position = 'absolute';
+        node.style.left = '60px';
+        node.style.top = '60px';
+        node.style.zIndex = '10';
+        slideContent.appendChild(node);
+        window.DocFlow.Editor?.notifyChange();
+        setTimeout(() => {
+          attachShapeListeners(node);
+          selectImage(node);
+        }, 50);
+        return;
+      }
+    }
+
     window.DocFlow.Editor?.insertHtmlAtCursor(shapeHtml);
     window.DocFlow.Editor?.notifyChange();
 

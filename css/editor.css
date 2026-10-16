@@ -824,7 +824,7 @@ td.excel-sel-right {
 .editor-wrap:has(.excel-spreadsheet-container),
 .editor-wrap.is-excel-mode {
   padding: 0 !important;
-  overflow: hidden !important;
+  overflow: auto !important;
   height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
@@ -833,11 +833,11 @@ td.excel-sel-right {
 .editor-page:has(.excel-spreadsheet-container),
 .editor-page.excel-view-mode {
   padding: 0 !important;
-  min-height: auto !important;
-  margin: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  max-width: 100% !important;
+  min-height: auto;
+  margin: 0 auto;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
   box-shadow: none !important;
   border-radius: 0 !important;
   background: transparent !important;
@@ -2053,6 +2053,10 @@ body.df-focus-mode .tab-bar:hover {
   .pdf-controls,
   .outline-panel,
   .find-bar,
+  .excel-formula-bar,
+  .excel-equation-bar,
+  .read-mode-action-bar,
+  .exit-reading-mode-btn,
   .toast-container,
   .modal-overlay,
   .df-img-toolbar,
@@ -3644,7 +3648,9 @@ body:not([data-mode="empty"]).editor-statusbar-hidden #statusbar {
   vertical-align: baseline !important;
   margin: 0 !important;
   background-color: rgba(217, 119, 6, 0.22) !important;
-  border-bottom: 2px dashed #b45309 !important;
+  border-bottom: none !important;
+  text-decoration: underline dashed #b45309 2px !important;
+  text-underline-offset: 3px !important;
   color: inherit !important;
   border-radius: 2px;
   cursor: pointer;
@@ -3656,12 +3662,14 @@ body:not([data-mode="empty"]).editor-statusbar-hidden #statusbar {
 .df-comment-highlight:hover,
 .df-comment-highlight.active {
   background-color: rgba(217, 119, 6, 0.38) !important;
-  border-bottom: 2px solid #b45309 !important;
+  border-bottom: none !important;
+  text-decoration: underline solid #b45309 2px !important;
 }
 
 [data-theme="dark"] .df-comment-highlight {
   background-color: rgba(245, 158, 11, 0.26) !important;
-  border-bottom: 2px dashed #f59e0b !important;
+  border-bottom: none !important;
+  text-decoration: underline dashed #f59e0b 2px !important;
 }
 
 .df-comment-popover {
@@ -4009,4 +4017,171 @@ tr.excel-page-break-bottom td {
   display: inline !important;
   white-space: normal !important;
   vertical-align: baseline !important;
+}
+
+/* Home Menu: Font Family Input Box & Chevron Container (Item 6) */
+.font-input-box-container {
+  display: inline-flex !important;
+  align-items: center !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 6px !important;
+  background: var(--bg-secondary) !important;
+  height: 28px !important;
+  padding: 0 2px 0 8px !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  min-width: 125px !important;
+  max-width: 160px !important;
+}
+.font-input-box-container:hover {
+  border-color: var(--text-muted) !important;
+}
+.font-input-box-container:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2) !important;
+}
+.font-input-box-container input#fontFamilyInput {
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  width: 105px !important;
+  flex: 1 !important;
+  outline: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-family: inherit;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+.font-family-chevron-btn {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 4px !important;
+  height: 100% !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-muted) !important;
+  font-size: 9px !important;
+  border-radius: 4px !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+.font-family-chevron-btn:hover {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Excel Chart Side Dock: Placed in empty space to the right of spreadsheet data */
+.excel-sheet-viewport {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  gap: 24px !important;
+}
+.excel-chart-dock-area {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 20px !important;
+  padding: 16px 20px !important;
+  background: transparent !important;
+  min-width: 540px !important;
+  flex-shrink: 0 !important;
+}
+.excel-chart-dock-area .doc-chart-container {
+  margin: 0 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Excel Fast Sheet Background for all cells and viewports */
+.excel-spreadsheet-container,
+.excel-sheet-viewport,
+.excel-grid-table,
+.excel-grid-table td:not([data-custom-fill]) {
+  background-color: var(--excel-sheet-bg, inherit) !important;
+}
+
+/* Floating Equation Bar in Top Right */
+.excel-equation-bar {
+  position: fixed !important;
+  top: 76px !important;
+  right: 24px !important;
+  z-index: 100010 !important;
+  background: var(--bg-elevated, #ffffff) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  width: 320px !important;
+  max-width: 90vw !important;
+  backdrop-filter: blur(12px) !important;
+  animation: dropIn 0.15s ease !important;
+}
+
+/* Night Mode on Extracted PDF Documents */
+#editor.pdf-night-mode,
+.editor-page.pdf-night-mode,
+.pdf-rich-page.pdf-night-mode {
+  filter: invert(90%) hue-rotate(180deg) !important;
+  background-color: #1a1a1a !important;
+}
+#editor.pdf-night-mode img,
+#editor.pdf-night-mode svg,
+#editor.pdf-night-mode canvas,
+.editor-page.pdf-night-mode img,
+.editor-page.pdf-night-mode svg,
+.editor-page.pdf-night-mode canvas {
+  filter: invert(100%) hue-rotate(180deg) !important;
+}
+
+/* Excel Full Sheet Content Print Pagination */
+@media print {
+  body.print-excel-landscape @page {
+    size: landscape;
+    margin: 8mm;
+  }
+  .editor-page:has(.excel-spreadsheet-container),
+  .editor-page.excel-view-mode {
+    padding: 8mm !important;
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+  .excel-spreadsheet-container,
+  .excel-sheet-viewport {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    display: block !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .excel-grid-table {
+    width: 100% !important;
+    min-width: 0 !important;
+    table-layout: auto !important;
+    page-break-inside: auto !important;
+  }
+  .excel-grid-table thead th,
+  .excel-grid-table tbody th.excel-row-hdr {
+    position: static !important;
+    box-shadow: none !important;
+  }
+  .excel-grid-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .excel-grid-table th,
+  .excel-grid-table td {
+    border: 1px solid #94a3b8 !important;
+  }
+  .excel-chart-dock-area {
+    display: block !important;
+    margin-top: 16px !important;
+    page-break-inside: avoid !important;
+  }
 }

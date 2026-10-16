@@ -1146,7 +1146,7 @@
     window.print();
   }
 
-  // Multi-Page Print Watermark Replicator (Repeats across every printed page via CSS Paged Media fixed viewport)
+  // Multi-Page Print Watermark Replicator & Excel Full Content Scaling (Issue 1.1)
   window.addEventListener('beforeprint', () => {
     const existing = document.getElementById('dfPrintFixedWatermark');
     if (existing) existing.remove();
@@ -1157,11 +1157,29 @@
       wm.innerHTML = buildWatermarkHtml(window.DocFlow.activeWatermark);
       document.body.appendChild(wm);
     }
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    if (excelContainer) {
+      document.body.classList.add('print-excel-mode');
+      const colHdrs = excelContainer.querySelectorAll('thead th.excel-col-hdr');
+      const colCount = colHdrs.length || 5;
+      if (colCount > 5) {
+        document.body.classList.add('print-excel-landscape');
+        let style = document.getElementById('dfExcelPrintPageStyle');
+        if (!style) {
+          style = document.createElement('style');
+          style.id = 'dfExcelPrintPageStyle';
+          style.textContent = '@media print { @page { size: landscape; margin: 8mm; } }';
+          document.head.appendChild(style);
+        }
+      }
+    }
   });
 
   window.addEventListener('afterprint', () => {
     const wm = document.getElementById('dfPrintFixedWatermark');
     if (wm) wm.remove();
+    document.body.classList.remove('print-excel-mode', 'print-excel-landscape');
+    document.getElementById('dfExcelPrintPageStyle')?.remove();
   });
 
   // Ribbon Tab Switching & Control Coordination
@@ -2185,6 +2203,8 @@
     const editor = $('#editor');
     if (!editor) return;
 
+    document.body.classList.toggle('slide-deck-mode', isPpt);
+
     if (!isPpt) {
       if (sidebar) sidebar.style.display = 'none';
       editor.classList.remove('is-pptx-deck');
@@ -2626,10 +2646,10 @@
                 nextText = document.createTextNode('');
                 mark.parentNode.insertBefore(nextText, mark.nextSibling);
               }
-              const ins = e.data;
-              nextText.insertData(0, ins);
+              const oldVal = nextText.textContent || '';
+              nextText.textContent = e.data + oldVal;
               const newRange = document.createRange();
-              newRange.setStart(nextText, ins.length);
+              newRange.setStart(nextText, e.data.length);
               newRange.collapse(true);
               sel.removeAllRanges();
               sel.addRange(newRange);
@@ -3842,23 +3862,28 @@
 
     const excelContainer = document.querySelector('.excel-spreadsheet-container');
     if (excelContainer) {
-      let chartArea = excelContainer.querySelector('.excel-chart-dock-area');
+      let viewport = excelContainer.querySelector('.excel-sheet-viewport');
+      if (!viewport) {
+        viewport = document.createElement('div');
+        viewport.className = 'excel-sheet-viewport';
+        const gridTable = excelContainer.querySelector('.excel-grid-table');
+        if (gridTable) {
+          gridTable.parentNode.insertBefore(viewport, gridTable);
+          viewport.appendChild(gridTable);
+        } else {
+          excelContainer.appendChild(viewport);
+        }
+      }
+      let chartArea = viewport.querySelector('.excel-chart-dock-area');
       if (!chartArea) {
         chartArea = document.createElement('div');
         chartArea.className = 'excel-chart-dock-area';
-        chartArea.style.padding = '16px';
-        chartArea.style.background = 'var(--bg-secondary)';
-        chartArea.style.borderTop = '1px solid var(--border)';
-        chartArea.style.display = 'flex';
-        chartArea.style.flexWrap = 'wrap';
-        chartArea.style.gap = '16px';
-        chartArea.style.justifyContent = 'center';
-        excelContainer.appendChild(chartArea);
+        viewport.appendChild(chartArea);
       }
       chartArea.insertAdjacentHTML('beforeend', chartHtml);
       window.DocFlow.Editor?.notifyChange();
       closeModal('#chartModal');
-      showToast('Visual Data Chart inserted into spreadsheet', 'success');
+      showToast('Visual Data Chart inserted in empty space to right of data', 'success');
       setTimeout(() => {
         const newlyInserted = chartArea.querySelector('.doc-chart-container:last-child');
         if (newlyInserted) {
@@ -4241,11 +4266,17 @@
 
       td.addEventListener('focus', () => {
         window._activeExcelCell = td;
+        if (window._activeExcelFontFamily && !td.style.fontFamily) {
+          td.style.fontFamily = window._activeExcelFontFamily;
+        }
         if (formulaInput) formulaInput.value = td.textContent || '';
         if (coordBox) coordBox.value = td.dataset.coord || 'A1';
       });
 
       td.addEventListener('input', () => {
+        if (window._activeExcelFontFamily && !td.style.fontFamily) {
+          td.style.fontFamily = window._activeExcelFontFamily;
+        }
         if (formulaInput && window._activeExcelCell === td) {
           formulaInput.value = td.textContent || '';
         }
@@ -4653,13 +4684,72 @@
         }
         if (!startCell) return;
 
+        window.DocFlow.Editor?.saveSnapshot?.(true);
+
         const startR = startCell.closest('tr')?.rowIndex || 1;
         const startC = startCell.cellIndex;
-        const lines = tsv.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+        const rawLines = tsv.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+        const parsedRows = rawLines.map(l => l.split('\t'));
+        if (parsedRows.length > 1 && parsedRows[parsedRows.length - 1].length === 1 && !parsedRows[parsedRows.length - 1][0]) {
+          parsedRows.pop();
+        }
 
-        lines.forEach((line, rOffset) => {
-          if (!line && rOffset === lines.length - 1) return;
-          const cols = line.split('\t');
+        let maxColsInPaste = 1;
+        parsedRows.forEach(cols => {
+          if (cols.length > maxColsInPaste) maxColsInPaste = cols.length;
+        });
+
+        const neededRows = startR + parsedRows.length;
+        const neededCols = startC + maxColsInPaste;
+
+        // Auto-expand columns if needed (Issue 1.4: beyond 50x50 auto expand)
+        const theadRow = table.querySelector('thead tr');
+        let currentCols = theadRow ? theadRow.children.length : 1;
+        while (currentCols < neededCols) {
+          let colLetter = '';
+          let temp = currentCols;
+          while (temp > 0) {
+            let rem = (temp - 1) % 26;
+            colLetter = String.fromCharCode(65 + rem) + colLetter;
+            temp = Math.floor((temp - 1) / 26);
+          }
+          const th = document.createElement('th');
+          th.className = 'excel-col-hdr';
+          th.contentEditable = 'false';
+          th.textContent = colLetter;
+          theadRow.appendChild(th);
+
+          table.querySelectorAll('tbody tr').forEach(tr => {
+            const td = document.createElement('td');
+            td.contentEditable = 'true';
+            tr.appendChild(td);
+            attachCellSync(td);
+          });
+          currentCols++;
+        }
+
+        // Auto-expand rows if needed (Issue 1.4: beyond 50x50 auto expand)
+        let currentRows = table.rows.length;
+        const tbody = table.querySelector('tbody') || table;
+        while (currentRows < neededRows) {
+          const newTr = document.createElement('tr');
+          const rowHdr = document.createElement('th');
+          rowHdr.className = 'excel-row-hdr';
+          rowHdr.contentEditable = 'false';
+          rowHdr.textContent = currentRows;
+          newTr.appendChild(rowHdr);
+
+          for (let c = 1; c < currentCols; c++) {
+            const td = document.createElement('td');
+            td.contentEditable = 'true';
+            newTr.appendChild(td);
+            attachCellSync(td);
+          }
+          tbody.appendChild(newTr);
+          currentRows++;
+        }
+
+        parsedRows.forEach((cols, rOffset) => {
           const targetRow = table.rows[startR + rOffset];
           if (targetRow) {
             cols.forEach((val, cOffset) => {
@@ -4675,7 +4765,8 @@
           formulaInput.value = window._activeExcelCell.textContent || '';
         }
         window.DocFlow.Editor?.notifyChange();
-        showToast('Pasted clipboard data into spreadsheet', 'success');
+        window.DocFlow.Editor?.saveSnapshot?.(true);
+        showToast(`Pasted clipboard data (${parsedRows.length}×${maxColsInPaste} cells) into spreadsheet`, 'success');
       };
 
       container.addEventListener('copy', e => {
@@ -5143,7 +5234,6 @@
               pbRow.innerHTML = `<td colspan="${colCount}" class="excel-page-break-cell"><div class="excel-page-break-divider"><i class="fas fa-file-invoice"></i> --- Page Break (Page splits here on print/export) ---</div></td>`;
               targetRow.parentNode.insertBefore(pbRow, targetRow.nextSibling);
             }
-            window.DocFlow.Editor?.saveSnapshot?.(true);
             window.DocFlow.Editor?.notifyChange?.();
             showToast(`Page break inserted below row ${targetRow.rowIndex || 1}`, 'success');
             return;
@@ -5287,6 +5377,13 @@
         page.style.width = '100%';
         page.style.minHeight = '100%';
         page.style.height = '100%';
+        const excelContainer = document.querySelector('.excel-spreadsheet-container');
+        if (excelContainer) {
+          excelContainer.style.maxWidth = '100%';
+          excelContainer.style.width = '100%';
+          excelContainer.style.margin = '0';
+          excelContainer.style.boxShadow = 'none';
+        }
         showToast('Paper Size: Full Page (Full width & height edge-to-edge)', 'info');
         return;
       }
@@ -5355,6 +5452,16 @@
           showToast('Paper Size: Envelope DL', 'info');
           break;
       }
+
+      // Excel container paper sizing (Issue 1.11)
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (excelContainer) {
+        excelContainer.style.maxWidth = page.style.maxWidth;
+        excelContainer.style.width = page.style.maxWidth;
+        excelContainer.style.margin = '20px auto';
+        excelContainer.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.12)';
+        excelContainer.style.borderRadius = '8px';
+      }
     }
 
     // Custom Page Size Dialog
@@ -5372,6 +5479,12 @@
         page.style.maxWidth = `${w}px`;
         page.style.width = `${w}px`;
         page.style.minHeight = `${h}px`;
+        const excelContainer = document.querySelector('.excel-spreadsheet-container');
+        if (excelContainer) {
+          excelContainer.style.maxWidth = `${w}px`;
+          excelContainer.style.width = `${w}px`;
+          excelContainer.style.margin = '20px auto';
+        }
         showToast(`Custom Page Size applied: ${w}px × ${h}px`, 'success');
       }
       closeModal('#customPageSizeModal');
@@ -5808,7 +5921,69 @@
       showToast(`Header & Footer applied (${isAllPages ? 'All Pages with Auto Page-Break' : 'Single Page'})`, 'success');
     }
 
-    $('#layoutHeaderFooterBtn')?.addEventListener('click', openHeaderFooterModal);
+    $('#layoutHeaderFooterBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pop = $('#layoutHeaderFooterPopover');
+      const btn = $('#layoutHeaderFooterBtn');
+      if (pop?.classList.contains('show')) {
+        pop.classList.remove('show');
+      } else if (pop && btn) {
+        window.DocFlow.UI?.positionPopover?.(btn, pop);
+      }
+    });
+
+    $('#hfMenuConfigureBtn')?.addEventListener('click', () => {
+      $('#layoutHeaderFooterPopover')?.classList.remove('show');
+      openHeaderFooterModal();
+    });
+
+    $('#hfMenuAddHeaderBtn')?.addEventListener('click', () => {
+      $('#layoutHeaderFooterPopover')?.classList.remove('show');
+      openHeaderFooterModal();
+      if ($('#hfEnableHeaderCheck')) $('#hfEnableHeaderCheck').checked = true;
+      if ($('#hfEnableFooterCheck')) $('#hfEnableFooterCheck').checked = false;
+    });
+
+    $('#hfMenuAddFooterBtn')?.addEventListener('click', () => {
+      $('#layoutHeaderFooterPopover')?.classList.remove('show');
+      openHeaderFooterModal();
+      if ($('#hfEnableHeaderCheck')) $('#hfEnableHeaderCheck').checked = false;
+      if ($('#hfEnableFooterCheck')) $('#hfEnableFooterCheck').checked = true;
+    });
+
+    $('#hfMenuRemoveHeaderBtn')?.addEventListener('click', () => {
+      $('#layoutHeaderFooterPopover')?.classList.remove('show');
+      const ed = $('#editor');
+      if (!ed) return;
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      ed.querySelectorAll('.doc-header-area, .df-page-header').forEach(el => el.remove());
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
+      showToast('Header removed', 'info');
+    });
+
+    $('#hfMenuRemoveFooterBtn')?.addEventListener('click', () => {
+      $('#layoutHeaderFooterPopover')?.classList.remove('show');
+      const ed = $('#editor');
+      if (!ed) return;
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      ed.querySelectorAll('.doc-footer-area, .df-page-footer').forEach(el => el.remove());
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
+      showToast('Footer removed', 'info');
+    });
+
+    $('#hfMenuRemoveBothBtn')?.addEventListener('click', () => {
+      $('#layoutHeaderFooterPopover')?.classList.remove('show');
+      const ed = $('#editor');
+      if (!ed) return;
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      ed.querySelectorAll('.doc-header-area, .df-page-header, .doc-footer-area, .df-page-footer').forEach(el => el.remove());
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
+      showToast('Headers and footers removed', 'info');
+    });
+
     $('#headerFooterCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#headerFooterModal'));
     $('#headerFooterCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#headerFooterModal'));
     $('#headerFooterApplyBtn')?.addEventListener('click', applyHeaderFooterAction);
@@ -5847,6 +6022,9 @@
     });
 
     document.addEventListener('click', (e) => {
+      if (!e.target.closest('#layoutHeaderFooterDropdownWrap')) {
+        $('#layoutHeaderFooterPopover')?.classList.remove('show');
+      }
       const delBtn = e.target.closest('.df-hf-delete-btn');
       if (delBtn) {
         e.stopPropagation();
@@ -5867,6 +6045,7 @@
     });
     $('#layoutPageBgInput')?.addEventListener('input', e => {
       const color = e.target.value;
+      document.documentElement.style.setProperty('--excel-sheet-bg', color);
       const page = $('.editor-page');
       if (page) {
         page.style.setProperty('background-color', color, 'important');
@@ -5877,16 +6056,21 @@
       if (excelContainer) {
         excelContainer.style.setProperty('background-color', color, 'important');
         excelContainer.style.setProperty('--excel-sheet-bg', color);
+        const viewport = excelContainer.querySelector('.excel-sheet-viewport');
+        if (viewport) {
+          viewport.style.setProperty('background-color', color, 'important');
+          viewport.style.setProperty('--excel-sheet-bg', color);
+        }
         const gridTable = excelContainer.querySelector('.excel-grid-table');
         if (gridTable) {
           gridTable.style.setProperty('background-color', color, 'important');
           gridTable.style.setProperty('--excel-sheet-bg', color);
         }
       }
-      window.DocFlow.Editor?.notifyChange?.();
     });
     $('#layoutPageBgInput')?.addEventListener('change', e => {
-      window.DocFlow.Editor?.saveSnapshot?.();
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
       showToast(`Page background color set to ${e.target.value}`, 'info');
     });
 
@@ -6657,24 +6841,34 @@
     $('#pptMoveUpBtn')?.addEventListener('click', () => movePptSlide(-1));
     $('#pptMoveDownBtn')?.addEventListener('click', () => movePptSlide(1));
     // Slide Show Dropdown & Controls (Item 2)
+    const getPptShowPopover = () => $('#pptStartSlideShowPopover') || $('#pptStartSlideShowMenu');
     $('#pptStartSlideShowBtn')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      const menu = $('#pptStartSlideShowMenu');
-      if (menu) menu.classList.toggle('show');
+      const pop = getPptShowPopover();
+      const btn = $('#pptStartSlideShowBtn');
+      if (pop) {
+        if (pop.classList.contains('show')) {
+          pop.classList.remove('show');
+        } else if (btn && window.DocFlow.UI?.positionPopover) {
+          window.DocFlow.UI.positionPopover(btn, pop);
+        } else {
+          pop.classList.add('show');
+        }
+      }
     });
     $('#pptPlayFromBeginningBtn')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      $('#pptStartSlideShowMenu')?.classList.remove('show');
+      getPptShowPopover()?.classList.remove('show');
       startSlideShow(false);
     });
     $('#pptPlayFromCurrentBtn')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      $('#pptStartSlideShowMenu')?.classList.remove('show');
+      getPptShowPopover()?.classList.remove('show');
       startSlideShow(true);
     });
     document.addEventListener('click', (e) => {
       if (!e.target.closest('#pptStartSlideShowDropdownWrap')) {
-        $('#pptStartSlideShowMenu')?.classList.remove('show');
+        getPptShowPopover()?.classList.remove('show');
       }
     });
 
@@ -7037,9 +7231,177 @@
       window.DocFlow.Editor?.sortSelectedTextOrTable('asc');
       restoreCellFocus(getActiveTableCell());
     });
-    $('#excelSortDescBtn')?.addEventListener('click', () => {
+    // Excel Filter Dropdown & Functionality (Issue 1.5)
+    $('#excelFilterBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pop = $('#excelFilterPopover');
+      const btn = $('#excelFilterBtn');
+      if (pop && btn) {
+        if (pop.classList.contains('show')) {
+          pop.classList.remove('show');
+        } else {
+          window.DocFlow.UI?.positionPopover?.(btn, pop);
+        }
+      }
+    });
+
+    $('#excelFilterSortAsc')?.addEventListener('click', () => {
+      $('#excelFilterPopover')?.classList.remove('show');
+      window.DocFlow.Editor?.sortSelectedTextOrTable('asc');
+      restoreCellFocus(getActiveTableCell());
+    });
+
+    $('#excelFilterSortDesc')?.addEventListener('click', () => {
+      $('#excelFilterPopover')?.classList.remove('show');
       window.DocFlow.Editor?.sortSelectedTextOrTable('desc');
       restoreCellFocus(getActiveTableCell());
+    });
+
+    const applyExcelFilter = () => {
+      const q = ($('#excelFilterTextInput')?.value || '').trim().toLowerCase();
+      const table = document.querySelector('.excel-grid-table');
+      if (!table) return;
+      const tbody = table.querySelector('tbody') || table;
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const activeCell = window._activeExcelCell || table.querySelector('td.excel-cell-selected');
+      const colIdx = (activeCell && activeCell.cellIndex > 0) ? activeCell.cellIndex : -1;
+
+      let visibleCount = 0;
+      rows.forEach(r => {
+        if (!q) {
+          r.style.display = '';
+          visibleCount++;
+          return;
+        }
+        let match = false;
+        if (colIdx > 0 && r.cells[colIdx]) {
+          match = (r.cells[colIdx].textContent || '').toLowerCase().includes(q);
+        } else {
+          match = Array.from(r.querySelectorAll('td')).some(td => (td.textContent || '').toLowerCase().includes(q));
+        }
+        r.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
+      });
+      showToast(`Filter applied: ${visibleCount} row(s) visible`, 'info');
+    };
+
+    $('#excelFilterApplyBtn')?.addEventListener('click', applyExcelFilter);
+    $('#excelFilterTextInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') applyExcelFilter();
+    });
+
+    $('#excelFilterClearBtn')?.addEventListener('click', () => {
+      const input = $('#excelFilterTextInput');
+      if (input) input.value = '';
+      const table = document.querySelector('.excel-grid-table');
+      if (table) {
+        table.querySelectorAll('tbody tr').forEach(r => r.style.display = '');
+      }
+      $('#excelFilterPopover')?.classList.remove('show');
+      showToast('Spreadsheet filter cleared: All rows visible', 'success');
+      restoreCellFocus(getActiveTableCell());
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#excelFilterDropdownWrap')) {
+        $('#excelFilterPopover')?.classList.remove('show');
+      }
+    });
+
+    // Equation / Calculation Bar in Top Right (Issue 1.5)
+    const eqBar = $('#excelEquationBar');
+    const toggleEquationBar = () => {
+      if (!eqBar) return;
+      const isVisible = eqBar.style.display === 'block';
+      if (isVisible) {
+        eqBar.style.display = 'none';
+      } else {
+        eqBar.style.display = 'block';
+        const input = $('#excelEquationInput');
+        if (input) {
+          const activeCell = window._activeExcelCell;
+          if (activeCell && activeCell.textContent.trim()) {
+            input.value = activeCell.textContent.trim();
+          }
+          input.focus();
+        }
+      }
+    };
+
+    $('#excelEquationBtn')?.addEventListener('click', toggleEquationBar);
+    $('#excelEquationCloseBtn')?.addEventListener('click', () => {
+      if (eqBar) eqBar.style.display = 'none';
+    });
+
+    const solveEquation = () => {
+      const input = $('#excelEquationInput');
+      const resEl = $('#excelEquationResult');
+      if (!input || !resEl) return;
+      let expr = input.value.trim();
+      if (!expr) {
+        resEl.textContent = '0';
+        return 0;
+      }
+
+      if (expr.startsWith('=')) expr = expr.substring(1).trim();
+
+      // Resolve spreadsheet cell references like A1, B2 if in Excel
+      const table = document.querySelector('.excel-grid-table');
+      if (table) {
+        expr = expr.replace(/\b([A-Z]+)(\d+)\b/g, (match, colLetters, rowNum) => {
+          let colIdx = 0;
+          for (let i = 0; i < colLetters.length; i++) {
+            colIdx = colIdx * 26 + (colLetters.charCodeAt(i) - 64);
+          }
+          const row = table.rows[parseInt(rowNum, 10)];
+          if (row && row.cells[colIdx]) {
+            const val = parseFloat((row.cells[colIdx].textContent || '').replace(/[^0-9.-]/g, '')) || 0;
+            return val;
+          }
+          return 0;
+        });
+      }
+
+      // Handle common functions like SUM, AVG
+      expr = expr.replace(/\bSUM\(([^)]+)\)/gi, (m, args) => {
+        const parts = args.split(',').map(v => parseFloat(v.trim()) || 0);
+        return parts.reduce((a, b) => a + b, 0);
+      });
+
+      try {
+        const sanitized = expr.replace(/[^0-9+\-*/()., %^eE]/g, '');
+        const val = Function(`'use strict'; return (${sanitized});`)();
+        const displayVal = typeof val === 'number' ? (Number.isInteger(val) ? val.toString() : val.toFixed(4).replace(/\.?0+$/, '')) : (val || 0);
+        resEl.textContent = displayVal;
+        return displayVal;
+      } catch (err) {
+        resEl.textContent = 'Syntax Error';
+        return null;
+      }
+    };
+
+    $('#excelEquationSolveBtn')?.addEventListener('click', solveEquation);
+    $('#excelEquationInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') solveEquation();
+    });
+
+    $('#excelEquationApplyBtn')?.addEventListener('click', () => {
+      const val = solveEquation();
+      if (val !== null && val !== 'Syntax Error') {
+        const cell = window._activeExcelCell || document.querySelector('.excel-grid-table td.excel-cell-selected');
+        if (cell && cell.tagName === 'TD') {
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          cell.textContent = val;
+          const formulaInput = document.querySelector('.excel-formula-input');
+          if (formulaInput) formulaInput.value = val;
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast(`Inserted ${val} into active cell`, 'success');
+          restoreCellFocus(cell);
+        } else {
+          showToast('Click a cell first to insert result', 'info');
+        }
+      }
     });
 
     $('#excelExportCsvBtn')?.addEventListener('click', () => {

@@ -182,13 +182,13 @@
       <div class="ribbon-group">
         <div class="ribbon-row">
           <!-- Compact Scrollable Font Family Dropdown with Visual Font Preview (Issue 4) -->
-          <div class="bullet-dropdown-wrap font-family-input-wrap" id="fontFamilyDropdownWrap" style="position:relative;display:inline-flex;align-items:center;">
-            <div class="font-input-box-container" style="display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);height:28px;padding:0 2px 0 6px;box-sizing:border-box;">
-              <input type="text" id="fontFamilyInput" value="Calibri" title="Type font family name or choose from dropdown" aria-label="Font Family" autocomplete="off" spellcheck="false" style="border:none;background:transparent;color:var(--text-primary);font-size:12px;font-weight:600;width:115px;outline:none;font-family:Calibri,sans-serif;">
+          <div class="bullet-dropdown-wrap font-family-input-wrap" id="fontFamilyDropdownWrap">
+            <div class="font-input-box-container" id="fontInputBoxContainer">
+              <input type="text" id="fontFamilyInput" value="Calibri" title="Type font family name or choose from dropdown" aria-label="Font Family" autocomplete="off" spellcheck="false">
               <span id="fontFamilyLabel" style="display:none;">Calibri</span>
-              <button class="fmt-btn" id="fontFamilyBtn" type="button" title="Open Font Family List" aria-label="Font Family Dropdown" style="border:none;background:transparent;padding:2px 4px;height:100%;cursor:pointer;display:flex;align-items:center;">
-                <i class="fas fa-chevron-down" style="font-size:9px;color:var(--text-muted);"></i>
-              </button>
+              <!-- <button class="fmt-btn font-family-chevron-btn" id="fontFamilyBtn" type="button" title="Open Font Family List" aria-label="Font Family Dropdown">
+                <i class="fas fa-chevron-down"></i>
+              </button> -->
             </div>
             <div class="spacing-popover" id="fontFamilyPopover" role="menu">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">All Fonts (A to Z)</div>
@@ -1373,7 +1373,15 @@
           </div>
           <div class="bullet-dropdown-wrap">
             <button class="fmt-btn" id="lineSpacingBtn" title="Line and Paragraph Spacing" aria-label="Line Spacing">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8v1.5H7V3zm0 4h8v1.5H7V7zm0 4h8v1.5H7v-1.5zm-4.5 2.5V2.5h-1l2-2.5 2 2.5h-1v10.5h1l-2 2.5-2-2.5h1z"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;">
+                <polyline points="3 7 6 4 9 7"></polyline>
+                <polyline points="3 17 6 20 9 17"></polyline>
+                <line x1="6" y1="4" x2="6" y2="20"></line>
+                <line x1="13" y1="5" x2="21" y2="5"></line>
+                <line x1="13" y1="10" x2="21" y2="10"></line>
+                <line x1="13" y1="15" x2="21" y2="15"></line>
+                <line x1="13" y1="20" x2="21" y2="20"></line>
+              </svg>
             </button>
             <div class="spacing-popover" id="spacingPopover" role="menu">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Line Spacing</div>
@@ -1620,7 +1628,20 @@
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="layoutPageBreakBtn" title="Insert Page Break"><i class="fas fa-file-invoice"></i> Page Break</button>
-          <button class="fmt-btn with-text word-only-tool" id="layoutHeaderFooterBtn" title="Insert or Edit Document Header & Footer (Word only)"><i class="fas fa-heading" style="color:#0284c7;"></i> Header & Footer</button>
+          <div class="bullet-dropdown-wrap" id="layoutHeaderFooterDropdownWrap" style="position:relative;display:inline-block;">
+            <button class="fmt-btn with-text word-only-tool" id="layoutHeaderFooterBtn" title="Document Header & Footer">
+              <i class="fas fa-heading" style="color:#0284c7;"></i><span>Header & Footer</span><i class="fas fa-chevron-down" style="font-size:8px;margin-left:3px;"></i>
+            </button>
+            <div class="spacing-popover" id="layoutHeaderFooterPopover" role="menu" style="min-width:185px;">
+              <div class="spacing-opt-item" id="hfMenuConfigureBtn"><i class="fas fa-sliders" style="margin-right:6px;color:#0284c7;"></i> Header & Footer Settings...</div>
+              <div class="spacing-opt-item" id="hfMenuAddHeaderBtn"><i class="fas fa-plus" style="margin-right:6px;color:#16a34a;"></i> Apply Header Only</div>
+              <div class="spacing-opt-item" id="hfMenuAddFooterBtn"><i class="fas fa-plus" style="margin-right:6px;color:#16a34a;"></i> Apply Footer Only</div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div class="spacing-opt-item" id="hfMenuRemoveHeaderBtn" style="color:#ef4444;"><i class="fas fa-trash-can" style="margin-right:6px;color:#ef4444;"></i> Remove Header</div>
+              <div class="spacing-opt-item" id="hfMenuRemoveFooterBtn" style="color:#ef4444;"><i class="fas fa-trash-can" style="margin-right:6px;color:#ef4444;"></i> Remove Footer</div>
+              <div class="spacing-opt-item" id="hfMenuRemoveBothBtn" style="color:#ef4444;"><i class="fas fa-times-circle" style="margin-right:6px;color:#ef4444;"></i> Remove Both</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1760,7 +1781,7 @@
           <button class="fmt-btn" id="editorZoomInBtn" title="Zoom In"><i class="fas fa-magnifying-glass-plus"></i></button>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="editorZoomResetBtn" title="Reset Zoom to 100%"><i class="fas fa-rotate"></i> 100%</button>
+          <button class="fmt-btn with-text" id="editorZoomResetBtn" title="Reset Zoom to 100%"><i class="fas fa-rotate"></i>  Restore 100%</button>
         </div>
       </div>
 
@@ -2217,6 +2238,24 @@
           </div>
         </div>
         <div class="ribbon-row">
+          <div class="bullet-dropdown-wrap" id="excelFilterDropdownWrap" style="position:relative;display:inline-block;">
+            <button class="fmt-btn with-text" id="excelFilterBtn" title="Filter & Sort Spreadsheet Rows">
+              <i class="fas fa-filter" style="color:#0284c7;"></i><span>Filter</span><i class="fas fa-chevron-down" style="font-size:8px;margin-left:3px;"></i>
+            </button>
+            <div class="spacing-popover" id="excelFilterPopover" role="menu" style="min-width:220px;padding:8px;">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Filter &amp; Sort</div>
+              <div class="spacing-opt-item" id="excelFilterSortAsc"><i class="fas fa-arrow-down-a-z" style="margin-right:6px;color:#16a34a;"></i> Sort Ascending (A to Z)</div>
+              <div class="spacing-opt-item" id="excelFilterSortDesc"><i class="fas fa-arrow-up-z-a" style="margin-right:6px;color:#ea580c;"></i> Sort Descending (Z to A)</div>
+              <div class="dropdown-sep" style="margin:6px 0;"></div>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Filter Rows By Text</div>
+              <div style="display:flex;gap:4px;margin-bottom:6px;">
+                <input type="text" id="excelFilterTextInput" placeholder="Type text to filter..." style="flex:1;padding:4px 8px;font-size:11.5px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);outline:none;">
+                <button type="button" id="excelFilterApplyBtn" class="modal-btn primary" style="padding:3px 8px;font-size:11px;">Apply</button>
+              </div>
+              <div class="spacing-opt-item" id="excelFilterClearBtn" style="color:#ef4444;"><i class="fas fa-xmark" style="margin-right:6px;color:#ef4444;"></i> Clear Filter (Show All)</div>
+            </div>
+          </div>
+          <button class="fmt-btn with-text" id="excelEquationBtn" title="Open Equation & Calculation Bar (Solve math & formulas)"><i class="fas fa-calculator" style="color:#8b5cf6;"></i><span>Equation</span></button>
           <button class="fmt-btn with-text" id="excelSortAscBtn" title="Sort Table Rows A to Z"><i class="fas fa-arrow-down-a-z" style="color:#16a34a;"></i> Sort A-Z</button>
           <button class="fmt-btn with-text" id="excelSortDescBtn" title="Sort Table Rows Z to A"><i class="fas fa-arrow-up-z-a" style="color:#ea580c;"></i> Sort Z-A</button>
           <button class="fmt-btn with-text" id="excelExportCsvBtn" title="Export Spreadsheet Data as CSV"><i class="fas fa-file-csv" style="color:#16a34a;"></i> Export CSV</button>
@@ -2244,21 +2283,15 @@
           <button class="fmt-btn with-text" id="pdfRibbonInvertBtn" title="Invert Colors / Night Reading Mode for PDF"><i class="fas fa-circle-half-stroke" style="color:#a855f7;"></i> Night Mode</button>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="pdfGrayscaleBtn" title="Toggle High-Contrast Grayscale / B&W Print Reading Mode"><i class="fas fa-print" style="color:#64748b;"></i> Grayscale</button>
-          <button class="fmt-btn with-text" id="pdfExportCurrentPageImgBtn" title="Export Current PDF Page as High-Resolution PNG Image"><i class="fas fa-image" style="color:#10b981;"></i> Save Page PNG</button>
+          <button class="fmt-btn with-text" id="pdfReversePagesBtn" title="Reverse Entire Page Order (1..N to N..1)"><i class="fas fa-arrow-down-up-across-line" style="color:#10b981;"></i> Reverse Pages</button>
+          <button class="fmt-btn with-text" id="pdfMetadataBtn" title="Inspect PDF Metadata, Author, Title & Page Properties"><i class="fas fa-circle-info" style="color:#06b6d4;"></i> Doc Info</button>
         </div>
       </div>
-      <!-- PDF Engineering, Security & Manipulation (Problem 4: 100% Unique PDF Buttons) -->
+      <!-- PDF Engineering & Manipulation -->
       <div class="ribbon-group">
-        <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="pdfSplitPagesBtn" title="Extract and Split Selected Pages into a New PDF Document"><i class="fas fa-scissors" style="color:#ef4444;"></i> Split Pages</button>
-          <button class="fmt-btn with-text" id="pdfFlattenBtn" title="Flatten and Lock Interactive PDF Fields & Annotations"><i class="fas fa-layer-group" style="color:#0284c7;"></i> Flatten & Lock</button>
-          <button class="fmt-btn with-text" id="pdfReversePagesBtn" title="Reverse Entire Page Order (1..N to N..1)"><i class="fas fa-arrow-down-up-across-line" style="color:#10b981;"></i> Reverse Pages</button>
-        </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="pdfCompressBtn" title="Optimize and Compress PDF Object Streams"><i class="fas fa-file-zipper" style="color:#f59e0b;"></i> Compress PDF</button>
           <button class="fmt-btn with-text" id="pdfDeleteCurrentPageBtn" title="Delete Currently Viewed Page from PDF Document"><i class="fas fa-trash-can" style="color:#e11d48;"></i> Delete Page</button>
-          <button class="fmt-btn with-text" id="pdfMetadataBtn" title="Inspect PDF Metadata, Author, Title & Page Properties"><i class="fas fa-circle-info" style="color:#06b6d4;"></i> Doc Info</button>
         </div>
       </div>
     </div>
@@ -2524,6 +2557,24 @@
       </div>
     </div>
 
+    <!-- Excel Equation & Calculation Bar (Top-Right of Spreadsheet) -->
+    <div class="excel-equation-bar" id="excelEquationBar" style="display:none;" role="region" aria-label="Equation Solver">
+      <div class="excel-equation-bar-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;color:var(--text-primary);">
+          <i class="fas fa-calculator" style="color:#8b5cf6;"></i> Equation / Math Solver
+        </span>
+        <button type="button" id="excelEquationCloseBtn" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div class="excel-equation-bar-body" style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+        <input type="text" id="excelEquationInput" placeholder="e.g. 250*1.18, A1+B1, SUM(A1:A5)" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;outline:none;" />
+        <button type="button" id="excelEquationSolveBtn" class="modal-btn primary" style="padding:4px 10px;font-size:11px;">Solve</button>
+      </div>
+      <div class="excel-equation-bar-footer" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+        <span id="excelEquationResult" style="font-size:12px;font-weight:700;color:#16a34a;">Result: —</span>
+        <button type="button" id="excelEquationApplyBtn" class="modal-btn" style="padding:3px 8px;font-size:10.5px;" title="Insert result into active spreadsheet cell">Insert into Cell</button>
+      </div>
+    </div>
+
     <!-- PDF Viewer Mode -->
     <section class="pdf-wrap" id="pdfWrap" aria-label="PDF Document Viewer">
       <div class="pdf-controls" id="pdfControls">
@@ -2536,7 +2587,7 @@
         <button class="pdf-ctrl-btn" id="pdfQuickInvertBtn" title="Toggle Night / Invert Eye-Care View"><i class="fas fa-circle-half-stroke" style="color:#a855f7;"></i> <span>Night Mode</span></button>
         <div class="tool-sep" style="height:18px;"></div>
         <button class="pdf-ctrl-btn" id="pdfQuickCreateImgBtn" title="Create PDF from Single or Multiple Images"><i class="fas fa-file-image" style="color:#ea580c;"></i> <span>Images to PDF</span></button>
-        <button class="pdf-ctrl-btn" id="pdfExtractBtn" title="Extract text into an editable document"><i class="fas fa-pen-to-square" style="color:var(--accent);"></i> <span>Extract Text</span></button>
+        <!-- <button class="pdf-ctrl-btn" id="pdfExtractBtn" title="Extract text into an editable document"><i class="fas fa-pen-to-square" style="color:var(--accent);"></i> <span>Extract Text</span></button> -->
         <button class="pdf-ctrl-btn primary" id="pdfQuickExtractAllBtn" title="Extract Text & Embedded Images in Visual Layout"><i class="fas fa-file-export"></i> <span>Extract Rich</span></button>
       </div>
       <div class="pdf-pages" id="pdfPages">
@@ -2593,20 +2644,12 @@
 
   </main>
 
-  <!-- Floating Action Bar & Exit for Distraction-Free Reading Mode (View Menu -> Read Mode) -->
+  <!-- Floating Action Bar & Exit for Distraction-Free Reading Mode (Only Comment, Search Bar, and Exit) -->
   <div class="read-mode-action-bar" id="readModeActionBar">
-    <button type="button" class="read-mode-act-btn" id="readModeUndoBtn" title="Undo (Ctrl+Z)"><i class="fas fa-rotate-left"></i></button>
-    <button type="button" class="read-mode-act-btn" id="readModeRedoBtn" title="Redo (Ctrl+Y)"><i class="fas fa-rotate-right"></i></button>
+    <button type="button" class="read-mode-act-btn" id="readModeCommentBtn" title="Add Document Comment"><i class="fas fa-comment-dots" style="color:#f59e0b;"></i><span>Comment</span></button>
     <div class="read-mode-act-divider"></div>
-    <button type="button" class="read-mode-act-btn" id="readModeBoldBtn" title="Bold (Ctrl+B)"><i class="fas fa-bold"></i></button>
-    <button type="button" class="read-mode-act-btn" id="readModeItalicBtn" title="Italic (Ctrl+I)"><i class="fas fa-italic"></i></button>
-    <button type="button" class="read-mode-act-btn" id="readModeUnderlineBtn" title="Underline (Ctrl+U)"><i class="fas fa-underline"></i></button>
+    <button type="button" class="read-mode-act-btn" id="readModeFindBtn" title="Search / Find in Document (Ctrl+F)"><i class="fas fa-magnifying-glass" style="color:#0284c7;"></i><span>Find</span></button>
     <div class="read-mode-act-divider"></div>
-    <button type="button" class="read-mode-act-btn" id="readModeSaveBtn" title="Save Document (Ctrl+S)"><i class="fas fa-floppy-disk" style="color:var(--accent,#0284c7);"></i></button>
-    <button type="button" class="read-mode-act-btn" id="readModeFindBtn" title="Find & Replace (Ctrl+F)"><i class="fas fa-magnifying-glass"></i></button>
-    <button type="button" class="read-mode-act-btn" id="readModeCommentBtn" title="Add Comment"><i class="fas fa-comment-dots" style="color:#f59e0b;"></i></button>
-    <div class="read-mode-act-divider"></div>
-    <button type="button" class="read-mode-act-btn with-label" id="readModeToggleRibbonBtn" title="Show/Hide Full Ribbon Toolbar in Read Mode"><i class="fas fa-bars"></i><span>Toolbar</span></button>
     <button type="button" class="exit-reading-mode-btn" id="exitReadingModeBtn" title="Exit Reading Mode (Esc)"><i class="fas fa-times"></i><span>Exit</span></button>
   </div>
 
@@ -3256,6 +3299,46 @@
           <i class="fas fa-database" style="font-size:20px;color:var(--accent);"></i>
           <span style="font-size:10px;">Cylinder</span>
         </button>
+        <button class="shape-opt-btn" data-shape="parallelogram" title="Parallelogram" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-shapes" style="font-size:20px;color:var(--accent);transform:skewX(-15deg);"></i>
+          <span style="font-size:10px;">Parallelogram</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="trapezoid" title="Trapezoid" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-vector-square" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Trapezoid</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="octagon" title="Octagon" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-stop" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Octagon</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="oval" title="Oval / Ellipse" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-egg" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Oval</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="badge" title="Shield / Badge" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-certificate" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Badge</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="crescent" title="Crescent Moon" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-moon" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Crescent</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="check" title="Checkmark" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-check" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Check</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="tag" title="Tag / Label" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-tag" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Tag</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="cube" title="Isometric Cube" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-cube" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Cube</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="double-arrow" title="Double Arrow" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-arrows-left-right" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Double Arrow</span>
+        </button>
         <button class="shape-opt-btn" data-shape="parametric" title="Custom Parametric Shape" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
           <i class="fas fa-sliders" style="font-size:20px;color:var(--accent);"></i>
           <span style="font-size:10px;font-weight:700;">Custom</span>
@@ -3265,6 +3348,7 @@
       <!-- Live Shape Preview Box -->
       <div id="shapePreviewBox" style="display:flex;align-items:center;justify-content:center;background:var(--bg-tertiary);border:1px dashed var(--border);border-radius:8px;height:120px;margin-bottom:14px;position:relative;overflow:hidden;">
         <span style="position:absolute;top:6px;left:10px;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Live Shape Preview</span>
+        <span id="shapeChosenLabel" style="position:absolute;top:6px;right:10px;font-size:11px;font-weight:700;color:var(--accent);background:var(--bg-secondary);padding:2px 8px;border-radius:12px;border:1px solid var(--border);">Rectangle</span>
         <div id="shapeLivePreview" style="display:flex;align-items:center;justify-content:center;height:100px;width:100%;"></div>
       </div>
 
@@ -3967,6 +4051,28 @@
     </div>
   </div>
 
+  <!-- In-App Unsaved Changes Modal Container (Inside Container - Issue 6) -->
+  <div class="modal-overlay" id="unsavedChangesModal" role="dialog" aria-modal="true" aria-label="Unsaved Changes">
+    <div class="modal" style="width:440px;max-width:92vw;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:rgba(245,158,11,0.15);display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:20px;flex-shrink:0;">
+          <i class="fas fa-triangle-exclamation"></i>
+        </div>
+        <div>
+          <h3 style="margin:0;font-size:15px;color:var(--text-primary);">Unsaved Changes</h3>
+          <p id="unsavedChangesDocName" style="margin:4px 0 0;font-size:12.5px;color:var(--text-secondary);">This document has unsaved changes.</p>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 16px;">
+        Do you want to save your recent changes before closing this document, or discard them?
+      </p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+        <button class="modal-btn" id="unsavedCancelBtn" type="button">Cancel</button>
+        <button class="modal-btn" id="unsavedDiscardBtn" type="button" style="color:#ef4444;">Discard Changes</button>
+        <button class="modal-btn primary" id="unsavedSaveBtn" type="button"><i class="fas fa-floppy-disk"></i> Save &amp; Close</button>
+      </div>
+    </div>
+  </div>
 
   <!-- External CDN Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>

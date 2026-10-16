@@ -430,13 +430,54 @@
       this.save();
     },
 
-    close(id) {
+    close(id, force = false) {
       const idx = this.list.findIndex(t => t.id === id);
       if (idx === -1) return;
       const tab = this.list[idx];
 
-      if (tab.modified && tab.type === 'edit') {
-        if (!confirm(`"${tab.name}" has unsaved changes. Close anyway?`)) return;
+      if (!force && tab.modified && tab.type === 'edit') {
+        const modal = $('#unsavedChangesModal');
+        if (modal) {
+          const docNameEl = $('#unsavedChangesDocName');
+          if (docNameEl) docNameEl.textContent = `"${tab.name}" has unsaved changes.`;
+          openModal('#unsavedChangesModal');
+
+          const cleanup = () => {
+            closeModal('#unsavedChangesModal');
+            const saveBtn = $('#unsavedSaveBtn');
+            const discardBtn = $('#unsavedDiscardBtn');
+            const cancelBtn = $('#unsavedCancelBtn');
+            if (saveBtn) saveBtn.onclick = null;
+            if (discardBtn) discardBtn.onclick = null;
+            if (cancelBtn) cancelBtn.onclick = null;
+          };
+
+          const saveBtn = $('#unsavedSaveBtn');
+          const discardBtn = $('#unsavedDiscardBtn');
+          const cancelBtn = $('#unsavedCancelBtn');
+
+          if (saveBtn) {
+            saveBtn.onclick = () => {
+              cleanup();
+              window.DocFlow?.FileIO?.saveDocument?.();
+              Tabs.close(id, true);
+            };
+          }
+          if (discardBtn) {
+            discardBtn.onclick = () => {
+              cleanup();
+              Tabs.close(id, true);
+            };
+          }
+          if (cancelBtn) {
+            cancelBtn.onclick = () => {
+              cleanup();
+            };
+          }
+          return;
+        } else {
+          if (!confirm(`"${tab.name}" has unsaved changes. Close anyway?`)) return;
+        }
       }
 
       if (tab.pdfDoc) {
