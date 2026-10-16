@@ -2302,14 +2302,24 @@ html, body {
   }
 }
 
-/* Distraction-Free Reading Mode (Bug 8) */
+/* Distraction-Free Reading Mode (View Menu -> Read Mode) */
 body.reading-mode .topbar,
 body.reading-mode .ribbon-container,
 body.reading-mode .tab-bar,
 body.reading-mode .statusbar,
 body.reading-mode .outline-panel,
-body.reading-mode .find-bar {
+body.reading-mode .find-bar:not(.open) {
   display: none !important;
+}
+
+body.reading-mode .find-bar.open {
+  display: flex !important;
+  position: fixed !important;
+  top: 14px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 10002 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
 }
 
 body.reading-mode .main-content {
@@ -2318,43 +2328,110 @@ body.reading-mode .main-content {
 }
 
 body.reading-mode .editor-wrap {
-  padding: 40px 16px !important;
+  padding: 46px 16px 30px !important;
 }
 
 body.reading-mode .editor-page {
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important;
 }
 
-/* Floating Exit Button for Reading Mode (Bug 5) */
-.exit-reading-mode-btn {
+/* Floating Quick Action Bar for Reading Mode */
+.read-mode-action-bar {
   position: fixed;
   top: 14px;
   right: 14px;
   z-index: 10000;
   display: none;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-  transition: all 0.15s ease;
+  gap: 3px;
+  padding: 4px 6px;
+  background: var(--bg-elevated, #ffffff);
+  color: var(--text-primary, #1e293b);
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 28px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
 }
 
-body.reading-mode .exit-reading-mode-btn {
+body.reading-mode .read-mode-action-bar {
   display: inline-flex !important;
 }
 
-.exit-reading-mode-btn:hover {
-  background: var(--accent);
+.read-mode-act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  color: var(--text-primary, #1e293b);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.read-mode-act-btn:hover {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.07));
+  color: var(--accent, #0284c7);
+}
+
+.read-mode-act-btn.with-label {
+  padding: 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.read-mode-act-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border, #cbd5e1);
+  margin: 0 3px;
+}
+
+/* Floating Exit Button inside Read Mode Action Bar */
+.exit-reading-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  background: var(--accent, #0284c7);
   color: #ffffff;
-  border-color: var(--accent);
+  border: none;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+  transition: all 0.15s ease;
+}
+
+.exit-reading-mode-btn:hover {
+  background: #0369a1;
+  color: #ffffff;
   transform: translateY(-1px);
+}
+
+/* Show Full Ribbon in Read Mode when revealed */
+body.reading-mode.ribbon-revealed .ribbon-container {
+  display: flex !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32) !important;
+  background: var(--bg-elevated) !important;
+  animation: slideDownRibbon 0.18s ease-out;
+}
+
+body.reading-mode.ribbon-revealed .read-mode-action-bar {
+  top: 112px !important;
 }
 
 /* Scrollable Paper Size Popover */
@@ -2402,43 +2479,66 @@ body.reading-mode .exit-reading-mode-btn {
 }
 
 @media (max-width: 768px) {
-  .main-content {
+  .main-content:not(:has(.pptx-slide-sidebar)) {
     flex-direction: column !important;
+  }
+  body.slide-deck-mode .main-content,
+  .main-content:has(.pptx-slide-sidebar) {
+    flex-direction: row !important;
+    display: flex !important;
+    overflow: hidden !important;
   }
   .pptx-slide-sidebar {
-    width: 100% !important;
-    height: 96px !important;
-    max-height: 96px !important;
-    border-right: none !important;
-    border-top: 1px solid var(--border) !important;
+    width: 130px !important;
+    min-width: 100px !important;
+    max-width: 140px !important;
+    height: calc(100vh - 128px) !important;
+    max-height: 100% !important;
+    border-right: 1px solid var(--border) !important;
+    border-top: none !important;
     flex-direction: column !important;
-    order: 2;
+    order: 0 !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
   }
   .pptx-sidebar-header {
-    padding: 4px 10px !important;
+    padding: 6px 8px !important;
     font-size: 11px !important;
   }
   .pptx-sidebar-thumbnails {
-    flex-direction: row !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    padding: 4px 8px !important;
+    flex-direction: column !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    padding: 6px 4px !important;
     gap: 8px !important;
     -webkit-overflow-scrolling: touch !important;
+    flex: 1 !important;
   }
   .pptx-thumbnail-item {
-    min-width: 105px !important;
-    max-width: 105px !important;
-    padding: 3px !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
   }
   .pptx-thumbnail-preview {
-    width: 72px !important;
-    height: 42px !important;
+    width: 100% !important;
+    height: 52px !important;
   }
   .editor-wrap {
     padding: 12px 6px 70px !important;
     width: 100% !important;
     -webkit-overflow-scrolling: touch !important;
+  }
+  body.slide-deck-mode .editor-wrap,
+  .main-content:has(.pptx-slide-sidebar) .editor-wrap {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    padding: 12px 8px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
   }
   .editor-page {
     width: 100% !important;
@@ -2450,11 +2550,22 @@ body.reading-mode .exit-reading-mode-btn {
     box-sizing: border-box !important;
   }
   .editor-page.is-pptx-deck {
-    padding: 10px 6px !important;
+    width: 100% !important;
+    max-width: 820px !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important;
+    background: transparent !important;
+    display: flex !important;
+    flex-direction: column !important;
   }
   .pptx-slide-card {
-    padding: 14px !important;
-    min-height: 240px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 16 / 9 !important;
+    min-height: unset !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
   }
   .empty-state {
     padding: 14px 10px 60px !important;
@@ -2612,4 +2723,10 @@ body.reading-mode .exit-reading-mode-btn {
   .recent-item-meta {
     font-size: 9.5px !important;
   }
+}
+
+/* Reading Mode: Non-editable distraction-free view (Item 4) */
+body.reading-mode #editor {
+  user-select: text !important;
+  caret-color: transparent !important;
 }

@@ -93,6 +93,12 @@
     pdfUndoStack.length = 0;
     pdfRedoStack.length = 0;
 
+    const wrap = $('#pdfWrap') || pdfWrap;
+    const pages = $('#pdfPages') || pdfPages;
+    if (wrap) wrap.classList.remove('pdf-grayscale-mode');
+    if (pages) pages.classList.remove('pdf-grayscale-mode');
+    $('#pdfGrayscaleBtn')?.classList.remove('active');
+
     if (tab.pdfDoc) {
       pdfDoc = tab.pdfDoc;
       pdfTotalPages = pdfDoc.numPages;
@@ -356,15 +362,27 @@
     $('#pdfRibbonRotateBtn')?.addEventListener('click', rotatePdfAction);
     $('#pdfQuickRotateBtn')?.addEventListener('click', rotatePdfAction);
 
-    // Night Mode / Invert View
+    // Night Mode / Invert View (with ON / OFF notification)
     const togglePdfNightAction = () => {
       const wrap = $('#pdfWrap') || pdfWrap;
-      if (!wrap || !pdfDoc) {
-        showToast('Open a PDF document first', 'info');
-        return;
+      const isPdfMode = window.DocFlow.currentMode === 'view' && !!pdfDoc;
+      if (isPdfMode && wrap) {
+        const isNight = wrap.classList.toggle('pdf-night-mode');
+        $('#pdfRibbonInvertBtn')?.classList.toggle('active', isNight);
+        $('#pdfQuickInvertBtn')?.classList.toggle('active', isNight);
+        showToast(`PDF Night Mode: ${isNight ? 'ON' : 'OFF'}`, 'info');
+      } else {
+        // Toggle on editor document if viewing extracted/created doc
+        const ed = $('#editor');
+        if (ed) {
+          const isNight = ed.classList.toggle('pdf-night-mode');
+          $('#pdfRibbonInvertBtn')?.classList.toggle('active', isNight);
+          $('#pdfQuickInvertBtn')?.classList.toggle('active', isNight);
+          showToast(`Document Night Mode: ${isNight ? 'ON' : 'OFF'}`, 'info');
+        } else {
+          showToast('Open a PDF or document first', 'info');
+        }
       }
-      const isNight = wrap.classList.toggle('pdf-night-mode');
-      showToast(`PDF ${isNight ? 'Night Mode enabled' : 'Day Mode restored'}`, 'info');
     };
     $('#pdfRibbonInvertBtn')?.addEventListener('click', togglePdfNightAction);
     $('#pdfQuickInvertBtn')?.addEventListener('click', togglePdfNightAction);
@@ -538,6 +556,11 @@
       const baseName = (activeTab ? activeTab.name : 'Document').replace(/\.pdf$/i, '');
       const tabName = `${baseName} (Rich).html`;
       const tab = window.DocFlow.UI.Tabs.create(tabName, extractedHtml, 'Rich Mode', 'edit');
+      if (activeTab && activeTab.pdfData) {
+        tab.pdfData = activeTab.pdfData;
+        tab.pdfDoc = pdfDoc;
+        tab.sourcePdfName = activeTab.name;
+      }
 
       window.DocFlow.UI.Tabs.activateTab(tab);
       if (window.DocFlow.Recent) {
@@ -1008,8 +1031,28 @@
                 posY = margin;
               }
 
-              const isPng = img.dataUrl.startsWith('data:image/png');
-              pdf.addImage(img.dataUrl, isPng ? 'PNG' : 'JPEG', posX, posY, renderW, renderH);
+              try {
+                const isPng = img.dataUrl.startsWith('data:image/png');
+                const isJpeg = img.dataUrl.startsWith('data:image/jpeg') || img.dataUrl.startsWith('data:image/jpg');
+                if (isPng) {
+                  pdf.addImage(img.dataUrl, 'PNG', posX, posY, renderW, renderH, undefined, 'FAST');
+                } else if (isJpeg) {
+                  pdf.addImage(img.dataUrl, 'JPEG', posX, posY, renderW, renderH, undefined, 'FAST');
+                } else {
+                  // WebP or other: render to lossless full-color PNG canvas
+                  const rgbCanvas = document.createElement('canvas');
+                  rgbCanvas.width = w;
+                  rgbCanvas.height = h;
+                  const ctx = rgbCanvas.getContext('2d');
+                  ctx.drawImage(tempImg, 0, 0, w, h);
+                  const colorPngUrl = rgbCanvas.toDataURL('image/png');
+                  pdf.addImage(colorPngUrl, 'PNG', posX, posY, renderW, renderH, undefined, 'FAST');
+                }
+              } catch (imgErr) {
+                console.warn('Direct image add fallback:', imgErr);
+                const isPng = img.dataUrl.startsWith('data:image/png');
+                pdf.addImage(img.dataUrl, isPng ? 'PNG' : 'JPEG', posX, posY, renderW, renderH);
+              }
               resolve();
             };
             tempImg.onerror = resolve;
@@ -1134,16 +1177,22 @@
         copied.forEach(page => newPdf.addPage(page));
         const pdfBytes = await newPdf.save();
 
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const cleanBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
+        const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
-        a.download = `${baseName}_split_pages_${rangeStr.replace(/[^0-9,-]/g, '')}.pdf`;
+        const newDocName = `${baseName}_split_p${rangeStr.replace(/[^0-9,-]/g, '')}.pdf`;
+        a.download = newDocName;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+
         closeModal('#pdfSplitModal');
-        showToast(`Extracted ${indices.length} page(s) into new PDF download!`, 'success');
+        const splitTab = window.DocFlow.UI.Tabs.create(newDocName, '', 'PDF', 'pdf');
+        splitTab.pdfData = cleanBuffer;
+        window.DocFlow.UI.Tabs.activateTab(splitTab);
+        showToast(`Extracted ${indices.length} page(s), opened in new tab and downloaded!`, 'success');
       } catch (err) {
         console.error('PDF Split error:', err);
         showToast('Failed to split PDF: ' + err.message, 'error');
@@ -1151,18 +1200,44 @@
     });
   }
 
+  // Ensure PDF binary buffer is available, generating on the fly if user is in an extracted or created doc
+  async function ensureTabPdfData(tab) {
+    if (!tab) return null;
+    if (tab.pdfData) return tab.pdfData;
+    const editor = $('#editor');
+    if (editor && window.jspdf) {
+      try {
+        showToast('Preparing PDF data from document...', 'info');
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const canvas = await window.html2canvas(editor, { scale: 1.5, backgroundColor: '#ffffff', useCORS: true });
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const w = pdf.internal.pageSize.getWidth();
+        const h = (canvas.height * w) / canvas.width;
+        pdf.addImage(imgData, 'JPEG', 0, 0, w, h);
+        const buffer = pdf.output('arraybuffer');
+        tab.pdfData = buffer;
+        return buffer;
+      } catch (err) {
+        console.warn('Could not compile PDF buffer from editor:', err);
+      }
+    }
+    return null;
+  }
+
   // Problem 4: Unique PDF Engineering Tools (Flatten, Reverse Pages, Compress, Delete Page)
   function setupPdfEngineeringTools() {
     // 1. Flatten Form Fields & Annotations (Permanent Read-Only Lock)
     $('#pdfFlattenBtn')?.addEventListener('click', async () => {
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfData) {
-        showToast('Open a PDF document first to flatten form fields & annotations', 'warning');
+      const pdfBuffer = await ensureTabPdfData(activeTab);
+      if (!activeTab || !pdfBuffer) {
+        showToast('Open or create a PDF document first to flatten form fields & annotations', 'warning');
         return;
       }
       try {
         showToast('Flattening and locking all PDF form fields & annotations...', 'info');
-        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        const srcPdf = await PDFLib.PDFDocument.load(pdfBuffer);
         try {
           const form = srcPdf.getForm();
           form.flatten();
@@ -1170,7 +1245,12 @@
           // Form may have no interactive AcroForm widgets, continue
         }
         const pdfBytes = await srcPdf.save({ useObjectStreams: true });
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const cleanBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
+        activeTab.pdfData = cleanBuffer;
+        delete activeTab.pdfDoc;
+        await loadPdfTab(activeTab);
+
+        const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1178,7 +1258,7 @@
         a.download = `${baseName}_flattened.pdf`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast('PDF flattened & locked successfully! Download initiated.', 'success');
+        showToast('PDF flattened & locked in viewer and download initiated!', 'success');
       } catch (err) {
         console.error('PDF Flatten error:', err);
         showToast('Failed to flatten PDF: ' + err.message, 'error');
@@ -1188,13 +1268,14 @@
     // 2. Reverse Page Order (1..N to N..1 for back-to-front scans)
     $('#pdfReversePagesBtn')?.addEventListener('click', async () => {
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfData) {
-        showToast('Open a PDF document first to reverse pages', 'warning');
+      const pdfBuffer = await ensureTabPdfData(activeTab);
+      if (!activeTab || !pdfBuffer) {
+        showToast('Open or create a PDF document first to reverse pages', 'warning');
         return;
       }
       try {
         showToast('Reversing PDF page order (1..N to N..1)...', 'info');
-        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        const srcPdf = await PDFLib.PDFDocument.load(pdfBuffer);
         const totalPages = srcPdf.getPageCount();
         if (totalPages <= 1) {
           showToast('Document only has 1 page, no reordering needed', 'info');
@@ -1205,7 +1286,12 @@
         const copiedPages = await newDoc.copyPages(srcPdf, pageIndices);
         copiedPages.forEach(p => newDoc.addPage(p));
         const pdfBytes = await newDoc.save({ useObjectStreams: true });
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const cleanBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
+        activeTab.pdfData = cleanBuffer;
+        delete activeTab.pdfDoc;
+        await loadPdfTab(activeTab);
+
+        const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1213,7 +1299,7 @@
         a.download = `${baseName}_reversed.pdf`;
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast(`Reversed all ${totalPages} pages and initiated download!`, 'success');
+        showToast(`Reversed all ${totalPages} pages in document and started download!`, 'success');
       } catch (err) {
         console.error('PDF Reverse error:', err);
         showToast('Failed to reverse pages: ' + err.message, 'error');
@@ -1223,24 +1309,27 @@
     // 3. Compress / Optimize PDF Object Streams
     $('#pdfCompressBtn')?.addEventListener('click', async () => {
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfData) {
-        showToast('Open a PDF document first to compress', 'warning');
+      const pdfBuffer = await ensureTabPdfData(activeTab);
+      if (!activeTab || !pdfBuffer) {
+        showToast('Open or create a PDF document first to compress', 'warning');
         return;
       }
       try {
         showToast('Optimizing and compressing PDF streams...', 'info');
-        const originalSize = activeTab.pdfData.byteLength || (activeTab.size || 0);
-        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        const originalSize = pdfBuffer.byteLength || (activeTab.size || 0);
+        const srcPdf = await PDFLib.PDFDocument.load(pdfBuffer);
         const compressedBytes = await srcPdf.save({
           useObjectStreams: true,
           addDefaultPage: false,
           objectsPerTick: 50
         });
         const newSize = compressedBytes.byteLength;
-        const savedBytes = Math.max(0, originalSize - newSize);
-        const pct = originalSize > 0 ? ((savedBytes / originalSize) * 100).toFixed(1) : 0;
-        
-        const blob = new Blob([compressedBytes], { type: 'application/pdf' });
+        const cleanBuffer = compressedBytes.buffer.slice(compressedBytes.byteOffset, compressedBytes.byteOffset + compressedBytes.byteLength);
+        activeTab.pdfData = cleanBuffer;
+        delete activeTab.pdfDoc;
+        await loadPdfTab(activeTab);
+
+        const blob = new Blob([cleanBuffer], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -1249,8 +1338,10 @@
         a.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         
+        const savedBytes = Math.max(0, originalSize - newSize);
+        const pct = originalSize > 0 ? ((savedBytes / originalSize) * 100).toFixed(1) : 0;
         const savedKb = (savedBytes / 1024).toFixed(1);
-        showToast(`PDF optimized: ${newSize < originalSize ? `Saved ${savedKb} KB (${pct}% reduction)` : 'Streams already optimized'}! Download started.`, 'success');
+        showToast(`PDF compressed in document view: ${newSize < originalSize ? `Saved ${savedKb} KB (${pct}%)` : 'Optimized'}! Download started.`, 'success');
       } catch (err) {
         console.error('PDF Compress error:', err);
         showToast('Failed to compress PDF: ' + err.message, 'error');
@@ -1260,11 +1351,12 @@
     // 4. Delete Current Page
     $('#pdfDeleteCurrentPageBtn')?.addEventListener('click', async () => {
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfDoc || !activeTab.pdfData) {
-        showToast('Open a PDF document first to delete a page', 'warning');
+      const pdfBuffer = await ensureTabPdfData(activeTab);
+      if (!activeTab || !pdfBuffer) {
+        showToast('Open or create a PDF document first to delete a page', 'warning');
         return;
       }
-      const totalPages = activeTab.pdfDoc.numPages;
+      const totalPages = (activeTab.pdfDoc && activeTab.pdfDoc.numPages) || pdfTotalPages;
       if (totalPages <= 1) {
         showToast('Cannot delete the only page in the document', 'warning');
         return;
@@ -1272,19 +1364,15 @@
       const pageIndexToDelete = pdfCurrentPage - 1;
       try {
         showToast(`Deleting page ${pdfCurrentPage} of ${totalPages}...`, 'info');
-        const srcPdf = await PDFLib.PDFDocument.load(activeTab.pdfData);
+        const srcPdf = await PDFLib.PDFDocument.load(pdfBuffer);
         srcPdf.removePage(pageIndexToDelete);
         const pdfBytes = await srcPdf.save({ useObjectStreams: true });
+        const cleanBuffer = pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength);
         
-        // Re-parse with PDF.js and refresh view
-        activeTab.pdfData = pdfBytes.buffer;
-        const doc = await pdfjsLib.getDocument({ data: pdfBytes.slice(0) }).promise;
-        activeTab.pdfDoc = doc;
-        pdfDoc = doc;
-        pdfTotalPages = doc.numPages;
-        pdfCurrentPage = Math.min(pdfCurrentPage, pdfTotalPages);
-        updatePdfControls();
-        await buildPdfPlaceholders();
+        activeTab.pdfData = cleanBuffer;
+        delete activeTab.pdfDoc;
+        pdfCurrentPage = Math.max(1, Math.min(pdfCurrentPage, totalPages - 1));
+        await loadPdfTab(activeTab);
         showToast(`Page ${pageIndexToDelete + 1} deleted. Remaining pages: ${pdfTotalPages}`, 'success');
       } catch (err) {
         console.error('PDF Delete Page error:', err);
@@ -1296,13 +1384,32 @@
   function setupPdfMetadata() {
     $('#pdfMetadataBtn')?.addEventListener('click', async () => {
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfDoc) {
-        showToast('Open a PDF document first to view properties', 'warning');
+      const curDoc = activeTab?.pdfDoc || pdfDoc;
+      if (!activeTab) {
+        showToast('Open a document or PDF first to view properties', 'warning');
         return;
       }
       try {
-        const meta = await activeTab.pdfDoc.getMetadata();
-        const info = meta?.info || {};
+        let meta = null;
+        let info = {};
+        if (curDoc) {
+          try {
+            meta = await curDoc.getMetadata();
+            info = meta?.info || {};
+          } catch (_) { }
+        } else {
+          // Provide rich metadata for extracted or created documents
+          const editor = $('#editor');
+          const text = editor ? editor.innerText.trim() : '';
+          info = {
+            Title: activeTab.name || 'Untitled Document',
+            Author: 'User',
+            Subject: activeTab.type || 'Rich Document',
+            Creator: 'DocFlow Document Engine',
+            Producer: 'DocFlow 2026',
+            Keywords: 'Extracted, Rich Mode, PDF, HTML'
+          };
+        }
         const metaFields = [
           { label: 'File Name', val: activeTab.name || 'document.pdf', icon: 'fa-file-pdf', color: '#ef4444' },
           { label: 'Document Title', val: info.Title || 'None specified', icon: 'fa-heading', color: '#0284c7' },
@@ -1337,43 +1444,77 @@
     $('#pdfMetadataCloseBtn')?.addEventListener('click', () => closeModal('#pdfMetadataModal'));
     $('#pdfMetadataDoneBtn')?.addEventListener('click', () => closeModal('#pdfMetadataModal'));
 
-    // Grayscale Toggle
+    // Grayscale Toggle (Works on both .pdf files and extracted/created documents with ON / OFF)
     $('#pdfGrayscaleBtn')?.addEventListener('click', () => {
       const wrap = $('#pdfWrap') || pdfWrap;
-      const pages = $('#pdfPages');
-      if ((!wrap && !pages) || !pdfDoc) {
-        showToast('Open a PDF document first', 'info');
-        return;
+      const pages = $('#pdfPages') || pdfPages;
+      const editor = $('#editor');
+      const isPdfView = window.DocFlow.currentMode === 'view' && !!pdfDoc;
+
+      if (isPdfView && (wrap || pages)) {
+        const isGray = wrap?.classList.toggle('pdf-grayscale-mode');
+        if (pages) pages.classList.toggle('pdf-grayscale-mode', isGray);
+        $('#pdfGrayscaleBtn')?.classList.toggle('active', isGray);
+        showToast(`PDF Grayscale Mode: ${isGray ? 'ON' : 'OFF'}`, 'info');
+      } else if (editor) {
+        const isGray = editor.classList.toggle('pdf-grayscale-mode');
+        $('#pdfGrayscaleBtn')?.classList.toggle('active', isGray);
+        showToast(`Document Grayscale Mode: ${isGray ? 'ON' : 'OFF'}`, 'info');
+      } else {
+        showToast('Open a PDF or document first', 'info');
       }
-      const isGray = wrap?.classList.toggle('pdf-grayscale-mode') || pages?.classList.toggle('pdf-grayscale-mode');
-      showToast(`PDF Grayscale Mode: ${isGray ? 'ON' : 'OFF'}`, 'info');
     });
 
-    // Save Page PNG
+    // Save Page PNG (Works on both .pdf files and extracted/created documents)
     $('#pdfExportCurrentPageImgBtn')?.addEventListener('click', async () => {
       const activeTab = window.DocFlow.UI.Tabs.get(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab || !activeTab.pdfDoc) {
-        showToast('Open a PDF document first', 'warning');
+      if (!activeTab) {
+        showToast('Open a PDF or document first', 'warning');
         return;
       }
-      try {
-        showToast(`Rendering Page ${pdfCurrentPage} to PNG...`, 'info');
-        const page = await activeTab.pdfDoc.getPage(pdfCurrentPage);
-        const vp = page.getViewport({ scale: 2.0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = vp.width;
-        canvas.height = vp.height;
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport: vp }).promise;
-        const dataUrl = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
-        a.download = `${baseName}_page_${pdfCurrentPage}.png`;
-        a.click();
-        showToast(`Page ${pdfCurrentPage} saved as high-res PNG!`, 'success');
-      } catch (err) {
-        showToast('Failed to save page image: ' + err.message, 'error');
+      const curDoc = activeTab.pdfDoc || pdfDoc;
+      if (curDoc && window.DocFlow.currentMode === 'view') {
+        try {
+          showToast(`Rendering Page ${pdfCurrentPage} to PNG...`, 'info');
+          const page = await curDoc.getPage(pdfCurrentPage);
+          const vp = page.getViewport({ scale: 2.0 });
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width;
+          canvas.height = vp.height;
+          const ctx = canvas.getContext('2d');
+          await page.render({ canvasContext: ctx, viewport: vp }).promise;
+          const dataUrl = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          const baseName = (activeTab.name || 'document').replace(/\.pdf$/i, '');
+          a.download = `${baseName}_page_${pdfCurrentPage}.png`;
+          a.click();
+          showToast(`Page ${pdfCurrentPage} saved as high-res PNG!`, 'success');
+          return;
+        } catch (err) {
+          console.warn('PDF page render PNG error:', err);
+        }
+      }
+
+      // If in Editor mode (extracted PDF or HTML)
+      const editor = $('#editor');
+      if (editor && window.html2canvas) {
+        try {
+          showToast('Capturing document page to high-res PNG...', 'info');
+          const targetEl = editor.querySelector('.pdf-rich-page') || editor;
+          const canvas = await window.html2canvas(targetEl, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+          const dataUrl = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          const baseName = (activeTab.name || 'document').replace(/\.[^.]+$/i, '');
+          a.download = `${baseName}_page.png`;
+          a.click();
+          showToast('Document page saved as high-res PNG!', 'success');
+        } catch (err) {
+          showToast('Failed to capture page PNG: ' + err.message, 'error');
+        }
+      } else {
+        showToast('Open a PDF document or document in edit mode to save PNG', 'warning');
       }
     });
   }

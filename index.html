@@ -52,7 +52,7 @@
     </div>
 
     <div class="topbar-filename">
-      <div class="modified-dot" id="modifiedDot" title="Document modified"></div>
+      <!-- <div class="modified-dot" id="modifiedDot" title="Document modified"></div> -->
       <span id="fileNameDisplay">DocFlow</span>
     </div>
 
@@ -182,506 +182,939 @@
       <div class="ribbon-group">
         <div class="ribbon-row">
           <!-- Compact Scrollable Font Family Dropdown with Visual Font Preview (Issue 4) -->
-          <div class="bullet-dropdown-wrap" id="fontFamilyDropdownWrap">
-            <button class="fmt-btn with-text" id="fontFamilyBtn" type="button" title="Font Family" aria-label="Font Family">
-              <span id="fontFamilyLabel" style="font-family:Calibri,sans-serif;">Calibri</span>
-              <i class="fas fa-chevron-down"></i>
-            </button>
+          <div class="bullet-dropdown-wrap font-family-input-wrap" id="fontFamilyDropdownWrap" style="position:relative;display:inline-flex;align-items:center;">
+            <div class="font-input-box-container" style="display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);height:28px;padding:0 2px 0 6px;box-sizing:border-box;">
+              <input type="text" id="fontFamilyInput" value="Calibri" title="Type font family name or choose from dropdown" aria-label="Font Family" autocomplete="off" spellcheck="false" style="border:none;background:transparent;color:var(--text-primary);font-size:12px;font-weight:600;width:115px;outline:none;font-family:Calibri,sans-serif;">
+              <span id="fontFamilyLabel" style="display:none;">Calibri</span>
+              <button class="fmt-btn" id="fontFamilyBtn" type="button" title="Open Font Family List" aria-label="Font Family Dropdown" style="border:none;background:transparent;padding:2px 4px;height:100%;cursor:pointer;display:flex;align-items:center;">
+                <i class="fas fa-chevron-down" style="font-size:9px;color:var(--text-muted);"></i>
+              </button>
+            </div>
             <div class="spacing-popover" id="fontFamilyPopover" role="menu">
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Modern Sans-Serif</div>
-              <div class="spacing-opt-item font-opt-item active" data-font="Calibri, sans-serif" data-name="Calibri" style="font-family:Calibri,sans-serif;">
-                <span class="font-opt-name" style="font-family:Calibri,sans-serif;">Calibri</span>
-                <span class="font-opt-sample" style="font-family:Calibri,sans-serif;">Aa Bb 123</span>
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">All Fonts (A to Z)</div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Agency', sans-serif" data-name="Agency" style="font-family:'Agency', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Agency', sans-serif;">Agency</span>
+                <span class="font-opt-sample" style="font-family:'Agency', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Aptos', sans-serif" data-name="Aptos" style="font-family:'Aptos',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Aptos',sans-serif;">Aptos</span>
-                <span class="font-opt-sample" style="font-family:'Aptos',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Alex Brush', cursive" data-name="Alex Brush" style="font-family:'Alex Brush', cursive;">
+                <span class="font-opt-name" style="font-family:'Alex Brush', cursive;">Alex Brush</span>
+                <span class="font-opt-sample" style="font-family:'Alex Brush', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Outfit', sans-serif" data-name="Outfit" style="font-family:'Outfit',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Outfit',sans-serif;">Outfit</span>
-                <span class="font-opt-sample" style="font-family:'Outfit',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Algerian', sans-serif" data-name="Algerian" style="font-family:'Algerian', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Algerian', sans-serif;">Algerian</span>
+                <span class="font-opt-sample" style="font-family:'Algerian', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Plus Jakarta Sans', sans-serif" data-name="Plus Jakarta Sans" style="font-family:'Plus Jakarta Sans',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Plus Jakarta Sans',sans-serif;">Plus Jakarta Sans</span>
-                <span class="font-opt-sample" style="font-family:'Plus Jakarta Sans',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Amiri', 'Traditional Arabic', serif" data-name="Amiri" style="font-family:'Amiri', 'Traditional Arabic', serif;">
+                <span class="font-opt-name" style="font-family:'Amiri', 'Traditional Arabic', serif;">Amiri</span>
+                <span class="font-opt-sample" style="font-family:'Amiri', 'Traditional Arabic', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Syne', sans-serif" data-name="Syne" style="font-family:'Syne',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Syne',sans-serif;">Syne</span>
-                <span class="font-opt-sample" style="font-family:'Syne',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Aparajita', 'Noto Sans Devanagari', serif" data-name="Aparajita" style="font-family:'Aparajita', 'Noto Sans Devanagari', serif;">
+                <span class="font-opt-name" style="font-family:'Aparajita', 'Noto Sans Devanagari', serif;">Aparajita</span>
+                <span class="font-opt-sample" style="font-family:'Aparajita', 'Noto Sans Devanagari', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Manrope', sans-serif" data-name="Manrope" style="font-family:'Manrope',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Manrope',sans-serif;">Manrope</span>
-                <span class="font-opt-sample" style="font-family:'Manrope',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Aptos', sans-serif" data-name="Aptos" style="font-family:'Aptos', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Aptos', sans-serif;">Aptos</span>
+                <span class="font-opt-sample" style="font-family:'Aptos', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'DM Sans', sans-serif" data-name="DM Sans" style="font-family:'DM Sans',sans-serif;">
-                <span class="font-opt-name" style="font-family:'DM Sans',sans-serif;">DM Sans</span>
-                <span class="font-opt-sample" style="font-family:'DM Sans',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Aptos Display', sans-serif" data-name="Aptos Display" style="font-family:'Aptos Display', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Aptos Display', sans-serif;">Aptos Display</span>
+                <span class="font-opt-sample" style="font-family:'Aptos Display', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Inter, sans-serif" data-name="Inter" style="font-family:Inter,sans-serif;">
-                <span class="font-opt-name" style="font-family:Inter,sans-serif;">Inter</span>
-                <span class="font-opt-sample" style="font-family:Inter,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Arial, sans-serif" data-name="Arial" style="font-family:Arial, sans-serif;">
+                <span class="font-opt-name" style="font-family:Arial, sans-serif;">Arial</span>
+                <span class="font-opt-sample" style="font-family:Arial, sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Roboto, sans-serif" data-name="Roboto" style="font-family:Roboto,sans-serif;">
-                <span class="font-opt-name" style="font-family:Roboto,sans-serif;">Roboto</span>
-                <span class="font-opt-sample" style="font-family:Roboto,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Arial Narrow', sans-serif" data-name="Arial Narrow" style="font-family:'Arial Narrow', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Arial Narrow', sans-serif;">Arial Narrow</span>
+                <span class="font-opt-sample" style="font-family:'Arial Narrow', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Poppins, sans-serif" data-name="Poppins" style="font-family:Poppins,sans-serif;">
-                <span class="font-opt-name" style="font-family:Poppins,sans-serif;">Poppins</span>
-                <span class="font-opt-sample" style="font-family:Poppins,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Arial Rounded MT Bold', sans-serif" data-name="Arial Rounded MT Bold" style="font-family:'Arial Rounded MT Bold', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Arial Rounded MT Bold', sans-serif;">Arial Rounded MT Bold</span>
+                <span class="font-opt-sample" style="font-family:'Arial Rounded MT Bold', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Montserrat, sans-serif" data-name="Montserrat" style="font-family:Montserrat,sans-serif;">
-                <span class="font-opt-name" style="font-family:Montserrat,sans-serif;">Montserrat</span>
-                <span class="font-opt-sample" style="font-family:Montserrat,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bahnschrift', sans-serif" data-name="Bahnschrift" style="font-family:'Bahnschrift', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Bahnschrift', sans-serif;">Bahnschrift</span>
+                <span class="font-opt-sample" style="font-family:'Bahnschrift', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Work Sans', sans-serif" data-name="Work Sans" style="font-family:'Work Sans',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Work Sans',sans-serif;">Work Sans</span>
-                <span class="font-opt-sample" style="font-family:'Work Sans',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bahnschrift Light', sans-serif" data-name="Bahnschrift Light" style="font-family:'Bahnschrift Light', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Bahnschrift Light', sans-serif;">Bahnschrift Light</span>
+                <span class="font-opt-sample" style="font-family:'Bahnschrift Light', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Karla', sans-serif" data-name="Karla" style="font-family:'Karla',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Karla',sans-serif;">Karla</span>
-                <span class="font-opt-sample" style="font-family:'Karla',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Baskerville', serif" data-name="Baskerville" style="font-family:'Baskerville', serif;">
+                <span class="font-opt-name" style="font-family:'Baskerville', serif;">Baskerville</span>
+                <span class="font-opt-sample" style="font-family:'Baskerville', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Comfortaa', sans-serif" data-name="Comfortaa" style="font-family:'Comfortaa',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Comfortaa',sans-serif;">Comfortaa</span>
-                <span class="font-opt-sample" style="font-family:'Comfortaa',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bebas Neue', sans-serif" data-name="Bebas Neue" style="font-family:'Bebas Neue', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Bebas Neue', sans-serif;">Bebas Neue</span>
+                <span class="font-opt-sample" style="font-family:'Bebas Neue', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Open Sans', sans-serif" data-name="Open Sans" style="font-family:'Open Sans',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Open Sans',sans-serif;">Open Sans</span>
-                <span class="font-opt-sample" style="font-family:'Open Sans',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bell MT', serif" data-name="Bell MT" style="font-family:'Bell MT', serif;">
+                <span class="font-opt-name" style="font-family:'Bell MT', serif;">Bell MT</span>
+                <span class="font-opt-sample" style="font-family:'Bell MT', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Lato, sans-serif" data-name="Lato" style="font-family:Lato,sans-serif;">
-                <span class="font-opt-name" style="font-family:Lato,sans-serif;">Lato</span>
-                <span class="font-opt-sample" style="font-family:Lato,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Berlin Sans FB', sans-serif" data-name="Berlin Sans FB" style="font-family:'Berlin Sans FB', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Berlin Sans FB', sans-serif;">Berlin Sans FB</span>
+                <span class="font-opt-sample" style="font-family:'Berlin Sans FB', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Raleway', sans-serif" data-name="Raleway" style="font-family:'Raleway',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Raleway',sans-serif;">Raleway</span>
-                <span class="font-opt-sample" style="font-family:'Raleway',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bernard MT Condensed', sans-serif" data-name="Bernard MT Condensed" style="font-family:'Bernard MT Condensed', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Bernard MT Condensed', sans-serif;">Bernard MT Condensed</span>
+                <span class="font-opt-sample" style="font-family:'Bernard MT Condensed', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Nunito', sans-serif" data-name="Nunito" style="font-family:'Nunito',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Nunito',sans-serif;">Nunito</span>
-                <span class="font-opt-sample" style="font-family:'Nunito',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bitter', serif" data-name="Bitter" style="font-family:'Bitter', serif;">
+                <span class="font-opt-name" style="font-family:'Bitter', serif;">Bitter</span>
+                <span class="font-opt-sample" style="font-family:'Bitter', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Rubik', sans-serif" data-name="Rubik" style="font-family:'Rubik',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Rubik',sans-serif;">Rubik</span>
-                <span class="font-opt-sample" style="font-family:'Rubik',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Blackadder ITC', sans-serif" data-name="Blackadder ITC" style="font-family:'Blackadder ITC', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Blackadder ITC', sans-serif;">Blackadder ITC</span>
+                <span class="font-opt-sample" style="font-family:'Blackadder ITC', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Source Sans 3', sans-serif" data-name="Source Sans 3" style="font-family:'Source Sans 3',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Source Sans 3',sans-serif;">Source Sans 3</span>
-                <span class="font-opt-sample" style="font-family:'Source Sans 3',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bodoni 72', serif" data-name="Bodoni 72" style="font-family:'Bodoni 72', serif;">
+                <span class="font-opt-name" style="font-family:'Bodoni 72', serif;">Bodoni 72</span>
+                <span class="font-opt-sample" style="font-family:'Bodoni 72', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Space Grotesk', sans-serif" data-name="Space Grotesk" style="font-family:'Space Grotesk',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Space Grotesk',sans-serif;">Space Grotesk</span>
-                <span class="font-opt-sample" style="font-family:'Space Grotesk',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bodoni MT', serif" data-name="Bodoni MT" style="font-family:'Bodoni MT', serif;">
+                <span class="font-opt-name" style="font-family:'Bodoni MT', serif;">Bodoni MT</span>
+                <span class="font-opt-sample" style="font-family:'Bodoni MT', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Arial, sans-serif" data-name="Arial" style="font-family:Arial,sans-serif;">
-                <span class="font-opt-name" style="font-family:Arial,sans-serif;">Arial</span>
-                <span class="font-opt-sample" style="font-family:Arial,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Book Antiqua', serif" data-name="Book Antiqua" style="font-family:'Book Antiqua', serif;">
+                <span class="font-opt-name" style="font-family:'Book Antiqua', serif;">Book Antiqua</span>
+                <span class="font-opt-sample" style="font-family:'Book Antiqua', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Segoe UI', sans-serif" data-name="Segoe UI" style="font-family:'Segoe UI',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Segoe UI',sans-serif;">Segoe UI</span>
-                <span class="font-opt-sample" style="font-family:'Segoe UI',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Bradley Hand ITC', cursive" data-name="Bradley Hand ITC" style="font-family:'Bradley Hand ITC', cursive;">
+                <span class="font-opt-name" style="font-family:'Bradley Hand ITC', cursive;">Bradley Hand ITC</span>
+                <span class="font-opt-sample" style="font-family:'Bradley Hand ITC', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Segoe UI Variable', sans-serif" data-name="Segoe UI Variable" style="font-family:'Segoe UI Variable',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Segoe UI Variable',sans-serif;">Segoe UI Variable</span>
-                <span class="font-opt-sample" style="font-family:'Segoe UI Variable',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Britannic Bold', sans-serif" data-name="Britannic Bold" style="font-family:'Britannic Bold', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Britannic Bold', sans-serif;">Britannic Bold</span>
+                <span class="font-opt-sample" style="font-family:'Britannic Bold', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Bahnschrift', sans-serif" data-name="Bahnschrift" style="font-family:'Bahnschrift',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Bahnschrift',sans-serif;">Bahnschrift</span>
-                <span class="font-opt-sample" style="font-family:'Bahnschrift',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Brush Script MT', cursive" data-name="Brush Script MT" style="font-family:'Brush Script MT', cursive;">
+                <span class="font-opt-name" style="font-family:'Brush Script MT', cursive;">Brush Script MT</span>
+                <span class="font-opt-sample" style="font-family:'Brush Script MT', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Century Gothic', sans-serif" data-name="Century Gothic" style="font-family:'Century Gothic',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Century Gothic',sans-serif;">Century Gothic</span>
-                <span class="font-opt-sample" style="font-family:'Century Gothic',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item active" data-font="Calibri, sans-serif" data-name="Calibri" style="font-family:Calibri, sans-serif;">
+                <span class="font-opt-name" style="font-family:Calibri, sans-serif;">Calibri</span>
+                <span class="font-opt-sample" style="font-family:Calibri, sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Franklin Gothic Medium', sans-serif" data-name="Franklin Gothic" style="font-family:'Franklin Gothic Medium',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Franklin Gothic Medium',sans-serif;">Franklin Gothic</span>
-                <span class="font-opt-sample" style="font-family:'Franklin Gothic Medium',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Calisto MT', serif" data-name="Calisto MT" style="font-family:'Calisto MT', serif;">
+                <span class="font-opt-name" style="font-family:'Calisto MT', serif;">Calisto MT</span>
+                <span class="font-opt-sample" style="font-family:'Calisto MT', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Gill Sans', sans-serif" data-name="Gill Sans" style="font-family:'Gill Sans',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Gill Sans',sans-serif;">Gill Sans</span>
-                <span class="font-opt-sample" style="font-family:'Gill Sans',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Cambria, serif" data-name="Cambria" style="font-family:Cambria, serif;">
+                <span class="font-opt-name" style="font-family:Cambria, serif;">Cambria</span>
+                <span class="font-opt-sample" style="font-family:Cambria, serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Lucida Sans', sans-serif" data-name="Lucida Sans" style="font-family:'Lucida Sans',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Lucida Sans',sans-serif;">Lucida Sans</span>
-                <span class="font-opt-sample" style="font-family:'Lucida Sans',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Candara', sans-serif" data-name="Candara" style="font-family:'Candara', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Candara', sans-serif;">Candara</span>
+                <span class="font-opt-sample" style="font-family:'Candara', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Verdana, sans-serif" data-name="Verdana" style="font-family:Verdana,sans-serif;">
-                <span class="font-opt-name" style="font-family:Verdana,sans-serif;">Verdana</span>
-                <span class="font-opt-sample" style="font-family:Verdana,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Cascadia Code', Consolas, monospace" data-name="Cascadia Code" style="font-family:'Cascadia Code', Consolas, monospace;">
+                <span class="font-opt-name" style="font-family:'Cascadia Code', Consolas, monospace;">Cascadia Code</span>
+                <span class="font-opt-sample" style="font-family:'Cascadia Code', Consolas, monospace;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Tahoma, sans-serif" data-name="Tahoma" style="font-family:Tahoma,sans-serif;">
-                <span class="font-opt-name" style="font-family:Tahoma,sans-serif;">Tahoma</span>
-                <span class="font-opt-sample" style="font-family:Tahoma,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Caveat, cursive" data-name="Caveat" style="font-family:Caveat, cursive;">
+                <span class="font-opt-name" style="font-family:Caveat, cursive;">Caveat</span>
+                <span class="font-opt-sample" style="font-family:Caveat, cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Trebuchet MS', sans-serif" data-name="Trebuchet MS" style="font-family:'Trebuchet MS',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Trebuchet MS',sans-serif;">Trebuchet MS</span>
-                <span class="font-opt-sample" style="font-family:'Trebuchet MS',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Century', serif" data-name="Century" style="font-family:'Century', serif;">
+                <span class="font-opt-name" style="font-family:'Century', serif;">Century</span>
+                <span class="font-opt-sample" style="font-family:'Century', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              
-              <div class="dropdown-sep" style="margin:4px 0;"></div>
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Editorial & Classic Serifs</div>
-              <div class="spacing-opt-item font-opt-item" data-font="Cambria, serif" data-name="Cambria" style="font-family:Cambria,serif;">
-                <span class="font-opt-name" style="font-family:Cambria,serif;">Cambria</span>
-                <span class="font-opt-sample" style="font-family:Cambria,serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Century Gothic', sans-serif" data-name="Century Gothic" style="font-family:'Century Gothic', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Century Gothic', sans-serif;">Century Gothic</span>
+                <span class="font-opt-sample" style="font-family:'Century Gothic', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Constantia, serif" data-name="Constantia" style="font-family:Constantia,serif;">
-                <span class="font-opt-name" style="font-family:Constantia,serif;">Constantia</span>
-                <span class="font-opt-sample" style="font-family:Constantia,serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Chiller', cursive" data-name="Chiller" style="font-family:'Chiller', cursive;">
+                <span class="font-opt-name" style="font-family:'Chiller', cursive;">Chiller</span>
+                <span class="font-opt-sample" style="font-family:'Chiller', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Crimson Text', serif" data-name="Crimson Text" style="font-family:'Crimson Text',serif;">
-                <span class="font-opt-name" style="font-family:'Crimson Text',serif;">Crimson Text</span>
-                <span class="font-opt-sample" style="font-family:'Crimson Text',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Cinzel, serif" data-name="Cinzel" style="font-family:Cinzel, serif;">
+                <span class="font-opt-name" style="font-family:Cinzel, serif;">Cinzel</span>
+                <span class="font-opt-sample" style="font-family:Cinzel, serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Libre Baskerville', serif" data-name="Libre Baskerville" style="font-family:'Libre Baskerville',serif;">
-                <span class="font-opt-name" style="font-family:'Libre Baskerville',serif;">Libre Baskerville</span>
-                <span class="font-opt-sample" style="font-family:'Libre Baskerville',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Colonna MT', sans-serif" data-name="Colonna MT" style="font-family:'Colonna MT', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Colonna MT', sans-serif;">Colonna MT</span>
+                <span class="font-opt-sample" style="font-family:'Colonna MT', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Bitter', serif" data-name="Bitter" style="font-family:'Bitter',serif;">
-                <span class="font-opt-name" style="font-family:'Bitter',serif;">Bitter</span>
-                <span class="font-opt-sample" style="font-family:'Bitter',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Comfortaa', sans-serif" data-name="Comfortaa" style="font-family:'Comfortaa', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Comfortaa', sans-serif;">Comfortaa</span>
+                <span class="font-opt-sample" style="font-family:'Comfortaa', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'DM Serif Display', serif" data-name="DM Serif Display" style="font-family:'DM Serif Display',serif;">
-                <span class="font-opt-name" style="font-family:'DM Serif Display',serif;">DM Serif Display</span>
-                <span class="font-opt-sample" style="font-family:'DM Serif Display',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Comic Sans MS', cursive" data-name="Comic Sans" style="font-family:'Comic Sans MS', cursive;">
+                <span class="font-opt-name" style="font-family:'Comic Sans MS', cursive;">Comic Sans</span>
+                <span class="font-opt-sample" style="font-family:'Comic Sans MS', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Newsreader', serif" data-name="Newsreader" style="font-family:'Newsreader',serif;">
-                <span class="font-opt-name" style="font-family:'Newsreader',serif;">Newsreader</span>
-                <span class="font-opt-sample" style="font-family:'Newsreader',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Comic Sans MS', sans-serif" data-name="Comic Sans MS" style="font-family:'Comic Sans MS', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Comic Sans MS', sans-serif;">Comic Sans MS</span>
+                <span class="font-opt-sample" style="font-family:'Comic Sans MS', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Georgia, serif" data-name="Georgia" style="font-family:Georgia,serif;">
-                <span class="font-opt-name" style="font-family:Georgia,serif;">Georgia</span>
-                <span class="font-opt-sample" style="font-family:Georgia,serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Consolas, monospace" data-name="Consolas" style="font-family:Consolas, monospace;">
+                <span class="font-opt-name" style="font-family:Consolas, monospace;">Consolas</span>
+                <span class="font-opt-sample" style="font-family:Consolas, monospace;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Merriweather', serif" data-name="Merriweather" style="font-family:'Merriweather',serif;">
-                <span class="font-opt-name" style="font-family:'Merriweather',serif;">Merriweather</span>
-                <span class="font-opt-sample" style="font-family:'Merriweather',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Constantia, serif" data-name="Constantia" style="font-family:Constantia, serif;">
+                <span class="font-opt-name" style="font-family:Constantia, serif;">Constantia</span>
+                <span class="font-opt-sample" style="font-family:Constantia, serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Playfair Display', serif" data-name="Playfair Display" style="font-family:'Playfair Display',serif;">
-                <span class="font-opt-name" style="font-family:'Playfair Display',serif;">Playfair Display</span>
-                <span class="font-opt-sample" style="font-family:'Playfair Display',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Copperplate Gothic Bold', sans-serif" data-name="Copperplate Gothic Bold" style="font-family:'Copperplate Gothic Bold', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Copperplate Gothic Bold', sans-serif;">Copperplate Gothic Bold</span>
+                <span class="font-opt-sample" style="font-family:'Copperplate Gothic Bold', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Cormorant Garamond', serif" data-name="Cormorant Garamond" style="font-family:'Cormorant Garamond',serif;">
-                <span class="font-opt-name" style="font-family:'Cormorant Garamond',serif;">Cormorant Garamond</span>
-                <span class="font-opt-sample" style="font-family:'Cormorant Garamond',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Copperplate Gothic Light', sans-serif" data-name="Copperplate Gothic Light" style="font-family:'Copperplate Gothic Light', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Copperplate Gothic Light', sans-serif;">Copperplate Gothic Light</span>
+                <span class="font-opt-sample" style="font-family:'Copperplate Gothic Light', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Lora, serif" data-name="Lora" style="font-family:Lora,serif;">
-                <span class="font-opt-name" style="font-family:Lora,serif;">Lora</span>
-                <span class="font-opt-sample" style="font-family:Lora,serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Corbel', sans-serif" data-name="Corbel" style="font-family:'Corbel', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Corbel', sans-serif;">Corbel</span>
+                <span class="font-opt-sample" style="font-family:'Corbel', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Baskerville', serif" data-name="Baskerville" style="font-family:'Baskerville',serif;">
-                <span class="font-opt-name" style="font-family:'Baskerville',serif;">Baskerville</span>
-                <span class="font-opt-sample" style="font-family:'Baskerville',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Cormorant Garamond', serif" data-name="Cormorant Garamond" style="font-family:'Cormorant Garamond', serif;">
+                <span class="font-opt-name" style="font-family:'Cormorant Garamond', serif;">Cormorant Garamond</span>
+                <span class="font-opt-sample" style="font-family:'Cormorant Garamond', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Bodoni MT', serif" data-name="Bodoni MT" style="font-family:'Bodoni MT',serif;">
-                <span class="font-opt-name" style="font-family:'Bodoni MT',serif;">Bodoni MT</span>
-                <span class="font-opt-sample" style="font-family:'Bodoni MT',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Courier New', monospace" data-name="Courier New" style="font-family:'Courier New', monospace;">
+                <span class="font-opt-name" style="font-family:'Courier New', monospace;">Courier New</span>
+                <span class="font-opt-sample" style="font-family:'Courier New', monospace;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Book Antiqua', serif" data-name="Book Antiqua" style="font-family:'Book Antiqua',serif;">
-                <span class="font-opt-name" style="font-family:'Book Antiqua',serif;">Book Antiqua</span>
-                <span class="font-opt-sample" style="font-family:'Book Antiqua',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Courier Prime', monospace" data-name="Courier Prime" style="font-family:'Courier Prime', monospace;">
+                <span class="font-opt-name" style="font-family:'Courier Prime', monospace;">Courier Prime</span>
+                <span class="font-opt-sample" style="font-family:'Courier Prime', monospace;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Noto Serif', serif" data-name="Noto Serif" style="font-family:'Noto Serif',serif;">
-                <span class="font-opt-name" style="font-family:'Noto Serif',serif;">Noto Serif</span>
-                <span class="font-opt-sample" style="font-family:'Noto Serif',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Crimson Text', serif" data-name="Crimson Text" style="font-family:'Crimson Text', serif;">
+                <span class="font-opt-name" style="font-family:'Crimson Text', serif;">Crimson Text</span>
+                <span class="font-opt-sample" style="font-family:'Crimson Text', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Times New Roman', serif" data-name="Times New Roman" style="font-family:'Times New Roman',serif;">
-                <span class="font-opt-name" style="font-family:'Times New Roman',serif;">Times New Roman</span>
-                <span class="font-opt-sample" style="font-family:'Times New Roman',serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Curlz MT', cursive" data-name="Curlz MT" style="font-family:'Curlz MT', cursive;">
+                <span class="font-opt-name" style="font-family:'Curlz MT', cursive;">Curlz MT</span>
+                <span class="font-opt-sample" style="font-family:'Curlz MT', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Garamond, serif" data-name="Garamond" style="font-family:Garamond,serif;">
-                <span class="font-opt-name" style="font-family:Garamond,serif;">Garamond</span>
-                <span class="font-opt-sample" style="font-family:Garamond,serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Dancing Script', cursive" data-name="Dancing Script" style="font-family:'Dancing Script', cursive;">
+                <span class="font-opt-name" style="font-family:'Dancing Script', cursive;">Dancing Script</span>
+                <span class="font-opt-sample" style="font-family:'Dancing Script', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Palatino, serif" data-name="Palatino" style="font-family:Palatino,serif;">
-                <span class="font-opt-name" style="font-family:Palatino,serif;">Palatino</span>
-                <span class="font-opt-sample" style="font-family:Palatino,serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'David', 'Noto Sans Hebrew', serif" data-name="David" style="font-family:'David', 'Noto Sans Hebrew', serif;">
+                <span class="font-opt-name" style="font-family:'David', 'Noto Sans Hebrew', serif;">David</span>
+                <span class="font-opt-sample" style="font-family:'David', 'Noto Sans Hebrew', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Cinzel, serif" data-name="Cinzel" style="font-family:Cinzel,serif;">
-                <span class="font-opt-name" style="font-family:Cinzel,serif;">Cinzel</span>
-                <span class="font-opt-sample" style="font-family:Cinzel,serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'DM Sans', sans-serif" data-name="DM Sans" style="font-family:'DM Sans', sans-serif;">
+                <span class="font-opt-name" style="font-family:'DM Sans', sans-serif;">DM Sans</span>
+                <span class="font-opt-sample" style="font-family:'DM Sans', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-
-              <div class="dropdown-sep" style="margin:4px 0;"></div>
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Display & Headline</div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Righteous', cursive" data-name="Righteous" style="font-family:'Righteous',cursive;">
-                <span class="font-opt-name" style="font-family:'Righteous',cursive;">Righteous</span>
-                <span class="font-opt-sample" style="font-family:'Righteous',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'DM Serif Display', serif" data-name="DM Serif Display" style="font-family:'DM Serif Display', serif;">
+                <span class="font-opt-name" style="font-family:'DM Serif Display', serif;">DM Serif Display</span>
+                <span class="font-opt-sample" style="font-family:'DM Serif Display', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Lobster', cursive" data-name="Lobster" style="font-family:'Lobster',cursive;">
-                <span class="font-opt-name" style="font-family:'Lobster',cursive;">Lobster</span>
-                <span class="font-opt-sample" style="font-family:'Lobster',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Dubai', sans-serif" data-name="Dubai" style="font-family:'Dubai', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Dubai', sans-serif;">Dubai</span>
+                <span class="font-opt-sample" style="font-family:'Dubai', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Permanent Marker', cursive" data-name="Permanent Marker" style="font-family:'Permanent Marker',cursive;">
-                <span class="font-opt-name" style="font-family:'Permanent Marker',cursive;">Permanent Marker</span>
-                <span class="font-opt-sample" style="font-family:'Permanent Marker',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Ebrima', sans-serif" data-name="Ebrima" style="font-family:'Ebrima', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Ebrima', sans-serif;">Ebrima</span>
+                <span class="font-opt-sample" style="font-family:'Ebrima', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Oswald', sans-serif" data-name="Oswald" style="font-family:'Oswald',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Oswald',sans-serif;">Oswald</span>
-                <span class="font-opt-sample" style="font-family:'Oswald',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Elephant', serif" data-name="Elephant" style="font-family:'Elephant', serif;">
+                <span class="font-opt-name" style="font-family:'Elephant', serif;">Elephant</span>
+                <span class="font-opt-sample" style="font-family:'Elephant', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Bebas Neue', sans-serif" data-name="Bebas Neue" style="font-family:'Bebas Neue',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Bebas Neue',sans-serif;">Bebas Neue</span>
-                <span class="font-opt-sample" style="font-family:'Bebas Neue',sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Engravers MT', sans-serif" data-name="Engravers MT" style="font-family:'Engravers MT', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Engravers MT', sans-serif;">Engravers MT</span>
+                <span class="font-opt-sample" style="font-family:'Engravers MT', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Impact, sans-serif" data-name="Impact" style="font-family:Impact,sans-serif;">
-                <span class="font-opt-name" style="font-family:Impact,sans-serif;">Impact</span>
-                <span class="font-opt-sample" style="font-family:Impact,sans-serif;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Eras Demi ITC', sans-serif" data-name="Eras Demi ITC" style="font-family:'Eras Demi ITC', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Eras Demi ITC', sans-serif;">Eras Demi ITC</span>
+                <span class="font-opt-sample" style="font-family:'Eras Demi ITC', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-
-              <div class="dropdown-sep" style="margin:4px 0;"></div>
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Global & Multilingual</div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Amiri', 'Traditional Arabic', serif" data-name="Amiri" style="font-family:'Amiri',serif;">
-                <span class="font-opt-name" style="font-family:'Amiri',serif;">Amiri (العربية)</span>
-                <span class="font-opt-sample" style="font-family:'Amiri',serif;">أبجد 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Felix Titling', sans-serif" data-name="Felix Titling" style="font-family:'Felix Titling', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Felix Titling', sans-serif;">Felix Titling</span>
+                <span class="font-opt-sample" style="font-family:'Felix Titling', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Traditional Arabic', 'Amiri', serif" data-name="Traditional Arabic" style="font-family:'Traditional Arabic',serif;">
-                <span class="font-opt-name" style="font-family:'Traditional Arabic',serif;">Traditional Arabic</span>
-                <span class="font-opt-sample" style="font-family:'Traditional Arabic',serif;">العربية 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Fira Code', monospace" data-name="Fira Code" style="font-family:'Fira Code', monospace;">
+                <span class="font-opt-name" style="font-family:'Fira Code', monospace;">Fira Code</span>
+                <span class="font-opt-sample" style="font-family:'Fira Code', monospace;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Simplified Arabic', Tahoma, sans-serif" data-name="Simplified Arabic" style="font-family:'Simplified Arabic',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Simplified Arabic',sans-serif;">Simplified Arabic</span>
-                <span class="font-opt-sample" style="font-family:'Simplified Arabic',sans-serif;">العربية 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Footlight MT Light', sans-serif" data-name="Footlight MT Light" style="font-family:'Footlight MT Light', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Footlight MT Light', sans-serif;">Footlight MT Light</span>
+                <span class="font-opt-sample" style="font-family:'Footlight MT Light', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Devanagari', 'Mangal', sans-serif" data-name="Noto Sans Devanagari" style="font-family:'Noto Sans Devanagari',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Noto Sans Devanagari',sans-serif;">Noto Sans Devanagari</span>
-                <span class="font-opt-sample" style="font-family:'Noto Sans Devanagari',sans-serif;">हिन्दी १२३</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Forte', sans-serif" data-name="Forte" style="font-family:'Forte', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Forte', sans-serif;">Forte</span>
+                <span class="font-opt-sample" style="font-family:'Forte', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Mangal', 'Noto Sans Devanagari', sans-serif" data-name="Mangal" style="font-family:'Mangal',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Mangal',sans-serif;">Mangal (Hindi)</span>
-                <span class="font-opt-sample" style="font-family:'Mangal',sans-serif;">हिन्दी 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Franklin Gothic Medium', sans-serif" data-name="Franklin Gothic" style="font-family:'Franklin Gothic Medium', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Franklin Gothic Medium', sans-serif;">Franklin Gothic</span>
+                <span class="font-opt-sample" style="font-family:'Franklin Gothic Medium', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Aparajita', 'Noto Sans Devanagari', serif" data-name="Aparajita" style="font-family:'Aparajita',serif;">
-                <span class="font-opt-name" style="font-family:'Aparajita',serif;">Aparajita</span>
-                <span class="font-opt-sample" style="font-family:'Aparajita',serif;">हिन्दी 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Freestyle Script', cursive" data-name="Freestyle Script" style="font-family:'Freestyle Script', cursive;">
+                <span class="font-opt-name" style="font-family:'Freestyle Script', cursive;">Freestyle Script</span>
+                <span class="font-opt-sample" style="font-family:'Freestyle Script', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Kokila', 'Noto Sans Devanagari', sans-serif" data-name="Kokila" style="font-family:'Kokila',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Kokila',sans-serif;">Kokila</span>
-                <span class="font-opt-sample" style="font-family:'Kokila',sans-serif;">हिन्दी 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'French Script MT', cursive" data-name="French Script MT" style="font-family:'French Script MT', cursive;">
+                <span class="font-opt-name" style="font-family:'French Script MT', cursive;">French Script MT</span>
+                <span class="font-opt-sample" style="font-family:'French Script MT', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif" data-name="Simplified Chinese" style="font-family:'Noto Sans SC',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Noto Sans SC',sans-serif;">Simplified Chinese</span>
-                <span class="font-opt-sample" style="font-family:'Noto Sans SC',sans-serif;">简体中文 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Gabriola', sans-serif" data-name="Gabriola" style="font-family:'Gabriola', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Gabriola', sans-serif;">Gabriola</span>
+                <span class="font-opt-sample" style="font-family:'Gabriola', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'PMingLiU', 'Noto Sans TC', serif" data-name="Traditional Chinese" style="font-family:'PMingLiU',serif;">
-                <span class="font-opt-name" style="font-family:'PMingLiU',serif;">Traditional Chinese</span>
-                <span class="font-opt-sample" style="font-family:'PMingLiU',serif;">繁體中文 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Gadugi', sans-serif" data-name="Gadugi" style="font-family:'Gadugi', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Gadugi', sans-serif;">Gadugi</span>
+                <span class="font-opt-sample" style="font-family:'Gadugi', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif" data-name="Japanese" style="font-family:'Noto Sans JP',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Noto Sans JP',sans-serif;">Japanese</span>
-                <span class="font-opt-sample" style="font-family:'Noto Sans JP',sans-serif;">日本語 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Garamond, serif" data-name="Garamond" style="font-family:Garamond, serif;">
+                <span class="font-opt-name" style="font-family:Garamond, serif;">Garamond</span>
+                <span class="font-opt-sample" style="font-family:Garamond, serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Malgun Gothic', 'Batang', sans-serif" data-name="Korean" style="font-family:'Malgun Gothic',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Malgun Gothic',sans-serif;">Korean</span>
-                <span class="font-opt-sample" style="font-family:'Malgun Gothic',sans-serif;">한국어 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Georgia, serif" data-name="Georgia" style="font-family:Georgia, serif;">
+                <span class="font-opt-name" style="font-family:Georgia, serif;">Georgia</span>
+                <span class="font-opt-sample" style="font-family:Georgia, serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'PT Sans', Arial, sans-serif" data-name="PT Sans" style="font-family:'PT Sans',sans-serif;">
-                <span class="font-opt-name" style="font-family:'PT Sans',sans-serif;">PT Sans (Русский)</span>
-                <span class="font-opt-sample" style="font-family:'PT Sans',sans-serif;">Аа Бб 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Gigi', cursive" data-name="Gigi" style="font-family:'Gigi', cursive;">
+                <span class="font-opt-name" style="font-family:'Gigi', cursive;">Gigi</span>
+                <span class="font-opt-sample" style="font-family:'Gigi', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Palatino Linotype', 'Georgia', serif" data-name="Palatino Linotype" style="font-family:'Palatino Linotype',serif;">
-                <span class="font-opt-name" style="font-family:'Palatino Linotype',serif;">Palatino Linotype</span>
-                <span class="font-opt-sample" style="font-family:'Palatino Linotype',serif;">Ελληνικά 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Gill Sans', sans-serif" data-name="Gill Sans" style="font-family:'Gill Sans', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Gill Sans', sans-serif;">Gill Sans</span>
+                <span class="font-opt-sample" style="font-family:'Gill Sans', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Hebrew', 'David', Arial, sans-serif" data-name="Noto Sans Hebrew" style="font-family:'Noto Sans Hebrew',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Noto Sans Hebrew',sans-serif;">Noto Sans Hebrew</span>
-                <span class="font-opt-sample" style="font-family:'Noto Sans Hebrew',sans-serif;">עברית 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Great Vibes', cursive" data-name="Great Vibes" style="font-family:'Great Vibes', cursive;">
+                <span class="font-opt-name" style="font-family:'Great Vibes', cursive;">Great Vibes</span>
+                <span class="font-opt-sample" style="font-family:'Great Vibes', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'David', 'Noto Sans Hebrew', serif" data-name="David" style="font-family:'David',serif;">
-                <span class="font-opt-name" style="font-family:'David',serif;">David (Hebrew)</span>
-                <span class="font-opt-sample" style="font-family:'David',serif;">עברית 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Harlow Solid Italic', cursive" data-name="Harlow Solid Italic" style="font-family:'Harlow Solid Italic', cursive;">
+                <span class="font-opt-name" style="font-family:'Harlow Solid Italic', cursive;">Harlow Solid Italic</span>
+                <span class="font-opt-sample" style="font-family:'Harlow Solid Italic', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Bengali', 'Vrinda', sans-serif" data-name="Noto Sans Bengali" style="font-family:'Noto Sans Bengali',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Noto Sans Bengali',sans-serif;">Noto Sans Bengali</span>
-                <span class="font-opt-sample" style="font-family:'Noto Sans Bengali',sans-serif;">বাংলা ১২৩</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Harrington', cursive" data-name="Harrington" style="font-family:'Harrington', cursive;">
+                <span class="font-opt-name" style="font-family:'Harrington', cursive;">Harrington</span>
+                <span class="font-opt-sample" style="font-family:'Harrington', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Thai', 'Angsana New', sans-serif" data-name="Noto Sans Thai" style="font-family:'Noto Sans Thai',sans-serif;">
-                <span class="font-opt-name" style="font-family:'Noto Sans Thai',sans-serif;">Noto Sans Thai</span>
-                <span class="font-opt-sample" style="font-family:'Noto Sans Thai',sans-serif;">ภาษาไทย 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'High Tower Text', sans-serif" data-name="High Tower Text" style="font-family:'High Tower Text', sans-serif;">
+                <span class="font-opt-name" style="font-family:'High Tower Text', sans-serif;">High Tower Text</span>
+                <span class="font-opt-sample" style="font-family:'High Tower Text', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-
-              <div class="dropdown-sep" style="margin:4px 0;"></div>
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Monospace & Code</div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Cascadia Code', Consolas, monospace" data-name="Cascadia Code" style="font-family:'Cascadia Code',Consolas,monospace;">
-                <span class="font-opt-name" style="font-family:'Cascadia Code',Consolas,monospace;">Cascadia Code</span>
-                <span class="font-opt-sample" style="font-family:'Cascadia Code',Consolas,monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Impact, sans-serif" data-name="Impact" style="font-family:Impact, sans-serif;">
+                <span class="font-opt-name" style="font-family:Impact, sans-serif;">Impact</span>
+                <span class="font-opt-sample" style="font-family:Impact, sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Source Code Pro', monospace" data-name="Source Code Pro" style="font-family:'Source Code Pro',monospace;">
-                <span class="font-opt-name" style="font-family:'Source Code Pro',monospace;">Source Code Pro</span>
-                <span class="font-opt-sample" style="font-family:'Source Code Pro',monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Imprint MT Shadow', sans-serif" data-name="Imprint MT Shadow" style="font-family:'Imprint MT Shadow', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Imprint MT Shadow', sans-serif;">Imprint MT Shadow</span>
+                <span class="font-opt-sample" style="font-family:'Imprint MT Shadow', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Inconsolata', monospace" data-name="Inconsolata" style="font-family:'Inconsolata',monospace;">
-                <span class="font-opt-name" style="font-family:'Inconsolata',monospace;">Inconsolata</span>
-                <span class="font-opt-sample" style="font-family:'Inconsolata',monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Inconsolata', monospace" data-name="Inconsolata" style="font-family:'Inconsolata', monospace;">
+                <span class="font-opt-name" style="font-family:'Inconsolata', monospace;">Inconsolata</span>
+                <span class="font-opt-sample" style="font-family:'Inconsolata', monospace;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'JetBrains Mono', monospace" data-name="JetBrains Mono" style="font-family:'JetBrains Mono',monospace;">
-                <span class="font-opt-name" style="font-family:'JetBrains Mono',monospace;">JetBrains Mono</span>
-                <span class="font-opt-sample" style="font-family:'JetBrains Mono',monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Informal Roman', serif" data-name="Informal Roman" style="font-family:'Informal Roman', serif;">
+                <span class="font-opt-name" style="font-family:'Informal Roman', serif;">Informal Roman</span>
+                <span class="font-opt-sample" style="font-family:'Informal Roman', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Fira Code', monospace" data-name="Fira Code" style="font-family:'Fira Code',monospace;">
-                <span class="font-opt-name" style="font-family:'Fira Code',monospace;">Fira Code</span>
-                <span class="font-opt-sample" style="font-family:'Fira Code',monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Inter, sans-serif" data-name="Inter" style="font-family:Inter, sans-serif;">
+                <span class="font-opt-name" style="font-family:Inter, sans-serif;">Inter</span>
+                <span class="font-opt-sample" style="font-family:Inter, sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Space Mono', monospace" data-name="Space Mono" style="font-family:'Space Mono',monospace;">
-                <span class="font-opt-name" style="font-family:'Space Mono',monospace;">Space Mono</span>
-                <span class="font-opt-sample" style="font-family:'Space Mono',monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif" data-name="Japanese" style="font-family:'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif;">Japanese</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Courier Prime', monospace" data-name="Courier Prime" style="font-family:'Courier Prime',monospace;">
-                <span class="font-opt-name" style="font-family:'Courier Prime',monospace;">Courier Prime</span>
-                <span class="font-opt-sample" style="font-family:'Courier Prime',monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'JetBrains Mono', monospace" data-name="JetBrains Mono" style="font-family:'JetBrains Mono', monospace;">
+                <span class="font-opt-name" style="font-family:'JetBrains Mono', monospace;">JetBrains Mono</span>
+                <span class="font-opt-sample" style="font-family:'JetBrains Mono', monospace;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Courier New', monospace" data-name="Courier New" style="font-family:'Courier New',monospace;">
-                <span class="font-opt-name" style="font-family:'Courier New',monospace;">Courier New</span>
-                <span class="font-opt-sample" style="font-family:'Courier New',monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Jokerman', cursive" data-name="Jokerman" style="font-family:'Jokerman', cursive;">
+                <span class="font-opt-name" style="font-family:'Jokerman', cursive;">Jokerman</span>
+                <span class="font-opt-sample" style="font-family:'Jokerman', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Consolas, monospace" data-name="Consolas" style="font-family:Consolas,monospace;">
-                <span class="font-opt-name" style="font-family:Consolas,monospace;">Consolas</span>
-                <span class="font-opt-sample" style="font-family:Consolas,monospace;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Juice ITC', sans-serif" data-name="Juice ITC" style="font-family:'Juice ITC', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Juice ITC', sans-serif;">Juice ITC</span>
+                <span class="font-opt-sample" style="font-family:'Juice ITC', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-
-              <div class="dropdown-sep" style="margin:4px 0;"></div>
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin:4px 6px;">Handwriting & Cursive</div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Satisfy', cursive" data-name="Satisfy" style="font-family:'Satisfy',cursive;">
-                <span class="font-opt-name" style="font-family:'Satisfy',cursive;">Satisfy</span>
-                <span class="font-opt-sample" style="font-family:'Satisfy',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Kalam', cursive" data-name="Kalam" style="font-family:'Kalam', cursive;">
+                <span class="font-opt-name" style="font-family:'Kalam', cursive;">Kalam</span>
+                <span class="font-opt-sample" style="font-family:'Kalam', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Rock Salt', cursive" data-name="Rock Salt" style="font-family:'Rock Salt',cursive;">
-                <span class="font-opt-name" style="font-family:'Rock Salt',cursive;">Rock Salt</span>
-                <span class="font-opt-sample" style="font-family:'Rock Salt',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Karla', sans-serif" data-name="Karla" style="font-family:'Karla', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Karla', sans-serif;">Karla</span>
+                <span class="font-opt-sample" style="font-family:'Karla', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Shadows Into Light', cursive" data-name="Shadows Into Light" style="font-family:'Shadows Into Light',cursive;">
-                <span class="font-opt-name" style="font-family:'Shadows Into Light',cursive;">Shadows Into Light</span>
-                <span class="font-opt-sample" style="font-family:'Shadows Into Light',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Kokila', 'Noto Sans Devanagari', sans-serif" data-name="Kokila" style="font-family:'Kokila', 'Noto Sans Devanagari', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Kokila', 'Noto Sans Devanagari', sans-serif;">Kokila</span>
+                <span class="font-opt-sample" style="font-family:'Kokila', 'Noto Sans Devanagari', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Kalam', cursive" data-name="Kalam" style="font-family:'Kalam',cursive;">
-                <span class="font-opt-name" style="font-family:'Kalam',cursive;">Kalam</span>
-                <span class="font-opt-sample" style="font-family:'Kalam',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Malgun Gothic', 'Batang', sans-serif" data-name="Korean" style="font-family:'Malgun Gothic', 'Batang', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Malgun Gothic', 'Batang', sans-serif;">Korean</span>
+                <span class="font-opt-sample" style="font-family:'Malgun Gothic', 'Batang', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Segoe Print', cursive" data-name="Segoe Print" style="font-family:'Segoe Print',cursive;">
-                <span class="font-opt-name" style="font-family:'Segoe Print',cursive;">Segoe Print</span>
-                <span class="font-opt-sample" style="font-family:'Segoe Print',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Kristen ITC', sans-serif" data-name="Kristen ITC" style="font-family:'Kristen ITC', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Kristen ITC', sans-serif;">Kristen ITC</span>
+                <span class="font-opt-sample" style="font-family:'Kristen ITC', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Segoe Script', cursive" data-name="Segoe Script" style="font-family:'Segoe Script',cursive;">
-                <span class="font-opt-name" style="font-family:'Segoe Script',cursive;">Segoe Script</span>
-                <span class="font-opt-sample" style="font-family:'Segoe Script',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Kunstler Script', cursive" data-name="Kunstler Script" style="font-family:'Kunstler Script', cursive;">
+                <span class="font-opt-name" style="font-family:'Kunstler Script', cursive;">Kunstler Script</span>
+                <span class="font-opt-sample" style="font-family:'Kunstler Script', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Great Vibes', cursive" data-name="Great Vibes" style="font-family:'Great Vibes',cursive;">
-                <span class="font-opt-name" style="font-family:'Great Vibes',cursive;">Great Vibes</span>
-                <span class="font-opt-sample" style="font-family:'Great Vibes',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Lato, sans-serif" data-name="Lato" style="font-family:Lato, sans-serif;">
+                <span class="font-opt-name" style="font-family:Lato, sans-serif;">Lato</span>
+                <span class="font-opt-sample" style="font-family:Lato, sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Alex Brush', cursive" data-name="Alex Brush" style="font-family:'Alex Brush',cursive;">
-                <span class="font-opt-name" style="font-family:'Alex Brush',cursive;">Alex Brush</span>
-                <span class="font-opt-sample" style="font-family:'Alex Brush',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Leelawadee UI', sans-serif" data-name="Leelawadee UI" style="font-family:'Leelawadee UI', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Leelawadee UI', sans-serif;">Leelawadee UI</span>
+                <span class="font-opt-sample" style="font-family:'Leelawadee UI', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Dancing Script', cursive" data-name="Dancing Script" style="font-family:'Dancing Script',cursive;">
-                <span class="font-opt-name" style="font-family:'Dancing Script',cursive;">Dancing Script</span>
-                <span class="font-opt-sample" style="font-family:'Dancing Script',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Libre Baskerville', serif" data-name="Libre Baskerville" style="font-family:'Libre Baskerville', serif;">
+                <span class="font-opt-name" style="font-family:'Libre Baskerville', serif;">Libre Baskerville</span>
+                <span class="font-opt-sample" style="font-family:'Libre Baskerville', serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Caveat, cursive" data-name="Caveat" style="font-family:Caveat,cursive;">
-                <span class="font-opt-name" style="font-family:Caveat,cursive;">Caveat</span>
-                <span class="font-opt-sample" style="font-family:Caveat,cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Lobster', cursive" data-name="Lobster" style="font-family:'Lobster', cursive;">
+                <span class="font-opt-name" style="font-family:'Lobster', cursive;">Lobster</span>
+                <span class="font-opt-sample" style="font-family:'Lobster', cursive;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="Pacifico, cursive" data-name="Pacifico" style="font-family:Pacifico,cursive;">
-                <span class="font-opt-name" style="font-family:Pacifico,cursive;">Pacifico</span>
-                <span class="font-opt-sample" style="font-family:Pacifico,cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="Lora, serif" data-name="Lora" style="font-family:Lora, serif;">
+                <span class="font-opt-name" style="font-family:Lora, serif;">Lora</span>
+                <span class="font-opt-sample" style="font-family:Lora, serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
-              <div class="spacing-opt-item font-opt-item" data-font="'Comic Sans MS', cursive" data-name="Comic Sans" style="font-family:'Comic Sans MS',cursive;">
-                <span class="font-opt-name" style="font-family:'Comic Sans MS',cursive;">Comic Sans</span>
-                <span class="font-opt-sample" style="font-family:'Comic Sans MS',cursive;">Aa Bb 123</span>
+              <div class="spacing-opt-item font-opt-item" data-font="'Lucida Sans', sans-serif" data-name="Lucida Sans" style="font-family:'Lucida Sans', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Lucida Sans', sans-serif;">Lucida Sans</span>
+                <span class="font-opt-sample" style="font-family:'Lucida Sans', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Magneto', sans-serif" data-name="Magneto" style="font-family:'Magneto', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Magneto', sans-serif;">Magneto</span>
+                <span class="font-opt-sample" style="font-family:'Magneto', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Maiandra GD', sans-serif" data-name="Maiandra GD" style="font-family:'Maiandra GD', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Maiandra GD', sans-serif;">Maiandra GD</span>
+                <span class="font-opt-sample" style="font-family:'Maiandra GD', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Mangal', 'Noto Sans Devanagari', sans-serif" data-name="Mangal" style="font-family:'Mangal', 'Noto Sans Devanagari', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Mangal', 'Noto Sans Devanagari', sans-serif;">Mangal</span>
+                <span class="font-opt-sample" style="font-family:'Mangal', 'Noto Sans Devanagari', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Manrope', sans-serif" data-name="Manrope" style="font-family:'Manrope', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Manrope', sans-serif;">Manrope</span>
+                <span class="font-opt-sample" style="font-family:'Manrope', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Merriweather', serif" data-name="Merriweather" style="font-family:'Merriweather', serif;">
+                <span class="font-opt-name" style="font-family:'Merriweather', serif;">Merriweather</span>
+                <span class="font-opt-sample" style="font-family:'Merriweather', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Microsoft Himalaya', sans-serif" data-name="Microsoft Himalaya" style="font-family:'Microsoft Himalaya', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Microsoft Himalaya', sans-serif;">Microsoft Himalaya</span>
+                <span class="font-opt-sample" style="font-family:'Microsoft Himalaya', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Microsoft JhengHei', sans-serif" data-name="Microsoft JhengHei" style="font-family:'Microsoft JhengHei', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Microsoft JhengHei', sans-serif;">Microsoft JhengHei</span>
+                <span class="font-opt-sample" style="font-family:'Microsoft JhengHei', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Microsoft New Tai Lue', sans-serif" data-name="Microsoft New Tai Lue" style="font-family:'Microsoft New Tai Lue', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Microsoft New Tai Lue', sans-serif;">Microsoft New Tai Lue</span>
+                <span class="font-opt-sample" style="font-family:'Microsoft New Tai Lue', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Microsoft PhagsPa', sans-serif" data-name="Microsoft PhagsPa" style="font-family:'Microsoft PhagsPa', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Microsoft PhagsPa', sans-serif;">Microsoft PhagsPa</span>
+                <span class="font-opt-sample" style="font-family:'Microsoft PhagsPa', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Microsoft Sans Serif', serif" data-name="Microsoft Sans Serif" style="font-family:'Microsoft Sans Serif', serif;">
+                <span class="font-opt-name" style="font-family:'Microsoft Sans Serif', serif;">Microsoft Sans Serif</span>
+                <span class="font-opt-sample" style="font-family:'Microsoft Sans Serif', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Microsoft Tai Le', sans-serif" data-name="Microsoft Tai Le" style="font-family:'Microsoft Tai Le', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Microsoft Tai Le', sans-serif;">Microsoft Tai Le</span>
+                <span class="font-opt-sample" style="font-family:'Microsoft Tai Le', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Microsoft YaHei', sans-serif" data-name="Microsoft YaHei" style="font-family:'Microsoft YaHei', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Microsoft YaHei', sans-serif;">Microsoft YaHei</span>
+                <span class="font-opt-sample" style="font-family:'Microsoft YaHei', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'MingLiU', sans-serif" data-name="MingLiU" style="font-family:'MingLiU', sans-serif;">
+                <span class="font-opt-name" style="font-family:'MingLiU', sans-serif;">MingLiU</span>
+                <span class="font-opt-sample" style="font-family:'MingLiU', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Mistral', sans-serif" data-name="Mistral" style="font-family:'Mistral', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Mistral', sans-serif;">Mistral</span>
+                <span class="font-opt-sample" style="font-family:'Mistral', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Modern No. 20', serif" data-name="Modern No. 20" style="font-family:'Modern No. 20', serif;">
+                <span class="font-opt-name" style="font-family:'Modern No. 20', serif;">Modern No. 20</span>
+                <span class="font-opt-sample" style="font-family:'Modern No. 20', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Monotype Corsiva', monospace" data-name="Monotype Corsiva" style="font-family:'Monotype Corsiva', monospace;">
+                <span class="font-opt-name" style="font-family:'Monotype Corsiva', monospace;">Monotype Corsiva</span>
+                <span class="font-opt-sample" style="font-family:'Monotype Corsiva', monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Montserrat, sans-serif" data-name="Montserrat" style="font-family:Montserrat, sans-serif;">
+                <span class="font-opt-name" style="font-family:Montserrat, sans-serif;">Montserrat</span>
+                <span class="font-opt-sample" style="font-family:Montserrat, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'MS Gothic', sans-serif" data-name="MS Gothic" style="font-family:'MS Gothic', sans-serif;">
+                <span class="font-opt-name" style="font-family:'MS Gothic', sans-serif;">MS Gothic</span>
+                <span class="font-opt-sample" style="font-family:'MS Gothic', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'MS Mincho', serif" data-name="MS Mincho" style="font-family:'MS Mincho', serif;">
+                <span class="font-opt-name" style="font-family:'MS Mincho', serif;">MS Mincho</span>
+                <span class="font-opt-sample" style="font-family:'MS Mincho', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'MS PGothic', sans-serif" data-name="MS PGothic" style="font-family:'MS PGothic', sans-serif;">
+                <span class="font-opt-name" style="font-family:'MS PGothic', sans-serif;">MS PGothic</span>
+                <span class="font-opt-sample" style="font-family:'MS PGothic', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'MS PMincho', serif" data-name="MS PMincho" style="font-family:'MS PMincho', serif;">
+                <span class="font-opt-name" style="font-family:'MS PMincho', serif;">MS PMincho</span>
+                <span class="font-opt-sample" style="font-family:'MS PMincho', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'MV Boli', sans-serif" data-name="MV Boli" style="font-family:'MV Boli', sans-serif;">
+                <span class="font-opt-name" style="font-family:'MV Boli', sans-serif;">MV Boli</span>
+                <span class="font-opt-sample" style="font-family:'MV Boli', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Newsreader', serif" data-name="Newsreader" style="font-family:'Newsreader', serif;">
+                <span class="font-opt-name" style="font-family:'Newsreader', serif;">Newsreader</span>
+                <span class="font-opt-sample" style="font-family:'Newsreader', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Niageng', sans-serif" data-name="Niageng" style="font-family:'Niageng', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Niageng', sans-serif;">Niageng</span>
+                <span class="font-opt-sample" style="font-family:'Niageng', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Bengali', 'Vrinda', sans-serif" data-name="Noto Sans Bengali" style="font-family:'Noto Sans Bengali', 'Vrinda', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Bengali', 'Vrinda', sans-serif;">Noto Sans Bengali</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Bengali', 'Vrinda', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Devanagari', 'Mangal', sans-serif" data-name="Noto Sans Devanagari" style="font-family:'Noto Sans Devanagari', 'Mangal', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Devanagari', 'Mangal', sans-serif;">Noto Sans Devanagari</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Devanagari', 'Mangal', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Hebrew', 'David', Arial, sans-serif" data-name="Noto Sans Hebrew" style="font-family:'Noto Sans Hebrew', 'David', Arial, sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Hebrew', 'David', Arial, sans-serif;">Noto Sans Hebrew</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Hebrew', 'David', Arial, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans Thai', 'Angsana New', sans-serif" data-name="Noto Sans Thai" style="font-family:'Noto Sans Thai', 'Angsana New', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans Thai', 'Angsana New', sans-serif;">Noto Sans Thai</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans Thai', 'Angsana New', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Serif', serif" data-name="Noto Serif" style="font-family:'Noto Serif', serif;">
+                <span class="font-opt-name" style="font-family:'Noto Serif', serif;">Noto Serif</span>
+                <span class="font-opt-sample" style="font-family:'Noto Serif', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Nunito', sans-serif" data-name="Nunito" style="font-family:'Nunito', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Nunito', sans-serif;">Nunito</span>
+                <span class="font-opt-sample" style="font-family:'Nunito', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'OCR A Extended', monospace" data-name="OCR A Extended" style="font-family:'OCR A Extended', monospace;">
+                <span class="font-opt-name" style="font-family:'OCR A Extended', monospace;">OCR A Extended</span>
+                <span class="font-opt-sample" style="font-family:'OCR A Extended', monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Old English Text MT', sans-serif" data-name="Old English Text MT" style="font-family:'Old English Text MT', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Old English Text MT', sans-serif;">Old English Text MT</span>
+                <span class="font-opt-sample" style="font-family:'Old English Text MT', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Onyx', sans-serif" data-name="Onyx" style="font-family:'Onyx', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Onyx', sans-serif;">Onyx</span>
+                <span class="font-opt-sample" style="font-family:'Onyx', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Open Sans', sans-serif" data-name="Open Sans" style="font-family:'Open Sans', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Open Sans', sans-serif;">Open Sans</span>
+                <span class="font-opt-sample" style="font-family:'Open Sans', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Oswald', sans-serif" data-name="Oswald" style="font-family:'Oswald', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Oswald', sans-serif;">Oswald</span>
+                <span class="font-opt-sample" style="font-family:'Oswald', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Outfit', sans-serif" data-name="Outfit" style="font-family:'Outfit', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Outfit', sans-serif;">Outfit</span>
+                <span class="font-opt-sample" style="font-family:'Outfit', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Pacifico, cursive" data-name="Pacifico" style="font-family:Pacifico, cursive;">
+                <span class="font-opt-name" style="font-family:Pacifico, cursive;">Pacifico</span>
+                <span class="font-opt-sample" style="font-family:Pacifico, cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Palace Script MT', cursive" data-name="Palace Script MT" style="font-family:'Palace Script MT', cursive;">
+                <span class="font-opt-name" style="font-family:'Palace Script MT', cursive;">Palace Script MT</span>
+                <span class="font-opt-sample" style="font-family:'Palace Script MT', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Palatino, serif" data-name="Palatino" style="font-family:Palatino, serif;">
+                <span class="font-opt-name" style="font-family:Palatino, serif;">Palatino</span>
+                <span class="font-opt-sample" style="font-family:Palatino, serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Palatino Linotype', 'Georgia', serif" data-name="Palatino Linotype" style="font-family:'Palatino Linotype', 'Georgia', serif;">
+                <span class="font-opt-name" style="font-family:'Palatino Linotype', 'Georgia', serif;">Palatino Linotype</span>
+                <span class="font-opt-sample" style="font-family:'Palatino Linotype', 'Georgia', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Papyrus', sans-serif" data-name="Papyrus" style="font-family:'Papyrus', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Papyrus', sans-serif;">Papyrus</span>
+                <span class="font-opt-sample" style="font-family:'Papyrus', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Permanent Marker', cursive" data-name="Permanent Marker" style="font-family:'Permanent Marker', cursive;">
+                <span class="font-opt-name" style="font-family:'Permanent Marker', cursive;">Permanent Marker</span>
+                <span class="font-opt-sample" style="font-family:'Permanent Marker', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Perpetua', serif" data-name="Perpetua" style="font-family:'Perpetua', serif;">
+                <span class="font-opt-name" style="font-family:'Perpetua', serif;">Perpetua</span>
+                <span class="font-opt-sample" style="font-family:'Perpetua', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Perpetua Titling MT', serif" data-name="Perpetua Titling MT" style="font-family:'Perpetua Titling MT', serif;">
+                <span class="font-opt-name" style="font-family:'Perpetua Titling MT', serif;">Perpetua Titling MT</span>
+                <span class="font-opt-sample" style="font-family:'Perpetua Titling MT', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Playfair Display', serif" data-name="Playfair Display" style="font-family:'Playfair Display', serif;">
+                <span class="font-opt-name" style="font-family:'Playfair Display', serif;">Playfair Display</span>
+                <span class="font-opt-sample" style="font-family:'Playfair Display', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Plus Jakarta Sans', sans-serif" data-name="Plus Jakarta Sans" style="font-family:'Plus Jakarta Sans', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
+                <span class="font-opt-sample" style="font-family:'Plus Jakarta Sans', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Poppins, sans-serif" data-name="Poppins" style="font-family:Poppins, sans-serif;">
+                <span class="font-opt-name" style="font-family:Poppins, sans-serif;">Poppins</span>
+                <span class="font-opt-sample" style="font-family:Poppins, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Pristina', cursive" data-name="Pristina" style="font-family:'Pristina', cursive;">
+                <span class="font-opt-name" style="font-family:'Pristina', cursive;">Pristina</span>
+                <span class="font-opt-sample" style="font-family:'Pristina', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'PT Sans', Arial, sans-serif" data-name="PT Sans" style="font-family:'PT Sans', Arial, sans-serif;">
+                <span class="font-opt-name" style="font-family:'PT Sans', Arial, sans-serif;">PT Sans</span>
+                <span class="font-opt-sample" style="font-family:'PT Sans', Arial, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Rage Italic', cursive" data-name="Rage Italic" style="font-family:'Rage Italic', cursive;">
+                <span class="font-opt-name" style="font-family:'Rage Italic', cursive;">Rage Italic</span>
+                <span class="font-opt-sample" style="font-family:'Rage Italic', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Raleway', sans-serif" data-name="Raleway" style="font-family:'Raleway', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Raleway', sans-serif;">Raleway</span>
+                <span class="font-opt-sample" style="font-family:'Raleway', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Ravie', sans-serif" data-name="Ravie" style="font-family:'Ravie', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Ravie', sans-serif;">Ravie</span>
+                <span class="font-opt-sample" style="font-family:'Ravie', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Righteous', cursive" data-name="Righteous" style="font-family:'Righteous', cursive;">
+                <span class="font-opt-name" style="font-family:'Righteous', cursive;">Righteous</span>
+                <span class="font-opt-sample" style="font-family:'Righteous', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Roboto, sans-serif" data-name="Roboto" style="font-family:Roboto, sans-serif;">
+                <span class="font-opt-name" style="font-family:Roboto, sans-serif;">Roboto</span>
+                <span class="font-opt-sample" style="font-family:Roboto, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Rock Salt', cursive" data-name="Rock Salt" style="font-family:'Rock Salt', cursive;">
+                <span class="font-opt-name" style="font-family:'Rock Salt', cursive;">Rock Salt</span>
+                <span class="font-opt-sample" style="font-family:'Rock Salt', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Rockwell', sans-serif" data-name="Rockwell" style="font-family:'Rockwell', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Rockwell', sans-serif;">Rockwell</span>
+                <span class="font-opt-sample" style="font-family:'Rockwell', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Rockwell Extra Bold', sans-serif" data-name="Rockwell Extra Bold" style="font-family:'Rockwell Extra Bold', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Rockwell Extra Bold', sans-serif;">Rockwell Extra Bold</span>
+                <span class="font-opt-sample" style="font-family:'Rockwell Extra Bold', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Rubik', sans-serif" data-name="Rubik" style="font-family:'Rubik', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Rubik', sans-serif;">Rubik</span>
+                <span class="font-opt-sample" style="font-family:'Rubik', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Satisfy', cursive" data-name="Satisfy" style="font-family:'Satisfy', cursive;">
+                <span class="font-opt-name" style="font-family:'Satisfy', cursive;">Satisfy</span>
+                <span class="font-opt-sample" style="font-family:'Satisfy', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Script MT Bold', cursive" data-name="Script MT Bold" style="font-family:'Script MT Bold', cursive;">
+                <span class="font-opt-name" style="font-family:'Script MT Bold', cursive;">Script MT Bold</span>
+                <span class="font-opt-sample" style="font-family:'Script MT Bold', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe Print', cursive" data-name="Segoe Print" style="font-family:'Segoe Print', cursive;">
+                <span class="font-opt-name" style="font-family:'Segoe Print', cursive;">Segoe Print</span>
+                <span class="font-opt-sample" style="font-family:'Segoe Print', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe Script', cursive" data-name="Segoe Script" style="font-family:'Segoe Script', cursive;">
+                <span class="font-opt-name" style="font-family:'Segoe Script', cursive;">Segoe Script</span>
+                <span class="font-opt-sample" style="font-family:'Segoe Script', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe UI', sans-serif" data-name="Segoe UI" style="font-family:'Segoe UI', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Segoe UI', sans-serif;">Segoe UI</span>
+                <span class="font-opt-sample" style="font-family:'Segoe UI', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Segoe UI Variable', sans-serif" data-name="Segoe UI Variable" style="font-family:'Segoe UI Variable', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Segoe UI Variable', sans-serif;">Segoe UI Variable</span>
+                <span class="font-opt-sample" style="font-family:'Segoe UI Variable', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Shadows Into Light', cursive" data-name="Shadows Into Light" style="font-family:'Shadows Into Light', cursive;">
+                <span class="font-opt-name" style="font-family:'Shadows Into Light', cursive;">Shadows Into Light</span>
+                <span class="font-opt-sample" style="font-family:'Shadows Into Light', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Showcard Gothic', sans-serif" data-name="Showcard Gothic" style="font-family:'Showcard Gothic', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Showcard Gothic', sans-serif;">Showcard Gothic</span>
+                <span class="font-opt-sample" style="font-family:'Showcard Gothic', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'SimHei', sans-serif" data-name="SimHei" style="font-family:'SimHei', sans-serif;">
+                <span class="font-opt-name" style="font-family:'SimHei', sans-serif;">SimHei</span>
+                <span class="font-opt-sample" style="font-family:'SimHei', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Simplified Arabic', Tahoma, sans-serif" data-name="Simplified Arabic" style="font-family:'Simplified Arabic', Tahoma, sans-serif;">
+                <span class="font-opt-name" style="font-family:'Simplified Arabic', Tahoma, sans-serif;">Simplified Arabic</span>
+                <span class="font-opt-sample" style="font-family:'Simplified Arabic', Tahoma, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif" data-name="Simplified Chinese" style="font-family:'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif;">Simplified Chinese</span>
+                <span class="font-opt-sample" style="font-family:'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'SimSun', sans-serif" data-name="SimSun" style="font-family:'SimSun', sans-serif;">
+                <span class="font-opt-name" style="font-family:'SimSun', sans-serif;">SimSun</span>
+                <span class="font-opt-sample" style="font-family:'SimSun', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Snap ITC', sans-serif" data-name="Snap ITC" style="font-family:'Snap ITC', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Snap ITC', sans-serif;">Snap ITC</span>
+                <span class="font-opt-sample" style="font-family:'Snap ITC', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Source Code Pro', monospace" data-name="Source Code Pro" style="font-family:'Source Code Pro', monospace;">
+                <span class="font-opt-name" style="font-family:'Source Code Pro', monospace;">Source Code Pro</span>
+                <span class="font-opt-sample" style="font-family:'Source Code Pro', monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Source Sans 3', sans-serif" data-name="Source Sans 3" style="font-family:'Source Sans 3', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Source Sans 3', sans-serif;">Source Sans 3</span>
+                <span class="font-opt-sample" style="font-family:'Source Sans 3', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Space Grotesk', sans-serif" data-name="Space Grotesk" style="font-family:'Space Grotesk', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Space Grotesk', sans-serif;">Space Grotesk</span>
+                <span class="font-opt-sample" style="font-family:'Space Grotesk', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Space Mono', monospace" data-name="Space Mono" style="font-family:'Space Mono', monospace;">
+                <span class="font-opt-name" style="font-family:'Space Mono', monospace;">Space Mono</span>
+                <span class="font-opt-sample" style="font-family:'Space Mono', monospace;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Stencil', sans-serif" data-name="Stencil" style="font-family:'Stencil', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Stencil', sans-serif;">Stencil</span>
+                <span class="font-opt-sample" style="font-family:'Stencil', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Syne', sans-serif" data-name="Syne" style="font-family:'Syne', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Syne', sans-serif;">Syne</span>
+                <span class="font-opt-sample" style="font-family:'Syne', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Tahoma, sans-serif" data-name="Tahoma" style="font-family:Tahoma, sans-serif;">
+                <span class="font-opt-name" style="font-family:Tahoma, sans-serif;">Tahoma</span>
+                <span class="font-opt-sample" style="font-family:Tahoma, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Times New Roman', serif" data-name="Times New Roman" style="font-family:'Times New Roman', serif;">
+                <span class="font-opt-name" style="font-family:'Times New Roman', serif;">Times New Roman</span>
+                <span class="font-opt-sample" style="font-family:'Times New Roman', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Traditional Arabic', 'Amiri', serif" data-name="Traditional Arabic" style="font-family:'Traditional Arabic', 'Amiri', serif;">
+                <span class="font-opt-name" style="font-family:'Traditional Arabic', 'Amiri', serif;">Traditional Arabic</span>
+                <span class="font-opt-sample" style="font-family:'Traditional Arabic', 'Amiri', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'PMingLiU', 'Noto Sans TC', serif" data-name="Traditional Chinese" style="font-family:'PMingLiU', 'Noto Sans TC', serif;">
+                <span class="font-opt-name" style="font-family:'PMingLiU', 'Noto Sans TC', serif;">Traditional Chinese</span>
+                <span class="font-opt-sample" style="font-family:'PMingLiU', 'Noto Sans TC', serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Trebuchet MS', sans-serif" data-name="Trebuchet MS" style="font-family:'Trebuchet MS', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Trebuchet MS', sans-serif;">Trebuchet MS</span>
+                <span class="font-opt-sample" style="font-family:'Trebuchet MS', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Tw Cen MT', sans-serif" data-name="Tw Cen MT" style="font-family:'Tw Cen MT', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Tw Cen MT', sans-serif;">Tw Cen MT</span>
+                <span class="font-opt-sample" style="font-family:'Tw Cen MT', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="Verdana, sans-serif" data-name="Verdana" style="font-family:Verdana, sans-serif;">
+                <span class="font-opt-name" style="font-family:Verdana, sans-serif;">Verdana</span>
+                <span class="font-opt-sample" style="font-family:Verdana, sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Viner Hand ITC', cursive" data-name="Viner Hand ITC" style="font-family:'Viner Hand ITC', cursive;">
+                <span class="font-opt-name" style="font-family:'Viner Hand ITC', cursive;">Viner Hand ITC</span>
+                <span class="font-opt-sample" style="font-family:'Viner Hand ITC', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Vivaldi', cursive" data-name="Vivaldi" style="font-family:'Vivaldi', cursive;">
+                <span class="font-opt-name" style="font-family:'Vivaldi', cursive;">Vivaldi</span>
+                <span class="font-opt-sample" style="font-family:'Vivaldi', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Vladimir Script', cursive" data-name="Vladimir Script" style="font-family:'Vladimir Script', cursive;">
+                <span class="font-opt-name" style="font-family:'Vladimir Script', cursive;">Vladimir Script</span>
+                <span class="font-opt-sample" style="font-family:'Vladimir Script', cursive;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Wide Latin', sans-serif" data-name="Wide Latin" style="font-family:'Wide Latin', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Wide Latin', sans-serif;">Wide Latin</span>
+                <span class="font-opt-sample" style="font-family:'Wide Latin', sans-serif;">Aa Bb 123</span>
+                <i class="fas fa-check font-check"></i>
+              </div>
+              <div class="spacing-opt-item font-opt-item" data-font="'Work Sans', sans-serif" data-name="Work Sans" style="font-family:'Work Sans', sans-serif;">
+                <span class="font-opt-name" style="font-family:'Work Sans', sans-serif;">Work Sans</span>
+                <span class="font-opt-sample" style="font-family:'Work Sans', sans-serif;">Aa Bb 123</span>
                 <i class="fas fa-check font-check"></i>
               </div>
             </div>
@@ -689,129 +1122,191 @@
 
           <!-- Synchronized native select for programmatic / legacy access -->
           <select class="fmt-select" id="fontFamily" title="Font Family" aria-label="Font Family" style="display:none;">
-            <optgroup label="Modern Sans-Serif">
-              <option value="Calibri, sans-serif" style="font-family: Calibri, sans-serif;" selected>Calibri</option>
-              <option value="'Aptos', sans-serif" style="font-family: 'Aptos', sans-serif;">Aptos</option>
-              <option value="'Outfit', sans-serif" style="font-family: 'Outfit', sans-serif;">Outfit</option>
-              <option value="'Plus Jakarta Sans', sans-serif" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</option>
-              <option value="'Syne', sans-serif" style="font-family: 'Syne', sans-serif;">Syne</option>
-              <option value="'Manrope', sans-serif" style="font-family: 'Manrope', sans-serif;">Manrope</option>
-              <option value="'DM Sans', sans-serif" style="font-family: 'DM Sans', sans-serif;">DM Sans</option>
-              <option value="Inter, sans-serif" style="font-family: Inter, sans-serif;">Inter</option>
-              <option value="Roboto, sans-serif" style="font-family: Roboto, sans-serif;">Roboto</option>
-              <option value="Poppins, sans-serif" style="font-family: Poppins, sans-serif;">Poppins</option>
-              <option value="Montserrat, sans-serif" style="font-family: Montserrat, sans-serif;">Montserrat</option>
-              <option value="'Work Sans', sans-serif" style="font-family: 'Work Sans', sans-serif;">Work Sans</option>
-              <option value="'Karla', sans-serif" style="font-family: 'Karla', sans-serif;">Karla</option>
-              <option value="'Comfortaa', sans-serif" style="font-family: 'Comfortaa', sans-serif;">Comfortaa</option>
-              <option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif;">Open Sans</option>
-              <option value="Lato, sans-serif" style="font-family: Lato, sans-serif;">Lato</option>
-              <option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif;">Raleway</option>
-              <option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif;">Nunito</option>
-              <option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif;">Rubik</option>
-              <option value="'Source Sans 3', sans-serif" style="font-family: 'Source Sans 3', sans-serif;">Source Sans 3</option>
-              <option value="'Space Grotesk', sans-serif" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
-              <option value="Arial, sans-serif" style="font-family: Arial, sans-serif;">Arial</option>
-              <option value="'Segoe UI', sans-serif" style="font-family: 'Segoe UI', sans-serif;">Segoe UI</option>
-              <option value="'Segoe UI Variable', sans-serif" style="font-family: 'Segoe UI Variable', sans-serif;">Segoe UI Variable</option>
-              <option value="'Bahnschrift', sans-serif" style="font-family: 'Bahnschrift', sans-serif;">Bahnschrift</option>
-              <option value="'Century Gothic', sans-serif" style="font-family: 'Century Gothic', sans-serif;">Century Gothic</option>
-              <option value="'Franklin Gothic Medium', sans-serif" style="font-family: 'Franklin Gothic Medium', sans-serif;">Franklin Gothic</option>
-              <option value="'Gill Sans', sans-serif" style="font-family: 'Gill Sans', sans-serif;">Gill Sans</option>
-              <option value="'Lucida Sans', sans-serif" style="font-family: 'Lucida Sans', sans-serif;">Lucida Sans</option>
-              <option value="Verdana, sans-serif" style="font-family: Verdana, sans-serif;">Verdana</option>
-              <option value="Tahoma, sans-serif" style="font-family: Tahoma, sans-serif;">Tahoma</option>
-              <option value="'Trebuchet MS', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Trebuchet MS</option>
-            </optgroup>
-            <optgroup label="Classic & Editorial Serifs">
-              <option value="Cambria, serif" style="font-family: Cambria, serif;">Cambria</option>
-              <option value="Constantia, serif" style="font-family: Constantia, serif;">Constantia</option>
-              <option value="'Crimson Text', serif" style="font-family: 'Crimson Text', serif;">Crimson Text</option>
-              <option value="'Libre Baskerville', serif" style="font-family: 'Libre Baskerville', serif;">Libre Baskerville</option>
-              <option value="'Bitter', serif" style="font-family: 'Bitter', serif;">Bitter</option>
-              <option value="'DM Serif Display', serif" style="font-family: 'DM Serif Display', serif;">DM Serif Display</option>
-              <option value="'Newsreader', serif" style="font-family: 'Newsreader', serif;">Newsreader</option>
-              <option value="Georgia, serif" style="font-family: Georgia, serif;">Georgia</option>
-              <option value="'Merriweather', serif" style="font-family: 'Merriweather', serif;">Merriweather</option>
-              <option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
-              <option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
-              <option value="Lora, serif" style="font-family: Lora, serif;">Lora</option>
-              <option value="'Baskerville', serif" style="font-family: 'Baskerville', serif;">Baskerville</option>
-              <option value="'Bodoni MT', serif" style="font-family: 'Bodoni MT', serif;">Bodoni MT</option>
-              <option value="'Book Antiqua', serif" style="font-family: 'Book Antiqua', serif;">Book Antiqua</option>
-              <option value="'Noto Serif', serif" style="font-family: 'Noto Serif', serif;">Noto Serif</option>
-              <option value="'Times New Roman', serif" style="font-family: 'Times New Roman', serif;">Times New Roman</option>
-              <option value="Garamond, serif" style="font-family: Garamond, serif;">Garamond</option>
-              <option value="Palatino, serif" style="font-family: Palatino, serif;">Palatino</option>
-              <option value="Cinzel, serif" style="font-family: Cinzel, serif;">Cinzel</option>
-            </optgroup>
-            <optgroup label="Display & Headline">
-              <option value="'Righteous', cursive" style="font-family: 'Righteous', cursive;">Righteous</option>
-              <option value="'Lobster', cursive" style="font-family: 'Lobster', cursive;">Lobster</option>
-              <option value="'Permanent Marker', cursive" style="font-family: 'Permanent Marker', cursive;">Permanent Marker</option>
-              <option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif;">Oswald</option>
-              <option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif;">Bebas Neue</option>
-              <option value="Impact, sans-serif" style="font-family: Impact, sans-serif;">Impact</option>
-            </optgroup>
-            <optgroup label="Arabic, Urdu & Persian (العربية / اردو)">
-              <option value="'Amiri', 'Traditional Arabic', serif" style="font-family: 'Amiri', serif;">Amiri (العربية)</option>
-              <option value="'Traditional Arabic', 'Amiri', serif" style="font-family: 'Traditional Arabic', serif;">Traditional Arabic</option>
-              <option value="'Simplified Arabic', Tahoma, sans-serif" style="font-family: 'Simplified Arabic', sans-serif;">Simplified Arabic</option>
-            </optgroup>
-            <optgroup label="Devanagari, Hindi, Sanskrit & Marathi (हिन्दी / संस्कृत)">
-              <option value="'Noto Sans Devanagari', 'Mangal', sans-serif" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari (हिन्दी)</option>
-              <option value="'Mangal', 'Noto Sans Devanagari', sans-serif" style="font-family: 'Mangal', sans-serif;">Mangal (Hindi)</option>
-              <option value="'Aparajita', 'Noto Sans Devanagari', serif" style="font-family: 'Aparajita', serif;">Aparajita</option>
-              <option value="'Kokila', 'Noto Sans Devanagari', sans-serif" style="font-family: 'Kokila', sans-serif;">Kokila</option>
-            </optgroup>
-            <optgroup label="East Asian — Chinese, Japanese & Korean (中文 / 日本語 / 한국어)">
-              <option value="'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif" style="font-family: 'Noto Sans SC', sans-serif;">Simplified Chinese (简体中文)</option>
-              <option value="'PMingLiU', 'Noto Sans TC', serif" style="font-family: 'PMingLiU', serif;">Traditional Chinese (繁體中文)</option>
-              <option value="'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif" style="font-family: 'Noto Sans JP', sans-serif;">Japanese (日本語 - Meiryo)</option>
-              <option value="'Malgun Gothic', 'Batang', sans-serif" style="font-family: 'Malgun Gothic', sans-serif;">Korean (한국어 - Malgun)</option>
-            </optgroup>
-            <optgroup label="Cyrillic / Russian (Русский)">
-              <option value="'PT Sans', Arial, sans-serif" style="font-family: 'PT Sans', sans-serif;">PT Sans (Русский)</option>
-              <option value="'Times New Roman', serif" style="font-family: 'Times New Roman', serif;">Times New Roman (Cyrillic)</option>
-            </optgroup>
-            <optgroup label="Greek (Ελληνικά)">
-              <option value="'Palatino Linotype', 'Georgia', serif" style="font-family: 'Palatino Linotype', serif;">Palatino Linotype (Ελληνικά)</option>
-            </optgroup>
-            <optgroup label="Hebrew (עברית)">
-              <option value="'Noto Sans Hebrew', 'David', Arial, sans-serif" style="font-family: 'Noto Sans Hebrew', sans-serif;">Noto Sans Hebrew (עברית)</option>
-              <option value="'David', 'Noto Sans Hebrew', serif" style="font-family: 'David', serif;">David (Hebrew)</option>
-            </optgroup>
-            <optgroup label="Bengali & Assamese (বাংলা)">
-              <option value="'Noto Sans Bengali', 'Vrinda', sans-serif" style="font-family: 'Noto Sans Bengali', sans-serif;">Noto Sans Bengali (বাংলা)</option>
-            </optgroup>
-            <optgroup label="Thai (ไทย)">
-              <option value="'Noto Sans Thai', 'Angsana New', sans-serif" style="font-family: 'Noto Sans Thai', sans-serif;">Noto Sans Thai (ภาษาไทย)</option>
-            </optgroup>
-            <optgroup label="Monospace & Code">
-              <option value="'Cascadia Code', Consolas, monospace" style="font-family: 'Cascadia Code', Consolas, monospace;">Cascadia Code</option>
-              <option value="'Source Code Pro', monospace" style="font-family: 'Source Code Pro', monospace;">Source Code Pro</option>
-              <option value="'Inconsolata', monospace" style="font-family: 'Inconsolata', monospace;">Inconsolata</option>
-              <option value="'JetBrains Mono', monospace" style="font-family: 'JetBrains Mono', monospace;">JetBrains Mono</option>
-              <option value="'Fira Code', monospace" style="font-family: 'Fira Code', monospace;">Fira Code</option>
-              <option value="'Space Mono', monospace" style="font-family: 'Space Mono', monospace;">Space Mono</option>
-              <option value="'Courier Prime', monospace" style="font-family: 'Courier Prime', monospace;">Courier Prime</option>
-              <option value="'Courier New', monospace" style="font-family: 'Courier New', monospace;">Courier New</option>
-              <option value="Consolas, monospace" style="font-family: Consolas, monospace;">Consolas</option>
-            </optgroup>
-            <optgroup label="Display & Handwriting">
-              <option value="'Satisfy', cursive" style="font-family: 'Satisfy', cursive;">Satisfy</option>
-              <option value="'Rock Salt', cursive" style="font-family: 'Rock Salt', cursive;">Rock Salt</option>
-              <option value="'Shadows Into Light', cursive" style="font-family: 'Shadows Into Light', cursive;">Shadows Into Light</option>
-              <option value="'Kalam', cursive" style="font-family: 'Kalam', cursive;">Kalam</option>
-              <option value="'Segoe Print', cursive" style="font-family: 'Segoe Print', cursive;">Segoe Print</option>
-              <option value="'Segoe Script', cursive" style="font-family: 'Segoe Script', cursive;">Segoe Script</option>
-              <option value="'Great Vibes', cursive" style="font-family: 'Great Vibes', cursive;">Great Vibes</option>
-              <option value="'Alex Brush', cursive" style="font-family: 'Alex Brush', cursive;">Alex Brush</option>
-              <option value="'Dancing Script', cursive" style="font-family: 'Dancing Script', cursive;">Dancing Script</option>
-              <option value="Caveat, cursive" style="font-family: Caveat, cursive;">Caveat</option>
-              <option value="Pacifico, cursive" style="font-family: Pacifico, cursive;">Pacifico</option>
-              <option value="'Comic Sans MS', cursive" style="font-family: 'Comic Sans MS', cursive;">Comic Sans</option>
-            </optgroup>
+            <option value="'Agency', sans-serif" style="font-family: 'Agency', sans-serif;">Agency</option>
+            <option value="'Alex Brush', cursive" style="font-family: 'Alex Brush', cursive;">Alex Brush</option>
+            <option value="'Algerian', sans-serif" style="font-family: 'Algerian', sans-serif;">Algerian</option>
+            <option value="'Amiri', 'Traditional Arabic', serif" style="font-family: 'Amiri', 'Traditional Arabic', serif;">Amiri</option>
+            <option value="'Aparajita', 'Noto Sans Devanagari', serif" style="font-family: 'Aparajita', 'Noto Sans Devanagari', serif;">Aparajita</option>
+            <option value="'Aptos', sans-serif" style="font-family: 'Aptos', sans-serif;">Aptos</option>
+            <option value="'Aptos Display', sans-serif" style="font-family: 'Aptos Display', sans-serif;">Aptos Display</option>
+            <option value="Arial, sans-serif" style="font-family: Arial, sans-serif;">Arial</option>
+            <option value="'Arial Narrow', sans-serif" style="font-family: 'Arial Narrow', sans-serif;">Arial Narrow</option>
+            <option value="'Arial Rounded MT Bold', sans-serif" style="font-family: 'Arial Rounded MT Bold', sans-serif;">Arial Rounded MT Bold</option>
+            <option value="'Bahnschrift', sans-serif" style="font-family: 'Bahnschrift', sans-serif;">Bahnschrift</option>
+            <option value="'Bahnschrift Light', sans-serif" style="font-family: 'Bahnschrift Light', sans-serif;">Bahnschrift Light</option>
+            <option value="'Baskerville', serif" style="font-family: 'Baskerville', serif;">Baskerville</option>
+            <option value="'Bebas Neue', sans-serif" style="font-family: 'Bebas Neue', sans-serif;">Bebas Neue</option>
+            <option value="'Bell MT', serif" style="font-family: 'Bell MT', serif;">Bell MT</option>
+            <option value="'Berlin Sans FB', sans-serif" style="font-family: 'Berlin Sans FB', sans-serif;">Berlin Sans FB</option>
+            <option value="'Bernard MT Condensed', sans-serif" style="font-family: 'Bernard MT Condensed', sans-serif;">Bernard MT Condensed</option>
+            <option value="'Bitter', serif" style="font-family: 'Bitter', serif;">Bitter</option>
+            <option value="'Blackadder ITC', sans-serif" style="font-family: 'Blackadder ITC', sans-serif;">Blackadder ITC</option>
+            <option value="'Bodoni 72', serif" style="font-family: 'Bodoni 72', serif;">Bodoni 72</option>
+            <option value="'Bodoni MT', serif" style="font-family: 'Bodoni MT', serif;">Bodoni MT</option>
+            <option value="'Book Antiqua', serif" style="font-family: 'Book Antiqua', serif;">Book Antiqua</option>
+            <option value="'Bradley Hand ITC', cursive" style="font-family: 'Bradley Hand ITC', cursive;">Bradley Hand ITC</option>
+            <option value="'Britannic Bold', sans-serif" style="font-family: 'Britannic Bold', sans-serif;">Britannic Bold</option>
+            <option value="'Brush Script MT', cursive" style="font-family: 'Brush Script MT', cursive;">Brush Script MT</option>
+            <option value="Calibri, sans-serif" style="font-family: Calibri, sans-serif;" selected>Calibri</option>
+            <option value="'Calisto MT', serif" style="font-family: 'Calisto MT', serif;">Calisto MT</option>
+            <option value="Cambria, serif" style="font-family: Cambria, serif;">Cambria</option>
+            <option value="'Candara', sans-serif" style="font-family: 'Candara', sans-serif;">Candara</option>
+            <option value="'Cascadia Code', Consolas, monospace" style="font-family: 'Cascadia Code', Consolas, monospace;">Cascadia Code</option>
+            <option value="Caveat, cursive" style="font-family: Caveat, cursive;">Caveat</option>
+            <option value="'Century', serif" style="font-family: 'Century', serif;">Century</option>
+            <option value="'Century Gothic', sans-serif" style="font-family: 'Century Gothic', sans-serif;">Century Gothic</option>
+            <option value="'Chiller', cursive" style="font-family: 'Chiller', cursive;">Chiller</option>
+            <option value="Cinzel, serif" style="font-family: Cinzel, serif;">Cinzel</option>
+            <option value="'Colonna MT', sans-serif" style="font-family: 'Colonna MT', sans-serif;">Colonna MT</option>
+            <option value="'Comfortaa', sans-serif" style="font-family: 'Comfortaa', sans-serif;">Comfortaa</option>
+            <option value="'Comic Sans MS', cursive" style="font-family: 'Comic Sans MS', cursive;">Comic Sans</option>
+            <option value="'Comic Sans MS', sans-serif" style="font-family: 'Comic Sans MS', sans-serif;">Comic Sans MS</option>
+            <option value="Consolas, monospace" style="font-family: Consolas, monospace;">Consolas</option>
+            <option value="Constantia, serif" style="font-family: Constantia, serif;">Constantia</option>
+            <option value="'Copperplate Gothic Bold', sans-serif" style="font-family: 'Copperplate Gothic Bold', sans-serif;">Copperplate Gothic Bold</option>
+            <option value="'Copperplate Gothic Light', sans-serif" style="font-family: 'Copperplate Gothic Light', sans-serif;">Copperplate Gothic Light</option>
+            <option value="'Corbel', sans-serif" style="font-family: 'Corbel', sans-serif;">Corbel</option>
+            <option value="'Cormorant Garamond', serif" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
+            <option value="'Courier New', monospace" style="font-family: 'Courier New', monospace;">Courier New</option>
+            <option value="'Courier Prime', monospace" style="font-family: 'Courier Prime', monospace;">Courier Prime</option>
+            <option value="'Crimson Text', serif" style="font-family: 'Crimson Text', serif;">Crimson Text</option>
+            <option value="'Curlz MT', cursive" style="font-family: 'Curlz MT', cursive;">Curlz MT</option>
+            <option value="'Dancing Script', cursive" style="font-family: 'Dancing Script', cursive;">Dancing Script</option>
+            <option value="'David', 'Noto Sans Hebrew', serif" style="font-family: 'David', 'Noto Sans Hebrew', serif;">David</option>
+            <option value="'DM Sans', sans-serif" style="font-family: 'DM Sans', sans-serif;">DM Sans</option>
+            <option value="'DM Serif Display', serif" style="font-family: 'DM Serif Display', serif;">DM Serif Display</option>
+            <option value="'Dubai', sans-serif" style="font-family: 'Dubai', sans-serif;">Dubai</option>
+            <option value="'Ebrima', sans-serif" style="font-family: 'Ebrima', sans-serif;">Ebrima</option>
+            <option value="'Elephant', serif" style="font-family: 'Elephant', serif;">Elephant</option>
+            <option value="'Engravers MT', sans-serif" style="font-family: 'Engravers MT', sans-serif;">Engravers MT</option>
+            <option value="'Eras Demi ITC', sans-serif" style="font-family: 'Eras Demi ITC', sans-serif;">Eras Demi ITC</option>
+            <option value="'Felix Titling', sans-serif" style="font-family: 'Felix Titling', sans-serif;">Felix Titling</option>
+            <option value="'Fira Code', monospace" style="font-family: 'Fira Code', monospace;">Fira Code</option>
+            <option value="'Footlight MT Light', sans-serif" style="font-family: 'Footlight MT Light', sans-serif;">Footlight MT Light</option>
+            <option value="'Forte', sans-serif" style="font-family: 'Forte', sans-serif;">Forte</option>
+            <option value="'Franklin Gothic Medium', sans-serif" style="font-family: 'Franklin Gothic Medium', sans-serif;">Franklin Gothic</option>
+            <option value="'Freestyle Script', cursive" style="font-family: 'Freestyle Script', cursive;">Freestyle Script</option>
+            <option value="'French Script MT', cursive" style="font-family: 'French Script MT', cursive;">French Script MT</option>
+            <option value="'Gabriola', sans-serif" style="font-family: 'Gabriola', sans-serif;">Gabriola</option>
+            <option value="'Gadugi', sans-serif" style="font-family: 'Gadugi', sans-serif;">Gadugi</option>
+            <option value="Garamond, serif" style="font-family: Garamond, serif;">Garamond</option>
+            <option value="Georgia, serif" style="font-family: Georgia, serif;">Georgia</option>
+            <option value="'Gigi', cursive" style="font-family: 'Gigi', cursive;">Gigi</option>
+            <option value="'Gill Sans', sans-serif" style="font-family: 'Gill Sans', sans-serif;">Gill Sans</option>
+            <option value="'Great Vibes', cursive" style="font-family: 'Great Vibes', cursive;">Great Vibes</option>
+            <option value="'Harlow Solid Italic', cursive" style="font-family: 'Harlow Solid Italic', cursive;">Harlow Solid Italic</option>
+            <option value="'Harrington', cursive" style="font-family: 'Harrington', cursive;">Harrington</option>
+            <option value="'High Tower Text', sans-serif" style="font-family: 'High Tower Text', sans-serif;">High Tower Text</option>
+            <option value="Impact, sans-serif" style="font-family: Impact, sans-serif;">Impact</option>
+            <option value="'Imprint MT Shadow', sans-serif" style="font-family: 'Imprint MT Shadow', sans-serif;">Imprint MT Shadow</option>
+            <option value="'Inconsolata', monospace" style="font-family: 'Inconsolata', monospace;">Inconsolata</option>
+            <option value="'Informal Roman', serif" style="font-family: 'Informal Roman', serif;">Informal Roman</option>
+            <option value="Inter, sans-serif" style="font-family: Inter, sans-serif;">Inter</option>
+            <option value="'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif" style="font-family: 'Noto Sans JP', 'Meiryo', 'MS Gothic', sans-serif;">Japanese</option>
+            <option value="'JetBrains Mono', monospace" style="font-family: 'JetBrains Mono', monospace;">JetBrains Mono</option>
+            <option value="'Jokerman', cursive" style="font-family: 'Jokerman', cursive;">Jokerman</option>
+            <option value="'Juice ITC', sans-serif" style="font-family: 'Juice ITC', sans-serif;">Juice ITC</option>
+            <option value="'Kalam', cursive" style="font-family: 'Kalam', cursive;">Kalam</option>
+            <option value="'Karla', sans-serif" style="font-family: 'Karla', sans-serif;">Karla</option>
+            <option value="'Kokila', 'Noto Sans Devanagari', sans-serif" style="font-family: 'Kokila', 'Noto Sans Devanagari', sans-serif;">Kokila</option>
+            <option value="'Malgun Gothic', 'Batang', sans-serif" style="font-family: 'Malgun Gothic', 'Batang', sans-serif;">Korean</option>
+            <option value="'Kristen ITC', sans-serif" style="font-family: 'Kristen ITC', sans-serif;">Kristen ITC</option>
+            <option value="'Kunstler Script', cursive" style="font-family: 'Kunstler Script', cursive;">Kunstler Script</option>
+            <option value="Lato, sans-serif" style="font-family: Lato, sans-serif;">Lato</option>
+            <option value="'Leelawadee UI', sans-serif" style="font-family: 'Leelawadee UI', sans-serif;">Leelawadee UI</option>
+            <option value="'Libre Baskerville', serif" style="font-family: 'Libre Baskerville', serif;">Libre Baskerville</option>
+            <option value="'Lobster', cursive" style="font-family: 'Lobster', cursive;">Lobster</option>
+            <option value="Lora, serif" style="font-family: Lora, serif;">Lora</option>
+            <option value="'Lucida Sans', sans-serif" style="font-family: 'Lucida Sans', sans-serif;">Lucida Sans</option>
+            <option value="'Magneto', sans-serif" style="font-family: 'Magneto', sans-serif;">Magneto</option>
+            <option value="'Maiandra GD', sans-serif" style="font-family: 'Maiandra GD', sans-serif;">Maiandra GD</option>
+            <option value="'Mangal', 'Noto Sans Devanagari', sans-serif" style="font-family: 'Mangal', 'Noto Sans Devanagari', sans-serif;">Mangal</option>
+            <option value="'Manrope', sans-serif" style="font-family: 'Manrope', sans-serif;">Manrope</option>
+            <option value="'Merriweather', serif" style="font-family: 'Merriweather', serif;">Merriweather</option>
+            <option value="'Microsoft Himalaya', sans-serif" style="font-family: 'Microsoft Himalaya', sans-serif;">Microsoft Himalaya</option>
+            <option value="'Microsoft JhengHei', sans-serif" style="font-family: 'Microsoft JhengHei', sans-serif;">Microsoft JhengHei</option>
+            <option value="'Microsoft New Tai Lue', sans-serif" style="font-family: 'Microsoft New Tai Lue', sans-serif;">Microsoft New Tai Lue</option>
+            <option value="'Microsoft PhagsPa', sans-serif" style="font-family: 'Microsoft PhagsPa', sans-serif;">Microsoft PhagsPa</option>
+            <option value="'Microsoft Sans Serif', serif" style="font-family: 'Microsoft Sans Serif', serif;">Microsoft Sans Serif</option>
+            <option value="'Microsoft Tai Le', sans-serif" style="font-family: 'Microsoft Tai Le', sans-serif;">Microsoft Tai Le</option>
+            <option value="'Microsoft YaHei', sans-serif" style="font-family: 'Microsoft YaHei', sans-serif;">Microsoft YaHei</option>
+            <option value="'MingLiU', sans-serif" style="font-family: 'MingLiU', sans-serif;">MingLiU</option>
+            <option value="'Mistral', sans-serif" style="font-family: 'Mistral', sans-serif;">Mistral</option>
+            <option value="'Modern No. 20', serif" style="font-family: 'Modern No. 20', serif;">Modern No. 20</option>
+            <option value="'Monotype Corsiva', monospace" style="font-family: 'Monotype Corsiva', monospace;">Monotype Corsiva</option>
+            <option value="Montserrat, sans-serif" style="font-family: Montserrat, sans-serif;">Montserrat</option>
+            <option value="'MS Gothic', sans-serif" style="font-family: 'MS Gothic', sans-serif;">MS Gothic</option>
+            <option value="'MS Mincho', serif" style="font-family: 'MS Mincho', serif;">MS Mincho</option>
+            <option value="'MS PGothic', sans-serif" style="font-family: 'MS PGothic', sans-serif;">MS PGothic</option>
+            <option value="'MS PMincho', serif" style="font-family: 'MS PMincho', serif;">MS PMincho</option>
+            <option value="'MV Boli', sans-serif" style="font-family: 'MV Boli', sans-serif;">MV Boli</option>
+            <option value="'Newsreader', serif" style="font-family: 'Newsreader', serif;">Newsreader</option>
+            <option value="'Niageng', sans-serif" style="font-family: 'Niageng', sans-serif;">Niageng</option>
+            <option value="'Noto Sans Bengali', 'Vrinda', sans-serif" style="font-family: 'Noto Sans Bengali', 'Vrinda', sans-serif;">Noto Sans Bengali</option>
+            <option value="'Noto Sans Devanagari', 'Mangal', sans-serif" style="font-family: 'Noto Sans Devanagari', 'Mangal', sans-serif;">Noto Sans Devanagari</option>
+            <option value="'Noto Sans Hebrew', 'David', Arial, sans-serif" style="font-family: 'Noto Sans Hebrew', 'David', Arial, sans-serif;">Noto Sans Hebrew</option>
+            <option value="'Noto Sans Thai', 'Angsana New', sans-serif" style="font-family: 'Noto Sans Thai', 'Angsana New', sans-serif;">Noto Sans Thai</option>
+            <option value="'Noto Serif', serif" style="font-family: 'Noto Serif', serif;">Noto Serif</option>
+            <option value="'Nunito', sans-serif" style="font-family: 'Nunito', sans-serif;">Nunito</option>
+            <option value="'OCR A Extended', monospace" style="font-family: 'OCR A Extended', monospace;">OCR A Extended</option>
+            <option value="'Old English Text MT', sans-serif" style="font-family: 'Old English Text MT', sans-serif;">Old English Text MT</option>
+            <option value="'Onyx', sans-serif" style="font-family: 'Onyx', sans-serif;">Onyx</option>
+            <option value="'Open Sans', sans-serif" style="font-family: 'Open Sans', sans-serif;">Open Sans</option>
+            <option value="'Oswald', sans-serif" style="font-family: 'Oswald', sans-serif;">Oswald</option>
+            <option value="'Outfit', sans-serif" style="font-family: 'Outfit', sans-serif;">Outfit</option>
+            <option value="Pacifico, cursive" style="font-family: Pacifico, cursive;">Pacifico</option>
+            <option value="'Palace Script MT', cursive" style="font-family: 'Palace Script MT', cursive;">Palace Script MT</option>
+            <option value="Palatino, serif" style="font-family: Palatino, serif;">Palatino</option>
+            <option value="'Palatino Linotype', 'Georgia', serif" style="font-family: 'Palatino Linotype', 'Georgia', serif;">Palatino Linotype</option>
+            <option value="'Papyrus', sans-serif" style="font-family: 'Papyrus', sans-serif;">Papyrus</option>
+            <option value="'Permanent Marker', cursive" style="font-family: 'Permanent Marker', cursive;">Permanent Marker</option>
+            <option value="'Perpetua', serif" style="font-family: 'Perpetua', serif;">Perpetua</option>
+            <option value="'Perpetua Titling MT', serif" style="font-family: 'Perpetua Titling MT', serif;">Perpetua Titling MT</option>
+            <option value="'Playfair Display', serif" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+            <option value="'Plus Jakarta Sans', sans-serif" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</option>
+            <option value="Poppins, sans-serif" style="font-family: Poppins, sans-serif;">Poppins</option>
+            <option value="'Pristina', cursive" style="font-family: 'Pristina', cursive;">Pristina</option>
+            <option value="'PT Sans', Arial, sans-serif" style="font-family: 'PT Sans', Arial, sans-serif;">PT Sans</option>
+            <option value="'Rage Italic', cursive" style="font-family: 'Rage Italic', cursive;">Rage Italic</option>
+            <option value="'Raleway', sans-serif" style="font-family: 'Raleway', sans-serif;">Raleway</option>
+            <option value="'Ravie', sans-serif" style="font-family: 'Ravie', sans-serif;">Ravie</option>
+            <option value="'Righteous', cursive" style="font-family: 'Righteous', cursive;">Righteous</option>
+            <option value="Roboto, sans-serif" style="font-family: Roboto, sans-serif;">Roboto</option>
+            <option value="'Rock Salt', cursive" style="font-family: 'Rock Salt', cursive;">Rock Salt</option>
+            <option value="'Rockwell', sans-serif" style="font-family: 'Rockwell', sans-serif;">Rockwell</option>
+            <option value="'Rockwell Extra Bold', sans-serif" style="font-family: 'Rockwell Extra Bold', sans-serif;">Rockwell Extra Bold</option>
+            <option value="'Rubik', sans-serif" style="font-family: 'Rubik', sans-serif;">Rubik</option>
+            <option value="'Satisfy', cursive" style="font-family: 'Satisfy', cursive;">Satisfy</option>
+            <option value="'Script MT Bold', cursive" style="font-family: 'Script MT Bold', cursive;">Script MT Bold</option>
+            <option value="'Segoe Print', cursive" style="font-family: 'Segoe Print', cursive;">Segoe Print</option>
+            <option value="'Segoe Script', cursive" style="font-family: 'Segoe Script', cursive;">Segoe Script</option>
+            <option value="'Segoe UI', sans-serif" style="font-family: 'Segoe UI', sans-serif;">Segoe UI</option>
+            <option value="'Segoe UI Variable', sans-serif" style="font-family: 'Segoe UI Variable', sans-serif;">Segoe UI Variable</option>
+            <option value="'Shadows Into Light', cursive" style="font-family: 'Shadows Into Light', cursive;">Shadows Into Light</option>
+            <option value="'Showcard Gothic', sans-serif" style="font-family: 'Showcard Gothic', sans-serif;">Showcard Gothic</option>
+            <option value="'SimHei', sans-serif" style="font-family: 'SimHei', sans-serif;">SimHei</option>
+            <option value="'Simplified Arabic', Tahoma, sans-serif" style="font-family: 'Simplified Arabic', Tahoma, sans-serif;">Simplified Arabic</option>
+            <option value="'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif" style="font-family: 'Noto Sans SC', 'SimSun', 'Microsoft YaHei', sans-serif;">Simplified Chinese</option>
+            <option value="'SimSun', sans-serif" style="font-family: 'SimSun', sans-serif;">SimSun</option>
+            <option value="'Snap ITC', sans-serif" style="font-family: 'Snap ITC', sans-serif;">Snap ITC</option>
+            <option value="'Source Code Pro', monospace" style="font-family: 'Source Code Pro', monospace;">Source Code Pro</option>
+            <option value="'Source Sans 3', sans-serif" style="font-family: 'Source Sans 3', sans-serif;">Source Sans 3</option>
+            <option value="'Space Grotesk', sans-serif" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
+            <option value="'Space Mono', monospace" style="font-family: 'Space Mono', monospace;">Space Mono</option>
+            <option value="'Stencil', sans-serif" style="font-family: 'Stencil', sans-serif;">Stencil</option>
+            <option value="'Syne', sans-serif" style="font-family: 'Syne', sans-serif;">Syne</option>
+            <option value="Tahoma, sans-serif" style="font-family: Tahoma, sans-serif;">Tahoma</option>
+            <option value="'Times New Roman', serif" style="font-family: 'Times New Roman', serif;">Times New Roman</option>
+            <option value="'Traditional Arabic', 'Amiri', serif" style="font-family: 'Traditional Arabic', 'Amiri', serif;">Traditional Arabic</option>
+            <option value="'PMingLiU', 'Noto Sans TC', serif" style="font-family: 'PMingLiU', 'Noto Sans TC', serif;">Traditional Chinese</option>
+            <option value="'Trebuchet MS', sans-serif" style="font-family: 'Trebuchet MS', sans-serif;">Trebuchet MS</option>
+            <option value="'Tw Cen MT', sans-serif" style="font-family: 'Tw Cen MT', sans-serif;">Tw Cen MT</option>
+            <option value="Verdana, sans-serif" style="font-family: Verdana, sans-serif;">Verdana</option>
+            <option value="'Viner Hand ITC', cursive" style="font-family: 'Viner Hand ITC', cursive;">Viner Hand ITC</option>
+            <option value="'Vivaldi', cursive" style="font-family: 'Vivaldi', cursive;">Vivaldi</option>
+            <option value="'Vladimir Script', cursive" style="font-family: 'Vladimir Script', cursive;">Vladimir Script</option>
+            <option value="'Wide Latin', sans-serif" style="font-family: 'Wide Latin', sans-serif;">Wide Latin</option>
+            <option value="'Work Sans', sans-serif" style="font-family: 'Work Sans', sans-serif;">Work Sans</option>
           </select>
           <div class="font-size-stepper" title="Font Size (No limit)">
             <button class="font-size-step-btn" id="fontSizeDec" title="Decrease font size" aria-label="Decrease font size"><i class="fas fa-minus"></i></button>
@@ -877,8 +1372,8 @@
             </div>
           </div>
           <div class="bullet-dropdown-wrap">
-            <button class="fmt-btn" id="lineSpacingBtn" title="Line Spacing" aria-label="Line Spacing">
-              <i class="fas fa-arrows-up-down"></i>
+            <button class="fmt-btn" id="lineSpacingBtn" title="Line and Paragraph Spacing" aria-label="Line Spacing">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor" style="display:inline-block;vertical-align:middle;"><path d="M7 3h8v1.5H7V3zm0 4h8v1.5H7V7zm0 4h8v1.5H7v-1.5zm-4.5 2.5V2.5h-1l2-2.5 2 2.5h-1v10.5h1l-2 2.5-2-2.5h1z"/></svg>
             </button>
             <div class="spacing-popover" id="spacingPopover" role="menu">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Line Spacing</div>
@@ -1125,6 +1620,7 @@
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="layoutPageBreakBtn" title="Insert Page Break"><i class="fas fa-file-invoice"></i> Page Break</button>
+          <button class="fmt-btn with-text word-only-tool" id="layoutHeaderFooterBtn" title="Insert or Edit Document Header & Footer (Word only)"><i class="fas fa-heading" style="color:#0284c7;"></i> Header & Footer</button>
         </div>
       </div>
 
@@ -1411,6 +1907,12 @@
               <div class="spacing-opt-item" data-transition="blinds-horizontal"><i class="fas fa-bars-staggered" style="margin-right:6px;color:#10b981;"></i> Blinds Horizontal</div>
               <div class="spacing-opt-item" data-transition="expand-circle"><i class="fas fa-circle-dot" style="margin-right:6px;color:#a855f7;"></i> Radial Expand</div>
               <div class="spacing-opt-item" data-transition="skew-slide"><i class="fas fa-italic" style="margin-right:6px;color:#06b6d4;"></i> Skew Slide In</div>
+              <div class="spacing-opt-item" data-transition="wind-sweep"><i class="fas fa-wind" style="margin-right:6px;color:#38bdf8;"></i> Wind Sweep</div>
+              <div class="spacing-opt-item" data-transition="diagonal-slide"><i class="fas fa-up-right-and-down-left-from-center" style="margin-right:6px;color:#a855f7;"></i> Diagonal Slide</div>
+              <div class="spacing-opt-item" data-transition="flip-horizontal"><i class="fas fa-repeat" style="margin-right:6px;color:#22c55e;"></i> 3D Flip Horizontal</div>
+              <div class="spacing-opt-item" data-transition="zoom-fade-in"><i class="fas fa-circle-plus" style="margin-right:6px;color:#f97316;"></i> Zoom &amp; Fade In</div>
+              <div class="spacing-opt-item" data-transition="starburst"><i class="fas fa-sun" style="margin-right:6px;color:#eab308;"></i> Starburst Expand</div>
+              <div class="spacing-opt-item" data-transition="spiral-twist"><i class="fas fa-arrows-spin" style="margin-right:6px;color:#ec4899;"></i> Spiral Twist</div>
             </div>
           </div>
           <div class="bullet-dropdown-wrap" id="pptAnimationDropdownWrap">
@@ -1457,6 +1959,12 @@
               <div class="spacing-opt-item" data-animation="lightspeed-in"><i class="fas fa-bolt-lightning" style="margin-right:6px;color:#eab308;"></i> Lightspeed In</div>
               <div class="spacing-opt-item" data-animation="heart-pop"><i class="fas fa-heart" style="margin-right:6px;color:#ef4444;"></i> Heart Pop Burst</div>
               <div class="spacing-opt-item" data-animation="slit-in-vertical"><i class="fas fa-table-columns" style="margin-right:6px;color:#a855f7;"></i> Slit In Vertical</div>
+              <div class="spacing-opt-item" data-animation="glow-pulse"><i class="fas fa-sun" style="margin-right:6px;color:#eab308;"></i> Glowing Pulse</div>
+              <div class="spacing-opt-item" data-animation="shake"><i class="fas fa-bell" style="margin-right:6px;color:#ef4444;"></i> Shake Attention</div>
+              <div class="spacing-opt-item" data-animation="rubberband"><i class="fas fa-expand" style="margin-right:6px;color:#8b5cf6;"></i> Rubberband Stretch</div>
+              <div class="spacing-opt-item" data-animation="flip-in-x"><i class="fas fa-arrows-up-down" style="margin-right:6px;color:#06b6d4;"></i> Flip In (X-Axis)</div>
+              <div class="spacing-opt-item" data-animation="slide-in-bottom"><i class="fas fa-arrow-up" style="margin-right:6px;color:#10b981;"></i> Slide In Bottom</div>
+              <div class="spacing-opt-item" data-animation="jello"><i class="fas fa-cube" style="margin-right:6px;color:#f59e0b;"></i> Jello Wiggle</div>
             </div>
           </div>
         </div>
@@ -1500,7 +2008,19 @@
           <button class="fmt-btn with-text" id="pptMoveDownBtn" title="Move Slide Down"><i class="fas fa-arrow-down"></i> Move Down</button>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="pptStartSlideShowBtn" title="Start Fullscreen Presentation Slide Show"><i class="fas fa-play" style="color:#ea580c;"></i> Slide Show</button>
+          <div class="bullet-dropdown-wrap" id="pptStartSlideShowDropdownWrap" style="position:relative;">
+            <button class="fmt-btn with-text" id="pptStartSlideShowBtn" title="Start Presentation Slide Show">
+              <i class="fas fa-play" style="color:#ea580c;"></i><span>Slide Show</span><i class="fas fa-chevron-down" style="font-size:8px;margin-left:4px;"></i>
+            </button>
+            <div class="spacing-popover" id="pptStartSlideShowPopover" role="menu" style="min-width:215px;">
+              <div class="spacing-opt-item" id="pptPlayFromBeginningBtn">
+                <i class="fas fa-play" style="margin-right:8px;color:#ea580c;"></i> Start from Beginning (F5)
+              </div>
+              <div class="spacing-opt-item" id="pptPlayFromCurrentBtn">
+                <i class="fas fa-forward-step" style="margin-right:8px;color:#3b82f6;"></i> Start from Current Slide (Shift+F5)
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2073,8 +2593,22 @@
 
   </main>
 
-  <!-- Floating Exit Read Mode Button (View Menu / Mobile Read Mode Exit) -->
-  <button class="exit-reading-mode-btn" id="exitReadingModeBtn" title="Exit Reading Mode"><i class="fas fa-times"></i> Exit Read Mode</button>
+  <!-- Floating Action Bar & Exit for Distraction-Free Reading Mode (View Menu -> Read Mode) -->
+  <div class="read-mode-action-bar" id="readModeActionBar">
+    <button type="button" class="read-mode-act-btn" id="readModeUndoBtn" title="Undo (Ctrl+Z)"><i class="fas fa-rotate-left"></i></button>
+    <button type="button" class="read-mode-act-btn" id="readModeRedoBtn" title="Redo (Ctrl+Y)"><i class="fas fa-rotate-right"></i></button>
+    <div class="read-mode-act-divider"></div>
+    <button type="button" class="read-mode-act-btn" id="readModeBoldBtn" title="Bold (Ctrl+B)"><i class="fas fa-bold"></i></button>
+    <button type="button" class="read-mode-act-btn" id="readModeItalicBtn" title="Italic (Ctrl+I)"><i class="fas fa-italic"></i></button>
+    <button type="button" class="read-mode-act-btn" id="readModeUnderlineBtn" title="Underline (Ctrl+U)"><i class="fas fa-underline"></i></button>
+    <div class="read-mode-act-divider"></div>
+    <button type="button" class="read-mode-act-btn" id="readModeSaveBtn" title="Save Document (Ctrl+S)"><i class="fas fa-floppy-disk" style="color:var(--accent,#0284c7);"></i></button>
+    <button type="button" class="read-mode-act-btn" id="readModeFindBtn" title="Find & Replace (Ctrl+F)"><i class="fas fa-magnifying-glass"></i></button>
+    <button type="button" class="read-mode-act-btn" id="readModeCommentBtn" title="Add Comment"><i class="fas fa-comment-dots" style="color:#f59e0b;"></i></button>
+    <div class="read-mode-act-divider"></div>
+    <button type="button" class="read-mode-act-btn with-label" id="readModeToggleRibbonBtn" title="Show/Hide Full Ribbon Toolbar in Read Mode"><i class="fas fa-bars"></i><span>Toolbar</span></button>
+    <button type="button" class="exit-reading-mode-btn" id="exitReadingModeBtn" title="Exit Reading Mode (Esc)"><i class="fas fa-times"></i><span>Exit</span></button>
+  </div>
 
   <!-- Bottom Application Statusbar (Bug 1: Centered credit on desktop and mobile) -->
   <footer class="statusbar" id="statusbar" title="Click or Double click for detailed Document Statistics">
@@ -2197,6 +2731,17 @@
       <input type="number" id="tableRows" value="3" min="1" max="25">
       <label for="tableCols">Number of Columns</label>
       <input type="number" id="tableCols" value="3" min="1" max="12">
+      <div style="margin: 12px 0 8px;display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-primary);">
+          <input type="checkbox" id="tableRowHeaderCheck" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;">
+          <span>Add Row Header (Top Header Row)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-primary);">
+          <input type="checkbox" id="tableColHeaderCheck" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;">
+          <span>Add Column Header (Left Header Column)</span>
+        </label>
+        <div style="font-size:11px;color:var(--text-muted);margin-left:24px;">Extra header rows/columns will be added automatically; table cells remain clean with no pre-filled text.</div>
+      </div>
       <div class="modal-actions">
         <button class="modal-btn" id="tableCancel">Cancel</button>
         <button class="modal-btn primary" id="tableInsert">Insert Table</button>
@@ -2679,6 +3224,38 @@
           <i class="fas fa-plus" style="font-size:20px;color:var(--accent);"></i>
           <span style="font-size:10px;">Cross</span>
         </button>
+        <button class="shape-opt-btn" data-shape="arrow-left" title="Arrow Left" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-arrow-left" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Arrow Left</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="arrow-up" title="Arrow Up" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-arrow-up" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Arrow Up</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="arrow-down" title="Arrow Down" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-arrow-down" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Arrow Down</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="pentagon" title="Pentagon" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-draw-polygon" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Pentagon</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="cloud" title="Cloud" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-cloud" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Cloud</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="lightning" title="Lightning Bolt" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-bolt" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Lightning</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="sun" title="Sun / Starburst" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-sun" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Sun</span>
+        </button>
+        <button class="shape-opt-btn" data-shape="cylinder" title="Cylinder" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
+          <i class="fas fa-database" style="font-size:20px;color:var(--accent);"></i>
+          <span style="font-size:10px;">Cylinder</span>
+        </button>
         <button class="shape-opt-btn" data-shape="parametric" title="Custom Parametric Shape" style="padding:10px 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg-tertiary);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-primary);">
           <i class="fas fa-sliders" style="font-size:20px;color:var(--accent);"></i>
           <span style="font-size:10px;font-weight:700;">Custom</span>
@@ -2799,6 +3376,22 @@
             <option value="scatter">Scatter Plot (Data Point Distribution)</option>
             <option value="stacked">Stacked Bar Chart (Cumulative Series)</option>
           </select>
+        </div>
+        <div>
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Data Source:</label>
+          <select id="chartDataSourceSelect" class="fmt-select" style="width:100%;height:32px;">
+            <option value="manual" selected>Manual Values</option>
+            <option value="selected">From Selected Cells / Rows in Sheet</option>
+            <option value="customRange">Specify Row or Column (e.g. Row 2, Col B, A1:D5)</option>
+          </select>
+        </div>
+        <div id="chartRangeWrap" style="display:none;margin-top:10px;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Specify Row / Column / Range:</label>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="chartRangeInput" placeholder="e.g. Row 2, Col B, 2, B, A1:E1" style="flex:1;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;outline:none;">
+            <button type="button" class="modal-btn" id="chartLoadRangeBtn" style="padding:0 12px;height:32px;white-space:nowrap;"><i class="fas fa-arrows-rotate"></i> Load Data</button>
+          </div>
+          <span style="font-size:11px;color:var(--text-muted);margin-top:2px;display:block;">Extracts numbers from any row, column, or cell range</span>
         </div>
         <div>
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Chart Title:</label>
@@ -3315,6 +3908,66 @@
   <input type="file" id="imageFileInput" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.svg,.avif,.ico" multiple hidden>
   <input type="file" id="mergeFileInput" accept=".pdf" multiple hidden>
 
+  <!-- Header & Footer Settings Modal -->
+  <div class="modal-overlay" id="headerFooterModal" role="dialog" aria-modal="true" aria-label="Header & Footer Settings">
+    <div class="modal" style="width:520px;max-width:92vw;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-heading" style="color:#0284c7;"></i> Header &amp; Footer Settings
+        </h3>
+        <button class="modal-close-icon" id="headerFooterCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:16px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <p style="font-size:12px;color:var(--text-secondary);margin-bottom:14px;">
+        Configure running headers and footers for your document pages, or remove existing ones.
+      </p>
+
+      <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:14px;">
+        <label style="font-size:12px;font-weight:700;display:block;margin-bottom:6px;color:var(--text-primary);">Page Scope</label>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+            <input type="radio" name="hfScopeRadio" id="hfScopeSingle" value="single" checked style="accent-color:var(--accent);">
+            <span>Single Page (Current View)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+            <input type="radio" name="hfScopeRadio" id="hfScopeAll" value="all" style="accent-color:var(--accent);">
+            <span>All Pages (Auto Page-Break by Paper Size)</span>
+          </label>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">"All Pages" automatically divides long documents by paper size and adds separate headers/footers to each page.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg-secondary);">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;color:var(--text-primary);margin-bottom:8px;">
+            <input type="checkbox" id="hfEnableHeaderCheck" checked style="accent-color:var(--accent);width:16px;height:16px;">
+            <span>Header (Top)</span>
+          </label>
+          <input type="text" id="hfHeaderText" placeholder="Header title..." style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+        </div>
+        <div style="border:1px solid var(--border);border-radius:8px;padding:12px;background:var(--bg-secondary);">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;cursor:pointer;color:var(--text-primary);margin-bottom:8px;">
+            <input type="checkbox" id="hfEnableFooterCheck" checked style="accent-color:var(--accent);width:16px;height:16px;">
+            <span>Footer (Bottom)</span>
+          </label>
+          <input type="text" id="hfFooterText" placeholder="Footer text (e.g. Confidential)..." style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:12px;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:6px;">
+          <button class="modal-btn" id="hfRemoveHeaderBtn" type="button" style="color:#ef4444;font-size:11.5px;padding:5px 10px;" title="Remove headers only">Remove Header</button>
+          <button class="modal-btn" id="hfRemoveFooterBtn" type="button" style="color:#ef4444;font-size:11.5px;padding:5px 10px;" title="Remove footers only">Remove Footer</button>
+          <button class="modal-btn" id="hfRemoveAllBtn" type="button" style="color:#ef4444;font-size:11.5px;padding:5px 10px;" title="Remove both headers and footers">Remove Both</button>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="modal-btn" id="headerFooterCancelBtn" type="button">Cancel</button>
+          <button class="modal-btn primary" id="headerFooterApplyBtn" type="button">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
   <!-- External CDN Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -3346,5 +3999,6 @@
   <script src="js/find-outline.js"></script>
   <script src="js/file-io.js"></script>
   <script src="js/app.js"></script>
+
 </body>
 </html>

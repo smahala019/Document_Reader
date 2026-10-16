@@ -28,11 +28,12 @@
   // ==========================================================================
 
   function openFindBar(showReplace = false) {
-    if (window.DocFlow.currentMode === 'empty') {
+    const hasDoc = !!window.DocFlow.UI?.Tabs?.activeId || window.DocFlow.currentMode !== 'empty' || !!document.querySelector('#editorWrap.visible, #pdfWrap.visible');
+    if (!hasDoc) {
       showToast('Open or create a document first', 'info');
       return;
     }
-    const isPdf = window.DocFlow.currentMode === 'view';
+    const isPdf = window.DocFlow.currentMode === 'view' || !!document.querySelector('#pdfWrap.visible');
     if (isPdf && showReplace) {
       showToast('PDF documents are view-only. Opened in Find mode.', 'info');
       showReplace = false;
@@ -65,7 +66,8 @@
   }
 
   function toggleFindBar() {
-    if (window.DocFlow.currentMode === 'empty') {
+    const hasDoc = !!window.DocFlow.UI?.Tabs?.activeId || window.DocFlow.currentMode !== 'empty' || !!document.querySelector('#editorWrap.visible, #pdfWrap.visible');
+    if (!hasDoc) {
       showToast('Open or create a document first', 'info');
       return;
     }
@@ -481,15 +483,9 @@
       });
     }
 
-    // Global keyboard shortcuts: Ctrl+F (Find), Ctrl+H (Find & Replace)
+    // Global keyboard shortcut: Escape closes find bar
     document.addEventListener('keydown', e => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
-        e.preventDefault();
-        openFindBar(false);
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
-        e.preventDefault();
-        openFindBar(true);
-      } else if (e.key === 'Escape' && findBar?.classList.contains('open')) {
+      if (e.key === 'Escape' && findBar?.classList.contains('open')) {
         e.preventDefault();
         closeFindBar();
       }

@@ -268,6 +268,9 @@
 
 /* PDF Grayscale / B&W Print Reading Mode (Bug 5) */
 .pdf-wrap.pdf-grayscale-mode .pdf-pages,
-.pdf-pages.pdf-grayscale-mode {
+.pdf-pages.pdf-grayscale-mode,
+.pdf-wrap.pdf-grayscale-mode canvas,
+.pdf-pages.pdf-grayscale-mode canvas,
+.pdf-grayscale-mode .pdf-page-wrap canvas {
   filter: grayscale(100%) contrast(115%) brightness(96%) !important;
 }

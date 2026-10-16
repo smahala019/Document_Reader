@@ -5,6 +5,22 @@
 (function (window) {
   'use strict';
 
+  function getSelectedExcelCells() {
+    const container = document.querySelector('.excel-spreadsheet-container');
+    if (!container) return [];
+    const table = container.querySelector('.excel-grid-table');
+    if (!table) return [];
+    const cells = Array.from(table.querySelectorAll('td.excel-cell-selected, tr.excel-row-selected td, td.excel-col-selected'));
+    if (cells.length > 0) return Array.from(new Set(cells));
+    if (window._activeExcelCell && table.contains(window._activeExcelCell)) return [window._activeExcelCell];
+    if (document.activeElement && document.activeElement.tagName === 'TD' && table.contains(document.activeElement)) {
+      return [document.activeElement];
+    }
+    return [];
+  }
+  window.DocFlow = window.DocFlow || {};
+  window.DocFlow.getSelectedExcelCells = getSelectedExcelCells;
+
   const { $, $$, escHtml, showToast, openModal, closeModal } = window.DocFlow.UI;
 
   let savedSelection = null;
@@ -65,6 +81,19 @@
 
   function focusEditor() {
     if (editor) {
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (excelContainer) {
+        if (window._activeExcelCell && excelContainer.contains(window._activeExcelCell)) {
+          window._activeExcelCell.focus();
+          return;
+        }
+        const selCell = excelContainer.querySelector('td.excel-cell-selected');
+        if (selCell) {
+          window._activeExcelCell = selCell;
+          selCell.focus();
+          return;
+        }
+      }
       editor.focus();
       restoreSelection();
     }
@@ -116,10 +145,11 @@
 
   function insertHtmlAtCursor(html) {
     if (!editor) return;
+    const isSpecialBlock = /<table|<svg|doc-chart-container|doc-page-break/i.test(html);
     const activeCell = (window._activeExcelCell && document.body.contains(window._activeExcelCell))
       ? window._activeExcelCell
       : null;
-    if (activeCell) {
+    if (activeCell && !isSpecialBlock) {
       saveSnapshot();
       activeCell.focus();
       const temp = document.createElement('div');
@@ -139,6 +169,15 @@
       if (formulaInput) formulaInput.value = activeCell.textContent;
       notifyChange();
       return activeCell;
+    }
+
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    if (excelContainer && isSpecialBlock) {
+      saveSnapshot();
+      const fragment = document.createRange().createContextualFragment(html);
+      excelContainer.parentNode.insertBefore(fragment, excelContainer.nextSibling);
+      notifyChange();
+      return null;
     }
 
     saveSnapshot();
@@ -360,6 +399,140 @@
       updateToolbarState();
       return true;
     }
+
+    const excelCells = getSelectedExcelCells();
+    if (excelCells.length > 0) {
+      saveSnapshot();
+      const targetCell = window._activeExcelCell || excelCells[0];
+      const targetComp = window.getComputedStyle(targetCell);
+
+      const targetIsBold = targetCell.style.fontWeight === 'bold' || parseInt(targetComp.fontWeight, 10) >= 600 || !!targetCell.querySelector('strong, b');
+      const newBold = !targetIsBold;
+
+      const targetIsItalic = targetCell.style.fontStyle === 'italic' || targetComp.fontStyle === 'italic' || !!targetCell.querySelector('em, i');
+      const newItalic = !targetIsItalic;
+
+      const targetHasU = (targetCell.style.textDecoration && targetCell.style.textDecoration.includes('underline')) || targetComp.textDecorationLine.includes('underline') || !!targetCell.querySelector('u');
+      const newU = !targetHasU;
+
+      const targetHasS = (targetCell.style.textDecoration && targetCell.style.textDecoration.includes('line-through')) || targetComp.textDecorationLine.includes('line-through') || !!targetCell.querySelector('s, strike, del');
+      const newS = !targetHasS;
+
+      excelCells.forEach(cell => {
+        const comp = window.getComputedStyle(cell);
+        switch (cmd) {
+          case 'bold': {
+            cell.style.fontWeight = newBold ? 'bold' : 'normal';
+            cell.querySelectorAll('strong, b').forEach(el => {
+              el.style.fontWeight = newBold ? 'bold' : 'normal';
+            });
+            break;
+          }
+          case 'italic': {
+            cell.style.fontStyle = newItalic ? 'italic' : 'normal';
+            cell.querySelectorAll('em, i').forEach(el => {
+              el.style.fontStyle = newItalic ? 'italic' : 'normal';
+            });
+            break;
+          }
+          case 'underline': {
+            const curS = (cell.style.textDecoration && cell.style.textDecoration.includes('line-through')) || comp.textDecorationLine.includes('line-through') || !!cell.querySelector('s, strike, del');
+            const decs = [];
+            if (newU) decs.push('underline');
+            if (curS) decs.push('line-through');
+            cell.style.textDecoration = decs.length ? decs.join(' ') : 'none';
+            cell.querySelectorAll('u').forEach(el => {
+              el.style.textDecoration = newU ? 'underline' : 'none';
+            });
+            break;
+          }
+          case 'strikeThrough': {
+            const curU = (cell.style.textDecoration && cell.style.textDecoration.includes('underline')) || comp.textDecorationLine.includes('underline') || !!cell.querySelector('u');
+            const decs = [];
+            if (curU) decs.push('underline');
+            if (newS) decs.push('line-through');
+            cell.style.textDecoration = decs.length ? decs.join(' ') : 'none';
+            cell.querySelectorAll('s, strike, del').forEach(el => {
+              el.style.textDecoration = newS ? 'line-through' : 'none';
+            });
+            break;
+          }
+          case 'subscript': {
+            const isSub = cell.style.verticalAlign === 'sub';
+            cell.style.verticalAlign = isSub ? 'baseline' : 'sub';
+            cell.style.fontSize = isSub ? '' : '0.8em';
+            break;
+          }
+          case 'superscript': {
+            const isSup = cell.style.verticalAlign === 'super';
+            cell.style.verticalAlign = isSup ? 'baseline' : 'super';
+            cell.style.fontSize = isSup ? '' : '0.8em';
+            break;
+          }
+          case 'justifyLeft':
+            cell.style.textAlign = 'left';
+            break;
+          case 'justifyCenter':
+            cell.style.textAlign = 'center';
+            break;
+          case 'justifyRight':
+            cell.style.textAlign = 'right';
+            break;
+          case 'justifyFull':
+            cell.style.textAlign = 'justify';
+            break;
+          case 'fontName':
+            if (value) {
+              cell.style.fontFamily = value;
+              cell.querySelectorAll('*').forEach(child => child.style.fontFamily = 'inherit');
+            }
+            break;
+          case 'fontSize':
+            if (value) {
+              const sz = value + (typeof value === 'number' || (!String(value).endsWith('pt') && !String(value).endsWith('px')) ? 'px' : '');
+              cell.style.fontSize = sz;
+              cell.querySelectorAll('*').forEach(child => child.style.fontSize = 'inherit');
+            }
+            break;
+          case 'foreColor':
+            if (value) {
+              cell.style.color = value;
+              cell.querySelectorAll('*').forEach(child => child.style.color = value);
+            }
+            break;
+          case 'hiliteColor':
+            if (value) {
+              cell.style.backgroundColor = value;
+            }
+            break;
+          case 'removeFormat':
+            cell.style.fontWeight = '';
+            cell.style.fontStyle = '';
+            cell.style.textDecoration = '';
+            cell.style.fontFamily = '';
+            cell.style.fontSize = '';
+            cell.style.color = '';
+            cell.style.backgroundColor = '';
+            cell.style.textAlign = '';
+            cell.style.verticalAlign = '';
+            cell.querySelectorAll('*').forEach(child => {
+              child.style.fontWeight = '';
+              child.style.fontStyle = '';
+              child.style.textDecoration = '';
+              child.style.fontFamily = '';
+              child.style.fontSize = '';
+              child.style.color = '';
+              child.style.backgroundColor = '';
+            });
+            break;
+        }
+      });
+      updateToolbarState();
+      notifyChange();
+      saveSnapshot();
+      return true;
+    }
+
     // Save snapshot before executing formatting command
     saveSnapshot();
     try {
@@ -416,6 +589,51 @@
 
   // Toolbar Button Active States
   function updateToolbarState() {
+    const excelCells = getSelectedExcelCells();
+    if (excelCells.length > 0) {
+      const targetCell = window._activeExcelCell || excelCells[0];
+      const comp = window.getComputedStyle(targetCell);
+      const hasBoldChild = !!targetCell.querySelector('b, strong');
+      const hasItalicChild = !!targetCell.querySelector('i, em');
+      const hasUnderlineChild = !!targetCell.querySelector('u');
+      const hasStrikeChild = !!targetCell.querySelector('s, strike, del');
+      const textDec = (targetCell.style.textDecoration || comp.textDecoration || comp.textDecorationLine || '').toLowerCase();
+
+      const isBold = targetCell.style.fontWeight === 'bold' || parseInt(comp.fontWeight, 10) >= 600 || hasBoldChild;
+      const isItalic = targetCell.style.fontStyle === 'italic' || comp.fontStyle === 'italic' || hasItalicChild;
+      const isUnderline = textDec.includes('underline') || hasUnderlineChild;
+      const isStrike = textDec.includes('line-through') || hasStrikeChild;
+      const isSub = targetCell.style.verticalAlign === 'sub' || comp.verticalAlign === 'sub' || !!targetCell.querySelector('sub');
+      const isSup = targetCell.style.verticalAlign === 'super' || comp.verticalAlign === 'super' || !!targetCell.querySelector('sup');
+
+      $('.fmt-btn[data-cmd="bold"]')?.classList.toggle('active', isBold);
+      $('.fmt-btn[data-cmd="italic"]')?.classList.toggle('active', isItalic);
+      $('.fmt-btn[data-cmd="underline"]')?.classList.toggle('active', isUnderline);
+      $('.fmt-btn[data-cmd="strikeThrough"]')?.classList.toggle('active', isStrike);
+      $('.fmt-btn[data-cmd="subscript"]')?.classList.toggle('active', isSub);
+      $('.fmt-btn[data-cmd="superscript"]')?.classList.toggle('active', isSup);
+
+      const align = targetCell.style.textAlign || comp.textAlign || 'left';
+      $('.fmt-btn[data-cmd="justifyLeft"]')?.classList.toggle('active', align === 'left' || align === 'start');
+      $('.fmt-btn[data-cmd="justifyCenter"]')?.classList.toggle('active', align === 'center');
+      $('.fmt-btn[data-cmd="justifyRight"]')?.classList.toggle('active', align === 'right' || align === 'end');
+      $('.fmt-btn[data-cmd="justifyFull"]')?.classList.toggle('active', align === 'justify');
+
+      const fSize = parseInt(targetCell.style.fontSize || comp.fontSize, 10);
+      const fontSizeInput = $('#fontSizeInput');
+      if (fontSizeInput && fSize) fontSizeInput.value = fSize;
+
+      const curFont = (targetCell.style.fontFamily || comp.fontFamily || '').replace(/['"]/g, '').split(',')[0].trim();
+      if (curFont) {
+        const fontLabel = $('#fontFamilyLabel');
+        if (fontLabel) fontLabel.textContent = curFont;
+        $('#fontFamilyPopover .spacing-opt-item').forEach(el => {
+          el.classList.toggle('active', el.dataset.name?.toLowerCase() === curFont.toLowerCase());
+        });
+      }
+      return;
+    }
+
     const commands = [
       'bold', 'italic', 'underline', 'strikeThrough', 'subscript', 'superscript',
       'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull',
@@ -440,24 +658,28 @@
       }
     } catch (e) { }
 
-    // Font Family sync
+    // Font Family sync (Detect computed font from DOM node at cursor)
     try {
-      const fontName = (document.queryCommandValue('fontName') || '').replace(/['"]/g, '');
-      const fontFamily = $('#fontFamily');
-      const fontLabel = $('#fontFamilyLabel');
-      if (fontFamily && fontName) {
-        for (let opt of fontFamily.options) {
-          if (opt.value.toLowerCase().includes(fontName.toLowerCase()) || opt.text.toLowerCase().includes(fontName.toLowerCase())) {
-            fontFamily.value = opt.value;
-            if (fontLabel) {
-              fontLabel.textContent = opt.text.split('(')[0].trim();
-              fontLabel.style.fontFamily = opt.value;
-            }
-            $$('#fontFamilyPopover .spacing-opt-item').forEach(el => {
-              el.classList.toggle('active', el.dataset.font === opt.value);
-            });
-            break;
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+        let node = sel.getRangeAt(0).startContainer;
+        if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+        if (node) {
+          const compFont = window.getComputedStyle(node).fontFamily;
+          const cleanFont = compFont.replace(/['"]/g, '').split(',')[0].trim();
+          const fontInput = $('#fontFamilyInput');
+          if (fontInput && document.activeElement !== fontInput && cleanFont) {
+            fontInput.value = cleanFont;
+            fontInput.style.fontFamily = compFont;
           }
+          const fontLabel = $('#fontFamilyLabel');
+          if (fontLabel && cleanFont) {
+            fontLabel.textContent = cleanFont;
+            fontLabel.style.fontFamily = compFont;
+          }
+          $('#fontFamilyPopover .spacing-opt-item').forEach(el => {
+            el.classList.toggle('active', el.dataset.name?.toLowerCase() === cleanFont.toLowerCase());
+          });
         }
       }
     } catch (e) { }
@@ -597,6 +819,15 @@
           showToast('Open a document in edit mode to change text color', 'info');
           return;
         }
+        const excelCells = getSelectedExcelCells();
+        if (excelCells.length > 0) {
+          saveSnapshot();
+          excelCells.forEach(c => { c.style.color = this.value; });
+          notifyChange();
+          saveSnapshot();
+          showToast('Cell text color applied', 'success');
+          return;
+        }
         restoreSelection();
         document.execCommand('foreColor', false, this.value);
         notifyChange();
@@ -622,6 +853,15 @@
       bgInput.addEventListener('change', function () {
         if (window.DocFlow.currentMode !== 'edit') {
           showToast('Open a document in edit mode to highlight text', 'info');
+          return;
+        }
+        const excelCells = getSelectedExcelCells();
+        if (excelCells.length > 0) {
+          saveSnapshot();
+          excelCells.forEach(c => { c.style.backgroundColor = this.value; });
+          notifyChange();
+          saveSnapshot();
+          showToast('Cell background fill applied', 'success');
           return;
         }
         restoreSelection();
@@ -699,24 +939,146 @@
       insertBtn.addEventListener('click', () => {
         const rows = Math.min(25, Math.max(1, parseInt($('#tableRows').value) || 3));
         const cols = Math.min(12, Math.max(1, parseInt($('#tableCols').value) || 3));
+        const includeRowHeader = $('#tableRowHeaderCheck')?.checked === true;
+        const includeColHeader = $('#tableColHeaderCheck')?.checked === true;
         closeModal('#tableModal');
 
-        let tableHtml = '<table><thead><tr>';
-        for (let c = 1; c <= cols; c++) {
-          tableHtml += '<th style="min-width:60px;height:28px;"><br></th>';
-        }
-        tableHtml += '</tr></thead><tbody>';
-        for (let r = 1; r < rows; r++) {
-          tableHtml += '<tr>';
+        saveSnapshot();
+
+        let tableHtml = '<table class="doc-table">';
+        if (includeRowHeader) {
+          tableHtml += '<thead><tr>';
+          if (includeColHeader) {
+            tableHtml += '<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:1px solid var(--border);font-weight:600;"><br></th>';
+          }
           for (let c = 1; c <= cols; c++) {
-            tableHtml += '<td><br></td>';
+            tableHtml += '<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:1px solid var(--border);font-weight:600;"><br></th>';
+          }
+          tableHtml += '</tr></thead>';
+        }
+        tableHtml += '<tbody>';
+        for (let r = 1; r <= rows; r++) {
+          tableHtml += '<tr>';
+          if (includeColHeader) {
+            tableHtml += '<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:1px solid var(--border);font-weight:600;"><br></th>';
+          }
+          for (let c = 1; c <= cols; c++) {
+            tableHtml += '<td style="min-width:60px;height:28px;padding:6px 10px;border:1px solid var(--border);"><br></td>';
           }
           tableHtml += '</tr>';
         }
         tableHtml += '</tbody></table><p><br></p>';
 
+        const excelContainer = document.querySelector('.excel-spreadsheet-container');
+        if (excelContainer) {
+          const table = excelContainer.querySelector('.excel-grid-table');
+          if (table) {
+            saveSnapshot();
+            const activeCell = window._activeExcelCell || table.querySelector('td.excel-cell-selected') || table.querySelector('tbody tr td');
+            let startRow = activeCell ? activeCell.closest('tr').rowIndex : 1;
+            let startCol = activeCell ? activeCell.cellIndex : 1;
+
+            const tbody = table.querySelector('tbody');
+            const thead = table.querySelector('thead tr');
+
+            // Ensure grid has enough columns
+            const currentCols = thead ? thead.children.length - 1 : 1;
+            const neededCols = startCol + cols - 1;
+            if (neededCols > currentCols) {
+              for (let c = currentCols + 1; c <= neededCols; c++) {
+                const colLetter = String.fromCharCode(64 + c);
+                const th = document.createElement('th');
+                th.className = 'excel-col-hdr';
+                th.textContent = colLetter;
+                thead?.appendChild(th);
+                table.querySelectorAll('tbody tr').forEach(tr => {
+                  const td = document.createElement('td');
+                  td.contentEditable = 'true';
+                  td.dataset.coord = `${colLetter}${tr.rowIndex}`;
+                  tr.appendChild(td);
+                });
+              }
+            }
+
+            // Ensure grid has enough rows
+            const currentRows = tbody ? tbody.rows.length : 0;
+            const neededRows = startRow + rows - 1;
+            if (tbody && neededRows > currentRows) {
+              const totalColsNow = thead ? thead.children.length - 1 : cols;
+              for (let r = currentRows + 1; r <= neededRows; r++) {
+                const tr = document.createElement('tr');
+                const rowTh = document.createElement('th');
+                rowTh.className = 'excel-row-hdr';
+                rowTh.textContent = r;
+                tr.appendChild(rowTh);
+                for (let c = 1; c <= totalColsNow; c++) {
+                  const td = document.createElement('td');
+                  td.contentEditable = 'true';
+                  td.dataset.coord = `${String.fromCharCode(64 + c)}${r}`;
+                  tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+              }
+            }
+
+            // Clear previous cell selection
+            table.querySelectorAll('td.excel-cell-selected').forEach(c => c.classList.remove('excel-cell-selected'));
+
+            // Populate table cells with styles and header if requested
+            for (let r = 0; r < rows; r++) {
+              const rowElem = table.rows[startRow + r];
+              if (!rowElem) continue;
+              for (let c = 0; c < cols; c++) {
+                const cellElem = rowElem.children[startCol + c];
+                if (!cellElem || cellElem.tagName !== 'TD') continue;
+                cellElem.classList.add('excel-cell-selected');
+
+                if (r === 0 && includeHeader) {
+                  if (!cellElem.textContent.trim()) {
+                    cellElem.textContent = `Column ${c + 1}`;
+                  }
+                  cellElem.style.fontWeight = 'bold';
+                  cellElem.style.backgroundColor = 'rgba(22, 163, 74, 0.25)';
+                  cellElem.style.color = 'var(--text-primary)';
+                  cellElem.style.textAlign = 'center';
+                  cellElem.style.border = '1.5px solid #16a34a';
+                } else {
+                  cellElem.style.border = '1px solid #16a34a';
+                  if (!includeHeader) {
+                    cellElem.style.fontWeight = 'normal';
+                  }
+                }
+              }
+            }
+
+            const firstFormattedCell = table.rows[startRow]?.children[startCol];
+            if (firstFormattedCell && firstFormattedCell.tagName === 'TD') {
+              window._activeExcelCell = firstFormattedCell;
+              firstFormattedCell.focus();
+            }
+
+            window.DocFlow.setupExcelInteractions?.();
+            window.DocFlow.Editor?.notifyChange();
+            window.DocFlow.Editor?.updateToolbarState?.();
+            showToast(`Inserted ${rows}×${cols} ${includeHeader ? 'table with headers' : 'simple table'} into spreadsheet grid`, 'success');
+            return;
+          }
+        }
+
+        if (window.DocFlow?.isPptxDocument?.()) {
+          const curSlide = (window.DocFlow?.getCurrentSlideWrapper?.() || document.querySelector('.pptx-slide-wrapper.active-slide') || document.querySelector('.pptx-slide-card'));
+          const card = curSlide ? (curSlide.classList.contains('pptx-slide-card') ? curSlide : curSlide.querySelector('.pptx-slide-card')) : null;
+          if (card) {
+            const contentBox = card.querySelector('.slide-content-box') || card;
+            contentBox.insertAdjacentHTML('beforeend', tableHtml);
+            window.DocFlow.Editor?.notifyChange();
+            showToast(`Inserted ${rows}×${cols} ${includeHeader ? 'table with headers' : 'simple table'} into slide`, 'success');
+            return;
+          }
+        }
+
         insertHtmlAtCursor(tableHtml);
-        showToast(`Inserted ${rows}×${cols} empty table`, 'success');
+        showToast(`Inserted ${rows}×${cols} ${includeHeader ? 'table with headers' : 'simple table'}`, 'success');
       });
     }
   }
@@ -852,6 +1214,17 @@
     if (window.DocFlow.currentMode !== 'edit' || !editor) return;
     const size = Math.max(1, parseInt(val, 10) || 15);
     focusEditor();
+
+    const excelCells = getSelectedExcelCells();
+    if (excelCells.length > 0) {
+      saveSnapshot();
+      excelCells.forEach(c => { c.style.fontSize = size + 'px'; });
+      const fontSizeInput = $('#fontSizeInput');
+      if (fontSizeInput) fontSizeInput.value = size;
+      notifyChange();
+      saveSnapshot();
+      return;
+    }
 
     const fontSizeInput = $('#fontSizeInput');
     if (fontSizeInput) fontSizeInput.value = size;
@@ -1438,12 +1811,49 @@
     }
     $('#homePptShadowBtn')?.addEventListener('click', toggleTextShadow);
 
-    // Font Family Popover Controls (Problem 5: Small height & scrollable)
+    // Font Family Popover & Input Box Controls
     const fontFamilyBtn = $('#fontFamilyBtn');
+    const fontFamilyInput = $('#fontFamilyInput');
     const fontFamilyPopover = $('#fontFamilyPopover');
 
+    function applySelectedFont(fontVal, fontName) {
+      if (!fontVal) return;
+      saveSnapshot();
+      if (fontFamilyInput) {
+        fontFamilyInput.value = fontName || fontVal.replace(/['"]/g, '').split(',')[0].trim();
+        fontFamilyInput.style.fontFamily = fontVal;
+      }
+      const fontLabel = $('#fontFamilyLabel');
+      if (fontLabel) {
+        fontLabel.textContent = fontName || fontVal;
+        fontLabel.style.fontFamily = fontVal;
+      }
+      const excelCells = getSelectedExcelCells();
+      if (excelCells.length > 0) {
+        excelCells.forEach(c => { c.style.fontFamily = fontVal; });
+        notifyChange();
+        saveSnapshot();
+        updateToolbarState();
+      } else if (window.DocFlow.currentMode === 'edit') {
+        restoreSelection();
+        document.execCommand('fontName', false, fontVal);
+        notifyChange();
+        saveSnapshot();
+        updateToolbarState();
+      }
+      $('#fontFamilyPopover .spacing-opt-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.font === fontVal || el.dataset.name?.toLowerCase() === (fontName || '').toLowerCase());
+      });
+      fontFamilyPopover?.classList.remove('show');
+      showToast(`Font family set: ${fontName || fontVal}`, 'info');
+      focusEditor();
+    }
+
     if (fontFamilyBtn) {
-      fontFamilyBtn.addEventListener('mousedown', () => saveSelection());
+      fontFamilyBtn.addEventListener('mousedown', e => {
+        e.preventDefault();
+        saveSelection();
+      });
       fontFamilyBtn.addEventListener('click', e => {
         e.stopPropagation();
         saveSelection();
@@ -1455,48 +1865,57 @@
       });
     }
 
-    $$('#fontFamilyPopover .spacing-opt-item[data-font]').forEach(item => {
-      item.addEventListener('click', () => {
-        const fontVal = item.dataset.font;
-        const fontName = item.dataset.name || item.textContent.trim();
-        const fontLabel = $('#fontFamilyLabel');
-        if (fontLabel) {
-          fontLabel.textContent = fontName;
-          fontLabel.style.fontFamily = fontVal;
+    if (fontFamilyInput) {
+      fontFamilyInput.addEventListener('mousedown', () => saveSelection());
+      fontFamilyInput.addEventListener('focus', () => {
+        saveSelection();
+        if (fontFamilyPopover && !fontFamilyPopover.classList.contains('show')) {
+          window.DocFlow?.UI?.positionPopover?.(fontFamilyInput, fontFamilyPopover);
         }
-        const fontFamily = $('#fontFamily');
-        if (fontFamily) fontFamily.value = fontVal;
-
-        if (window.DocFlow.currentMode === 'edit') {
-          restoreSelection();
-          document.execCommand('fontName', false, fontVal);
-          notifyChange();
-          updateToolbarState();
-        }
-
-        $$('#fontFamilyPopover .spacing-opt-item').forEach(el => el.classList.remove('active'));
-        item.classList.add('active');
-        fontFamilyPopover?.classList.remove('show');
-        showToast(`Font family set: ${fontName}`, 'info');
       });
-    });
-
-    // Font Family native select fallback
-    const fontFamily = $('#fontFamily');
-    if (fontFamily) {
-      fontFamily.addEventListener('focus', () => saveSelection());
-      fontFamily.addEventListener('mousedown', () => saveSelection());
-      fontFamily.addEventListener('change', function () {
-        if (window.DocFlow.currentMode !== 'edit') return;
-        restoreSelection();
-        document.execCommand('fontName', false, this.value);
-        const fontLabel = $('#fontFamilyLabel');
-        const opt = fontFamily.options[fontFamily.selectedIndex];
-        if (fontLabel && opt) fontLabel.textContent = opt.text.split('(')[0].trim();
-        notifyChange();
-        updateToolbarState();
+      fontFamilyInput.addEventListener('input', () => {
+        const query = fontFamilyInput.value.trim().toLowerCase();
+        if (fontFamilyPopover && !fontFamilyPopover.classList.contains('show')) {
+          window.DocFlow?.UI?.positionPopover?.(fontFamilyInput, fontFamilyPopover);
+        }
+        const items = Array.from(fontFamilyPopover.querySelectorAll('.font-opt-item'));
+        items.sort((a, b) => {
+          const nameA = (a.dataset.name || '').toLowerCase();
+          const nameB = (b.dataset.name || '').toLowerCase();
+          const matchA = nameA.startsWith(query) ? 2 : (nameA.includes(query) ? 1 : 0);
+          const matchB = nameB.startsWith(query) ? 2 : (nameB.includes(query) ? 1 : 0);
+          if (matchA !== matchB) return matchB - matchA;
+          return nameA.localeCompare(nameB);
+        });
+        items.forEach(item => {
+          const name = (item.dataset.name || '').toLowerCase();
+          const matches = !query || name.includes(query);
+          item.style.display = matches ? 'flex' : 'none';
+          fontFamilyPopover.appendChild(item);
+        });
+      });
+      fontFamilyInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const query = fontFamilyInput.value.trim();
+          const matched = Array.from(fontFamilyPopover.querySelectorAll('.font-opt-item')).find(item => {
+            const name = (item.dataset.name || '').toLowerCase();
+            return name === query.toLowerCase() || name.startsWith(query.toLowerCase());
+          });
+          if (matched) {
+            applySelectedFont(matched.dataset.font, matched.dataset.name);
+          } else if (query) {
+            applySelectedFont(`"${query}", sans-serif`, query);
+          }
+        }
       });
     }
+
+    $$('#fontFamilyPopover .spacing-opt-item[data-font]').forEach(item => {
+      item.addEventListener('click', () => {
+        applySelectedFont(item.dataset.font, item.dataset.name || item.textContent.trim());
+      });
+    });
 
     // Number Type Font Size Input & Stepper Buttons (No Limit)
     const fontSizeInput = $('#fontSizeInput');
@@ -1671,11 +2090,36 @@
     setupLinkInsert();
     setupHrAndQuote();
 
+    // Universal focus protection: prevent clicking ribbon/toolbar buttons from stealing editor focus
+    document.addEventListener('mousedown', e => {
+      const btn = e.target.closest('.ribbon-container button, .fmt-btn, .topbar button, .quick-tools button');
+      if (btn && !e.target.closest('input, textarea, select')) {
+        if (window.DocFlow.currentMode === 'edit') {
+          saveSelection();
+        }
+        e.preventDefault();
+      }
+    }, true);
+
     // Editor Events
     editor.addEventListener('input', () => {
       saveSelection();
       notifyChange();
-      debouncedSnapshot();
+      debouncedSnapshot(250);
+    });
+
+    // Granular undo/redo on word boundaries, spaces, punctuation and enter
+    editor.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.key === 'Enter' || e.key === '.' || e.key === ',' || e.key === '!' || e.key === '?' || e.key === ';' || e.key === ':') {
+        saveSnapshot();
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        if (!editor._inDeleteSeq) {
+          saveSnapshot();
+          editor._inDeleteSeq = true;
+          clearTimeout(editor._deleteSeqTimer);
+          editor._deleteSeqTimer = setTimeout(() => { editor._inDeleteSeq = false; }, 600);
+        }
+      }
     });
 
     editor.addEventListener('mouseup', () => {
@@ -1715,6 +2159,19 @@
         e.preventDefault();
         insertHtmlAtCursor('&nbsp;&nbsp;&nbsp;&nbsp;');
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+        const excelContainer = editor.querySelector('.excel-spreadsheet-container') || e.target.closest('.excel-spreadsheet-container');
+        if (excelContainer) {
+          e.preventDefault();
+          e.stopPropagation();
+          const table = excelContainer.querySelector('.excel-grid-table');
+          if (table) {
+            const allTds = table.querySelectorAll('tbody td');
+            allTds.forEach(td => td.classList.add('excel-cell-selected'));
+            showToast(`All ${allTds.length} spreadsheet cells selected`, 'info');
+            updateToolbarState();
+          }
+          return;
+        }
         const sel = window.getSelection();
         if (sel && sel.rangeCount) {
           let node = sel.getRangeAt(0).commonAncestorContainer;

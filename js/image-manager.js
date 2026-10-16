@@ -1782,7 +1782,45 @@
       inner = `<polygon points="${w / 2},${pad} ${w - pad},${h / 2} ${w / 2},${h - pad} ${pad},${h / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
     } else if (shapeType === 'heart') {
       inner = `<path d="M${w/2} ${h*0.8} C${w*0.1} ${h*0.5} ${w*0.1} ${h*0.15} ${w/2} ${h*0.35} C${w*0.9} ${h*0.15} ${w*0.9} ${h*0.5} ${w/2} ${h*0.8} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'cross') {
+      const c1x = w * 0.35, c2x = w * 0.65;
+      const c1y = h * 0.35, c2y = h * 0.65;
+      const pts = `${c1x},${pad} ${c2x},${pad} ${c2x},${c1y} ${w-pad},${c1y} ${w-pad},${c2y} ${c2x},${c2y} ${c2x},${h-pad} ${c1x},${h-pad} ${c1x},${c2y} ${pad},${c2y} ${pad},${c1y} ${c1x},${c1y}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'arrow-left') {
+      const pts = `${w - pad},${h * 0.35} ${w * 0.4},${h * 0.35} ${w * 0.4},${pad} ${pad},${h / 2} ${w * 0.4},${h - pad} ${w * 0.4},${h * 0.65} ${w - pad},${h * 0.65}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'arrow-up') {
+      const pts = `${w * 0.35},${h - pad} ${w * 0.35},${h * 0.4} ${pad},${h * 0.4} ${w / 2},${pad} ${w - pad},${h * 0.4} ${w * 0.65},${h * 0.4} ${w * 0.65},${h - pad}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'arrow-down') {
+      const pts = `${w * 0.35},${pad} ${w * 0.65},${pad} ${w * 0.65},${h * 0.6} ${w - pad},${h * 0.6} ${w / 2},${h - pad} ${pad},${h * 0.6} ${w * 0.35},${h * 0.6}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'pentagon') {
+      const pts = `${w / 2},${pad} ${w - pad},${h * 0.38} ${w * 0.81},${h - pad} ${w * 0.19},${h - pad} ${pad},${h * 0.38}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'cloud') {
+      inner = `<path d="M ${w*0.25} ${h*0.75} A ${w*0.18} ${h*0.22} 0 0 1 ${w*0.2} ${h*0.48} A ${w*0.22} ${h*0.26} 0 0 1 ${w*0.48} ${h*0.25} A ${w*0.26} ${h*0.3} 0 0 1 ${w*0.8} ${h*0.42} A ${w*0.18} ${h*0.24} 0 0 1 ${w*0.82} ${h*0.75} Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'lightning') {
+      const pts = `${w*0.58},${pad} ${pad},${h*0.56} ${w*0.44},${h*0.56} ${w*0.38},${h-pad} ${w-pad},${h*0.44} ${w*0.54},${h*0.44}`;
+      inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'sun') {
+      const cx = w / 2, cy = h / 2, rOut = (w - pad * 2) / 2, rIn = rOut * 0.68;
+      let pts = [];
+      for (let i = 0; i < 16; i++) {
+        const r = i % 2 === 0 ? rOut : rIn;
+        const angle = (i * Math.PI / 8) - (Math.PI / 2);
+        pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+      }
+      inner = `<polygon points="${pts.join(' ')}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
+    } else if (shapeType === 'cylinder') {
+      const ew = (w - pad * 2) / 2;
+      const eh = Math.max(8, h * 0.16);
+      inner = `<ellipse cx="${w / 2}" cy="${pad + eh}" rx="${ew}" ry="${eh}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+               <path d="M ${pad} ${pad + eh} v ${h - eh * 2 - pad * 2} a ${ew} ${eh} 0 0 0 ${ew * 2} 0 v -${h - eh * 2 - pad * 2}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>
+               <ellipse cx="${w / 2}" cy="${h - pad - eh}" rx="${ew}" ry="${eh}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
     } else {
+      // Default / Hexagon
       const pts = `${w*0.25},${pad} ${w*0.75},${pad} ${w-pad},${h/2} ${w*0.75},${h-pad} ${w*0.25},${h-pad} ${pad},${h/2}`;
       inner = `<polygon points="${pts}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`;
     }
@@ -1795,8 +1833,9 @@
     const h = (customParams && customParams.height) ? customParams.height : ((shapeType === 'rectangle' || shapeType === 'rounded-rect' || shapeType === 'callout') ? Math.round(w * 0.65) : w);
     const svgHtml = getShapeSvg(shapeType, fill, stroke, strokeWidth, size, customParams);
     const shapeId = 'shape_' + Date.now();
+    const shapeName = shapeType.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     const shapeHtml = `
-      <div class="doc-shape-container" id="${shapeId}" data-shape="${shapeType}" data-fill="${fill}" data-stroke="${stroke}" data-stroke-width="${strokeWidth}" contenteditable="false" style="width:${w}px;height:${h}px;display:inline-block;cursor:pointer;position:relative;margin:8px 4px;vertical-align:middle;">
+      <div class="doc-shape-container" id="${shapeId}" data-shape="${shapeType}" data-shape-name="${shapeName}" title="Shape: ${shapeName}" data-fill="${fill}" data-stroke="${stroke}" data-stroke-width="${strokeWidth}" contenteditable="false" style="width:${w}px;height:${h}px;display:inline-block;cursor:pointer;position:relative;margin:8px 4px;vertical-align:middle;">
         ${svgHtml}
       </div>&nbsp;`;
     window.DocFlow.Editor?.insertHtmlAtCursor(shapeHtml);

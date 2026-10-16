@@ -203,7 +203,8 @@
   font-size: 0.8em;
 }
 
-.editor-page table {
+.editor-page table,
+.doc-table {
   border-collapse: collapse;
   width: 100%;
   margin: 16px 0;
@@ -212,18 +213,21 @@
 }
 
 .editor-page td,
-.editor-page th {
-  border: 1px solid #ccc;
+.editor-page th,
+.doc-table td,
+.doc-table th {
+  border: 1px solid var(--border, #ccc);
   padding: 8px 12px;
   text-align: left;
-  color: #1a1a1a !important;
+  color: var(--text-primary, #1a1a1a);
   font-size: 14px;
 }
 
-.editor-page th {
-  background: #f1f5f9;
+.editor-page th,
+.doc-table th {
+  background: var(--bg-tertiary, #f1f5f9);
   font-weight: 600;
-  color: #0f172a !important;
+  color: var(--text-primary, #0f172a);
 }
 
 .editor-page a {
@@ -533,6 +537,7 @@
   height: 28px;
   min-width: 80px;
   box-sizing: border-box;
+  background-color: var(--excel-sheet-bg, #ffffff);
 }
 
 .excel-grid-table .excel-corner {
@@ -568,8 +573,8 @@
 }
 
 .excel-grid-table td {
-  background: #ffffff;
-  color: #0f172a !important;
+  background: var(--excel-sheet-bg, #ffffff);
+  color: #0f172a;
   outline: none;
   transition: background 0.1s ease;
 }
@@ -655,8 +660,8 @@
 [data-theme="dark"] .excel-grid-table td,
 [data-theme="dark"] .excel-spreadsheet-container td,
 [data-theme="dark"] .editor-page.excel-view-mode td {
-  background: #141416 !important;
-  color: #f5f5f5 !important;
+  background: var(--excel-sheet-bg, #141416);
+  color: #f5f5f5;
 }
 
 [data-theme="dark"] .excel-grid-table td *,
@@ -783,16 +788,9 @@ tr.excel-row-selected td,
 td.excel-row-selected,
 td.excel-col-selected,
 td.excel-cell-selected {
-  background: #dcfce7 !important;
-  color: #14532d !important;
-  font-weight: 500 !important;
-}
-
-tr.excel-row-selected td *,
-td.excel-row-selected *,
-td.excel-col-selected *,
-td.excel-cell-selected * {
-  color: #14532d !important;
+  background: rgba(22, 163, 74, 0.18) !important;
+  outline: 1.5px solid #16a34a;
+  outline-offset: -1.5px;
 }
 
 [data-theme="dark"] tr.excel-row-selected td,
@@ -803,20 +801,9 @@ td.excel-cell-selected * {
 [data-theme="dark"] .excel-grid-table td.excel-row-selected,
 [data-theme="dark"] .excel-grid-table td.excel-col-selected,
 [data-theme="dark"] .excel-grid-table td.excel-cell-selected {
-  background: #143522 !important;
-  color: #f0fdf4 !important;
-  font-weight: 500 !important;
-}
-
-[data-theme="dark"] tr.excel-row-selected td *,
-[data-theme="dark"] td.excel-row-selected *,
-[data-theme="dark"] td.excel-col-selected *,
-[data-theme="dark"] td.excel-cell-selected *,
-[data-theme="dark"] .excel-grid-table tr.excel-row-selected td *,
-[data-theme="dark"] .excel-grid-table td.excel-row-selected *,
-[data-theme="dark"] .excel-grid-table td.excel-col-selected *,
-[data-theme="dark"] .excel-grid-table td.excel-cell-selected * {
-  color: #f0fdf4 !important;
+  background: rgba(34, 197, 94, 0.22) !important;
+  outline: 1.5px solid #22c55e;
+  outline-offset: -1.5px;
 }
 
 /* Excel Ctrl+A Perimeter Border Highlighting (Issue 4) */
@@ -1092,6 +1079,18 @@ td.excel-sel-right {
     visibility: hidden !important;
     clear: both !important;
   }
+  .excel-page-break-row {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+  tr.excel-page-break-bottom {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+}
+
+#layoutHeaderFooterBtn {
+  display: none;
 }
 
 /* Custom Column Break: Flows content to next column with clear visual divider */
@@ -3622,38 +3621,28 @@ body:not([data-mode="empty"]).editor-statusbar-hidden #statusbar {
 .excel-grid-table td.excel-col-selected,
 .excel-grid-table td.excel-cell-selected,
 .excel-grid-table tr.excel-row-selected td {
-  background: #dcfce7 !important;
-  color: #14532d !important;
-  font-weight: 600 !important;
-}
-
-.excel-grid-table td.excel-row-selected *,
-.excel-grid-table td.excel-col-selected *,
-.excel-grid-table td.excel-cell-selected *,
-.excel-grid-table tr.excel-row-selected td * {
-  color: #14532d !important;
+  background: rgba(22, 163, 74, 0.18) !important;
+  outline: 1.5px solid #16a34a;
+  outline-offset: -1.5px;
 }
 
 [data-theme="dark"] .excel-grid-table td.excel-row-selected,
 [data-theme="dark"] .excel-grid-table td.excel-col-selected,
 [data-theme="dark"] .excel-grid-table td.excel-cell-selected,
 [data-theme="dark"] .excel-grid-table tr.excel-row-selected td {
-  background: #143522 !important;
-  color: #f0fdf4 !important;
-  font-weight: 600 !important;
-}
-
-[data-theme="dark"] .excel-grid-table td.excel-row-selected *,
-[data-theme="dark"] .excel-grid-table td.excel-col-selected *,
-[data-theme="dark"] .excel-grid-table td.excel-cell-selected *,
-[data-theme="dark"] .excel-grid-table tr.excel-row-selected td * {
-  color: #f0fdf4 !important;
+  background: rgba(34, 197, 94, 0.22) !important;
+  outline: 1.5px solid #22c55e;
+  outline-offset: -1.5px;
 }
 
 /* ==========================================================================
    Problem 3: Document Comments (Dull Highlight & Hover/Click Popover)
    ========================================================================== */
 .df-comment-highlight {
+  display: inline !important;
+  white-space: inherit !important;
+  vertical-align: baseline !important;
+  margin: 0 !important;
   background-color: rgba(217, 119, 6, 0.22) !important;
   border-bottom: 2px dashed #b45309 !important;
   color: inherit !important;
@@ -3778,5 +3767,246 @@ body:not([data-mode="empty"]).editor-statusbar-hidden #statusbar {
   background: #be123c;
 }
 
+/* Word Only Tools */
+.word-only-tool {
+  display: inline-flex;
+}
+
+/* Document Header & Footer Area */
+.doc-header-area {
+  border-bottom: 1px dashed var(--border);
+  padding: 6px 12px;
+  margin-bottom: 16px;
+  color: var(--text-muted);
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: text;
+  background: rgba(2, 132, 199, 0.03);
+  border-radius: 4px;
+}
+.doc-header-area:hover,
+.doc-header-area:focus-within {
+  border-bottom-color: var(--accent);
+  background: rgba(2, 132, 199, 0.08);
+}
+.doc-footer-area {
+  border-top: 1px dashed var(--border);
+  padding: 6px 12px;
+  margin-top: 24px;
+  color: var(--text-muted);
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: text;
+  background: rgba(2, 132, 199, 0.03);
+  border-radius: 4px;
+}
+.doc-footer-area:hover,
+.doc-footer-area:focus-within {
+  border-top-color: var(--accent);
+  background: rgba(2, 132, 199, 0.08);
+}
+
+/* Excel Page Break Styles */
+.excel-page-break-row td {
+  padding: 4px 0 !important;
+  background: var(--bg-secondary) !important;
+  text-align: center;
+  border-top: 2px dashed #0284c7 !important;
+  border-bottom: 2px dashed #0284c7 !important;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0284c7;
+  user-select: none;
+}
+.excel-page-break-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+tr.excel-page-break-bottom td {
+  border-bottom: 2px dashed #0284c7 !important;
+}
+
+/* Slide Show 3D Perspective */
+.slideshow-overlay {
+  perspective: 1200px;
+}
+.slideshow-content {
+  transform-style: preserve-3d;
+}
 
 
+
+
+
+/* ==========================================================================
+   New Slide Transitions & Animations (Item 2)
+   ========================================================================== */
+@keyframes pptWindSweep {
+  0% { opacity: 0; transform: translateX(-120px) skewX(-20deg); filter: blur(6px); }
+  100% { opacity: 1; transform: translateX(0) skewX(0); filter: blur(0); }
+}
+.anim-ppt-wind-sweep, .pptx-slide-wrapper[data-transition="wind-sweep"] .pptx-slide-card {
+  animation: pptWindSweep var(--ppt-trans-dur, 0.8s) cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes pptDiagonalSlide {
+  0% { opacity: 0; transform: translate(-100px, -100px); }
+  100% { opacity: 1; transform: translate(0, 0); }
+}
+.anim-ppt-diagonal-slide, .pptx-slide-wrapper[data-transition="diagonal-slide"] .pptx-slide-card {
+  animation: pptDiagonalSlide var(--ppt-trans-dur, 0.75s) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes pptFlipHorizontal {
+  0% { opacity: 0; transform: perspective(800px) rotateY(-90deg); }
+  100% { opacity: 1; transform: perspective(800px) rotateY(0deg); }
+}
+.anim-ppt-flip-horizontal, .pptx-slide-wrapper[data-transition="flip-horizontal"] .pptx-slide-card {
+  animation: pptFlipHorizontal var(--ppt-trans-dur, 0.8s) ease-out forwards;
+}
+
+@keyframes pptZoomFadeIn {
+  0% { opacity: 0; transform: scale(0.65); filter: blur(4px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+.anim-ppt-zoom-fade-in, .pptx-slide-wrapper[data-transition="zoom-fade-in"] .pptx-slide-card {
+  animation: pptZoomFadeIn var(--ppt-trans-dur, 0.75s) cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pptStarburst {
+  0% { opacity: 0; transform: scale(0.2) rotate(-35deg); }
+  65% { transform: scale(1.06) rotate(4deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.anim-ppt-starburst, .pptx-slide-wrapper[data-transition="starburst"] .pptx-slide-card {
+  animation: pptStarburst var(--ppt-trans-dur, 0.85s) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes pptSpiralTwist {
+  0% { opacity: 0; transform: scale(0.4) rotate(-180deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.anim-ppt-spiral-twist, .pptx-slide-wrapper[data-transition="spiral-twist"] .pptx-slide-card {
+  animation: pptSpiralTwist var(--ppt-trans-dur, 0.85s) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* New Slide Element Animations (Item 2) */
+@keyframes elemGlowPulse {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 14px rgba(59, 130, 246, 0.75)); transform: scale(1.03); }
+}
+.anim-glow-pulse, [data-animation="glow-pulse"] {
+  animation: elemGlowPulse var(--ppt-anim-dur, 0.8s) ease-in-out;
+}
+
+@keyframes elemShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+.anim-shake, [data-animation="shake"] {
+  animation: elemShake var(--ppt-anim-dur, 0.6s) ease-in-out;
+}
+
+@keyframes elemRubberband {
+  0% { transform: scale3d(1, 1, 1); }
+  30% { transform: scale3d(1.25, 0.75, 1); }
+  40% { transform: scale3d(0.75, 1.25, 1); }
+  50% { transform: scale3d(1.15, 0.85, 1); }
+  65% { transform: scale3d(0.95, 1.05, 1); }
+  75% { transform: scale3d(1.05, 0.95, 1); }
+  100% { transform: scale3d(1, 1, 1); }
+}
+.anim-rubberband, [data-animation="rubberband"] {
+  animation: elemRubberband var(--ppt-anim-dur, 0.85s) ease;
+}
+
+@keyframes elemFlipInX {
+  0% { opacity: 0; transform: perspective(400px) rotate3d(1, 0, 0, 90deg); }
+  40% { transform: perspective(400px) rotate3d(1, 0, 0, -20deg); }
+  60% { transform: perspective(400px) rotate3d(1, 0, 0, 10deg); }
+  80% { transform: perspective(400px) rotate3d(1, 0, 0, -5deg); }
+  100% { opacity: 1; transform: perspective(400px); }
+}
+.anim-flip-in-x, [data-animation="flip-in-x"] {
+  animation: elemFlipInX var(--ppt-anim-dur, 0.75s) ease-out forwards;
+}
+
+@keyframes elemSlideInBottom {
+  0% { opacity: 0; transform: translateY(60px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.anim-slide-in-bottom, [data-animation="slide-in-bottom"] {
+  animation: elemSlideInBottom var(--ppt-anim-dur, 0.7s) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+@keyframes elemJello {
+  11.1% { transform: skewX(-12.5deg) skewY(-12.5deg); }
+  22.2% { transform: skewX(6.25deg) skewY(6.25deg); }
+  33.3% { transform: skewX(-3.125deg) skewY(-3.125deg); }
+  44.4% { transform: skewX(1.5625deg) skewY(1.5625deg); }
+  55.5% { transform: skewX(-0.78125deg) skewY(-0.78125deg); }
+  66.6% { transform: skewX(0.390625deg) skewY(0.390625deg); }
+  77.7% { transform: skewX(-0.1953125deg) skewY(-0.1953125deg); }
+  88.8% { transform: skewX(0.09765625deg) skewY(0.09765625deg); }
+  100% { transform: skewX(0) skewY(0); }
+}
+.anim-jello, [data-animation="jello"] {
+  animation: elemJello var(--ppt-anim-dur, 0.9s) ease;
+}
+
+/* Header/Footer Delete Button (Item 3) */
+.df-hf-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 4px;
+  opacity: 0.6;
+  transition: all 0.15s ease;
+  user-select: none;
+  margin-left: 8px;
+}
+.df-hf-delete-btn:hover {
+  opacity: 1;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
+/* Excel Fast Sheet Background (Item 3) */
+.excel-spreadsheet-container,
+.excel-grid-table,
+.excel-grid-table tbody td {
+  background-color: var(--excel-sheet-bg, inherit);
+}
+
+/* Grayscale Mode for Document Editor (Item 5) */
+.editor-grayscale-mode img,
+.editor-grayscale-mode canvas,
+.editor-grayscale-mode svg,
+.editor-grayscale-mode .editor-page,
+.editor-grayscale-mode #editor {
+  filter: grayscale(100%) !important;
+}
+
+/* Comment Highlight Inline Flow (Item 4) */
+.df-comment-highlight {
+  display: inline !important;
+  white-space: normal !important;
+  vertical-align: baseline !important;
+}

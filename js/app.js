@@ -1027,29 +1027,34 @@
         return;
       }
 
-      // Ignore standard shortcut interception inside inputs/modals
       const target = e.target;
-      if (target.closest && target.closest('.modal-overlay')) return;
-      if (target.tagName === 'INPUT' && target.id !== 'findInput') return;
-      if (target.tagName === 'SELECT') return;
+      const isInsideModal = target.closest && target.closest('.modal-overlay');
+      if (isInsideModal) return;
 
       if (e.ctrlKey || e.metaKey) {
-        switch (e.key.toLowerCase()) {
+        const k = e.key.toLowerCase();
+        switch (k) {
           case 'o':
             e.preventDefault();
             $('#openBtn')?.click();
             break;
           case 's':
             e.preventDefault();
-            if (window.DocFlow.currentMode === 'edit') {
+            if (window.DocFlow.currentMode === 'view') {
+              window.DocFlow.PDF?.downloadCurrentPdf?.();
+            } else if (window.DocFlow.currentMode === 'edit') {
               $('#saveDropdown')?.classList.toggle('show');
             } else {
-              showToast('Open a document in edit mode to save', 'warning');
+              showToast('Open a document to save', 'warning');
             }
             break;
           case 'p':
             e.preventDefault();
-            triggerPrint();
+            if (window.DocFlow.currentMode === 'view' && window.DocFlow.PDF?.printCurrentPdf) {
+              window.DocFlow.PDF.printCurrentPdf();
+            } else {
+              triggerPrint();
+            }
             break;
           case 'f':
             e.preventDefault();
@@ -1079,7 +1084,9 @@
             break;
           case 'z':
             e.preventDefault();
-            if (e.shiftKey) {
+            if (window.DocFlow.currentMode === 'view' && window.DocFlow.PDF?.undoPdf) {
+              window.DocFlow.PDF.undoPdf();
+            } else if (e.shiftKey) {
               window.DocFlow.Editor?.redo?.();
             } else {
               window.DocFlow.Editor?.undo?.();
@@ -1087,8 +1094,26 @@
             break;
           case 'y':
             e.preventDefault();
-            window.DocFlow.Editor?.redo?.();
+            if (window.DocFlow.currentMode === 'view' && window.DocFlow.PDF?.redoPdf) {
+              window.DocFlow.PDF.redoPdf();
+            } else {
+              window.DocFlow.Editor?.redo?.();
+            }
             break;
+          case 'a': {
+            const excelContainer = document.querySelector('.excel-spreadsheet-container');
+            if (excelContainer && window.DocFlow.currentMode === 'edit') {
+              e.preventDefault();
+              const table = excelContainer.querySelector('.excel-grid-table');
+              if (table) {
+                const allTds = table.querySelectorAll('tbody td');
+                allTds.forEach(td => td.classList.add('excel-cell-selected'));
+                showToast(`Selected all ${allTds.length} spreadsheet cells`, 'info');
+                window.DocFlow.Editor?.updateToolbarState?.();
+              }
+            }
+            break;
+          }
           case 'w':
             e.preventDefault();
             if (window.DocFlow.UI.Tabs.activeId) {
@@ -1167,6 +1192,7 @@
       if (window.DocFlow?.UI?.balanceRibbonPanel) {
         window.DocFlow.UI.balanceRibbonPanel(target);
       }
+      window.DocFlow?.updateWordOnlyTools?.();
     }
   }
 
@@ -2583,6 +2609,37 @@
       }
     });
 
+    editor.addEventListener('beforeinput', e => {
+      if (e.data && (e.inputType === 'insertText' || e.inputType === 'insertReplacementText')) {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          const node = range.startContainer;
+          const mark = (node.nodeType === Node.TEXT_NODE ? node.parentElement : node)?.closest?.('.df-comment-highlight');
+          if (mark) {
+            const isAtEnd = (node.nodeType === Node.TEXT_NODE && range.startOffset >= node.textContent.length && !node.nextSibling) ||
+                            (node === mark && range.startOffset >= mark.childNodes.length);
+            if (isAtEnd) {
+              e.preventDefault();
+              let nextText = mark.nextSibling;
+              if (!nextText || nextText.nodeType !== Node.TEXT_NODE) {
+                nextText = document.createTextNode('');
+                mark.parentNode.insertBefore(nextText, mark.nextSibling);
+              }
+              const ins = e.data;
+              nextText.insertData(0, ins);
+              const newRange = document.createRange();
+              newRange.setStart(nextText, ins.length);
+              newRange.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(newRange);
+              window.DocFlow.Editor?.notifyChange?.();
+            }
+          }
+        }
+      }
+    });
+
     editor.addEventListener('keydown', e => {
       const slideCard = e.target.closest('.pptx-slide-card');
       if (isPptxDocument()) {
@@ -3783,6 +3840,49 @@
         </svg>
       </div><p><br></p>`;
 
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    if (excelContainer) {
+      let chartArea = excelContainer.querySelector('.excel-chart-dock-area');
+      if (!chartArea) {
+        chartArea = document.createElement('div');
+        chartArea.className = 'excel-chart-dock-area';
+        chartArea.style.padding = '16px';
+        chartArea.style.background = 'var(--bg-secondary)';
+        chartArea.style.borderTop = '1px solid var(--border)';
+        chartArea.style.display = 'flex';
+        chartArea.style.flexWrap = 'wrap';
+        chartArea.style.gap = '16px';
+        chartArea.style.justifyContent = 'center';
+        excelContainer.appendChild(chartArea);
+      }
+      chartArea.insertAdjacentHTML('beforeend', chartHtml);
+      window.DocFlow.Editor?.notifyChange();
+      closeModal('#chartModal');
+      showToast('Visual Data Chart inserted into spreadsheet', 'success');
+      setTimeout(() => {
+        const newlyInserted = chartArea.querySelector('.doc-chart-container:last-child');
+        if (newlyInserted) {
+          window.DocFlow.ImageManager?.attachShapeListeners(newlyInserted);
+          window.DocFlow.ImageManager?.selectImage(newlyInserted);
+          newlyInserted.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+      return;
+    }
+
+    if (isPptxDocument()) {
+      const curSlide = (window.DocFlow?.getCurrentSlideWrapper?.() || document.querySelector('.pptx-slide-wrapper.active-slide') || document.querySelector('.pptx-slide-card'));
+      const card = curSlide ? (curSlide.classList.contains('pptx-slide-card') ? curSlide : curSlide.querySelector('.pptx-slide-card')) : null;
+      if (card) {
+        const contentBox = card.querySelector('.slide-content-box') || card;
+        contentBox.insertAdjacentHTML('beforeend', chartHtml);
+        window.DocFlow.Editor?.notifyChange();
+        closeModal('#chartModal');
+        showToast('Visual Data Chart inserted into PowerPoint slide', 'success');
+        return;
+      }
+    }
+
     window.DocFlow.Editor?.insertHtmlAtCursor(chartHtml);
     window.DocFlow.Editor?.notifyChange();
     closeModal('#chartModal');
@@ -3806,7 +3906,7 @@
   let currentPptAutoAdvance = 0;
   let slideShowAutoPlayTimer = null;
 
-  function startSlideShow() {
+  function startSlideShow(fromCurrent = false) {
     if (!isPptxDocument()) {
       showToast('Slide Show presentation mode is only available for PowerPoint (.pptx) documents', 'warning');
       return;
@@ -3847,14 +3947,17 @@
       };
     });
 
-    // Start presentation on first slide from the top of the deck (Slide 1 / index 0 - Issue 6)
-    const startIdx = 0;
-    currentSlideShowIdx = 0;
+    // Start presentation on first slide or current slide
+    let startIdx = 0;
+    if (fromCurrent && typeof currentActiveSlideIndex === 'number' && currentActiveSlideIndex >= 0 && currentActiveSlideIndex < slideShowSlides.length) {
+      startIdx = currentActiveSlideIndex;
+    }
+    currentSlideShowIdx = startIdx;
     const overlay = $('#slideshowOverlay');
     if (!overlay) return;
 
     overlay.classList.add('show');
-    showSlideShowIndex(0);
+    showSlideShowIndex(startIdx);
 
     document.removeEventListener('keydown', handleSlideShowKey);
     document.addEventListener('keydown', handleSlideShowKey);
@@ -3867,7 +3970,7 @@
     const exitBtn = $('#slideshowExitBtn');
     if (exitBtn) exitBtn.onclick = exitSlideShow;
 
-    showToast(`Slide Show started from top (Slide 1). Press Esc to exit.`, 'info');
+    showToast(`Slide Show started from ${fromCurrent ? 'current slide (' + (startIdx + 1) + ')' : 'beginning (Slide 1)'}. Press Esc to exit.`, 'info');
   }
 
   function showSlideShowIndex(idx) {
@@ -3906,6 +4009,7 @@
 
       // Reset all transition animation classes cleanly
       content.className = content.className.replace(/\banim-ppt-[\w-]+\b/g, '').trim();
+      content.style.animation = 'none';
 
       // Apply transition & animation duration timers
       content.style.setProperty('--ppt-trans-dur', (currentPptTransitionDuration || '1.0') + 's');
@@ -3913,6 +4017,7 @@
 
       // Force reflow
       void content.offsetWidth;
+      content.style.animation = '';
 
       // Apply slide transition animation (fallback to fade so every slide transition animates)
       const transitionToPlay = (slide.transition && slide.transition !== 'none') ? slide.transition : 'fade';
@@ -3931,26 +4036,30 @@
       body.innerHTML = slide.html;
 
       // Trigger / play element animations inside the slide
-      const animElements = Array.from(body.querySelectorAll('[data-animation]'));
+      const animElements = Array.from(body.querySelectorAll('[data-animation], [class*="anim-"]'));
       if (animElements.length > 0) {
         animElements.forEach((el, elIdx) => {
-          const anim = el.getAttribute('data-animation');
+          let anim = el.getAttribute('data-animation');
+          if (!anim) {
+            const m = el.className.match(/\banim-([\w-]+)\b/);
+            if (m) anim = m[1];
+          }
           if (anim && anim !== 'none') {
-            const allElemAnimClasses = [
-              'anim-fade-in', 'anim-fly-in', 'anim-zoom-in', 'anim-bounce-in',
-              'anim-pulse', 'anim-shimmer', 'anim-spin', 'anim-fade-out', 'anim-zoom-out',
-              'anim-swing', 'anim-wobble', 'anim-rubber-band', 'anim-flip-in', 'anim-slide-in-right', 'anim-slide-in-left'
-            ];
-            allElemAnimClasses.forEach(cls => el.classList.remove(cls));
-            el.style.animationDelay = `${elIdx * 0.12}s`;
+            el.className = el.className.replace(/\banim-[\w-]+\b/g, '').trim();
+            el.style.animation = 'none';
+            el.style.animationDelay = `${elIdx * 0.14}s`;
+            el.style.setProperty('--ppt-anim-dur', (currentPptAnimDuration || '1.0') + 's');
             void el.offsetWidth; // Force reflow
+            el.style.animation = '';
             el.classList.add(`anim-${anim}`);
           }
         });
       } else {
         const slideComponents = Array.from(body.querySelectorAll('.slide-title-box, .pptx-slide-title, .slide-content-box, .pptx-slide-body, .slide-nested-card, h1, h2, h3, p'));
         slideComponents.forEach((comp, cIdx) => {
-          comp.style.animation = `elemFadeIn 0.4s ease-out ${cIdx * 0.08}s forwards`;
+          comp.style.animation = 'none';
+          void comp.offsetWidth;
+          comp.style.animation = `elemFadeIn 0.5s ease-out ${cIdx * 0.1}s forwards`;
         });
       }
     }
@@ -4229,6 +4338,7 @@
               if (coordBox) coordBox.value = firstTd.dataset.coord || 'A1';
               if (formulaInput) formulaInput.value = firstTd.textContent || '';
             }
+            window.DocFlow.Editor?.updateToolbarState?.();
           }
           return;
         }
@@ -4262,6 +4372,7 @@
             if (coordBox) coordBox.value = firstTd.dataset.coord || 'A1';
             if (formulaInput) formulaInput.value = firstTd.textContent || '';
           }
+          window.DocFlow.Editor?.updateToolbarState?.();
           return;
         }
       });
@@ -4289,6 +4400,7 @@
           window._activeExcelCell = td;
           if (coordBox) coordBox.value = td.dataset.coord || 'A1';
           if (formulaInput) formulaInput.value = td.textContent || '';
+          window.DocFlow.Editor?.updateToolbarState?.();
           return;
         }
 
@@ -4306,6 +4418,11 @@
         window._activeExcelCell = td;
         if (coordBox) coordBox.value = td.dataset.coord || 'A1';
         if (formulaInput) formulaInput.value = td.textContent || '';
+        if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+          td.contentEditable = 'true';
+          td.focus();
+        }
+        window.DocFlow.Editor?.updateToolbarState?.();
       });
 
       table.addEventListener('mouseover', e => {
@@ -4340,7 +4457,10 @@
       });
 
       window.addEventListener('mouseup', () => {
-        isSelecting = false;
+        if (isSelecting) {
+          isSelecting = false;
+          window.DocFlow.Editor?.updateToolbarState?.();
+        }
       });
 
       // Mobile long-press multi-cell / row / col selection (Issue 4)
@@ -4599,44 +4719,46 @@
           e.stopPropagation();
           const table = container.querySelector('.excel-grid-table');
           if (table) {
+            const allTds = Array.from(table.querySelectorAll('tbody td'));
+            const currentlySelected = table.querySelectorAll('td.excel-cell-selected');
+            const contentCells = allTds.filter(c => c.textContent.trim().length > 0);
+
+            // If some cells are selected and not all, or on 2nd Ctrl+A -> select ALL cells
+            const shouldSelectAll = (currentlySelected.length > 0 && currentlySelected.length < allTds.length && currentlySelected.length >= contentCells.length);
+
             table.querySelectorAll('th').forEach(th => th.classList.remove('excel-row-selected', 'excel-col-selected'));
             table.querySelectorAll('tr').forEach(tr => tr.classList.remove('excel-row-selected'));
             table.querySelectorAll('td').forEach(td => {
               td.classList.remove('excel-cell-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
             });
 
-            // Content area detection (Excel style square border covering content)
-            const allTds = Array.from(table.querySelectorAll('tbody td'));
-            const contentCells = allTds.filter(c => c.textContent.trim().length > 0);
-
-            let minR = 1, maxR = 1, minC = 1, maxC = 1;
-            if (contentCells.length > 0) {
-              minR = Math.min(...contentCells.map(c => c.closest('tr').rowIndex));
-              maxR = Math.max(...contentCells.map(c => c.closest('tr').rowIndex));
-              minC = Math.min(...contentCells.map(c => c.cellIndex));
-              maxC = Math.max(...contentCells.map(c => c.cellIndex));
+            if (shouldSelectAll || contentCells.length === 0) {
+              allTds.forEach(c => c.classList.add('excel-cell-selected'));
+              window._activeExcelCell = allTds[0];
+              showToast(`All ${allTds.length} spreadsheet cells selected`, 'info');
             } else {
-              const rows = table.querySelectorAll('tbody tr');
-              minR = 1;
-              maxR = Math.min(rows.length, 10);
-              minC = 1;
-              maxC = Math.min(rows[0]?.children.length - 1 || 10, 10);
-            }
+              let minR = Math.min(...contentCells.map(c => c.closest('tr').rowIndex));
+              let maxR = Math.max(...contentCells.map(c => c.closest('tr').rowIndex));
+              let minC = Math.min(...contentCells.map(c => c.cellIndex));
+              let maxC = Math.max(...contentCells.map(c => c.cellIndex));
 
-            table.querySelectorAll('tbody tr').forEach(r => {
-              if (r.rowIndex >= minR && r.rowIndex <= maxR) {
-                Array.from(r.children).forEach(c => {
-                  if (c.tagName === 'TD' && c.cellIndex >= minC && c.cellIndex <= maxC) {
-                    c.classList.add('excel-cell-selected');
-                    if (r.rowIndex === minR) c.classList.add('excel-sel-top');
-                    if (r.rowIndex === maxR) c.classList.add('excel-sel-bottom');
-                    if (c.cellIndex === minC) c.classList.add('excel-sel-left');
-                    if (c.cellIndex === maxC) c.classList.add('excel-sel-right');
-                  }
-                });
-              }
-            });
-            showToast('Spreadsheet content area selected (Excel perimeter border)', 'info');
+              table.querySelectorAll('tbody tr').forEach(r => {
+                if (r.rowIndex >= minR && r.rowIndex <= maxR) {
+                  Array.from(r.children).forEach(c => {
+                    if (c.tagName === 'TD' && c.cellIndex >= minC && c.cellIndex <= maxC) {
+                      c.classList.add('excel-cell-selected');
+                      if (r.rowIndex === minR) c.classList.add('excel-sel-top');
+                      if (r.rowIndex === maxR) c.classList.add('excel-sel-bottom');
+                      if (c.cellIndex === minC) c.classList.add('excel-sel-left');
+                      if (c.cellIndex === maxC) c.classList.add('excel-sel-right');
+                    }
+                  });
+                }
+              });
+              window._activeExcelCell = contentCells[0] || allTds[0];
+              showToast('Spreadsheet content area selected (Excel perimeter border)', 'info');
+            }
+            window.DocFlow.Editor?.updateToolbarState?.();
           }
         } else if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
           if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
@@ -4809,10 +4931,124 @@
         showToast('Open a document in edit mode first', 'info');
         return;
       }
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      const cells = excelContainer ? (window.DocFlow?.getSelectedExcelCells?.() || []) : [];
+      const nums = cells.map(c => parseFloat(c.textContent.replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+      if (nums.length > 0) {
+        if (chartSourceSelect) chartSourceSelect.value = 'selected';
+        if (chartRangeWrap) chartRangeWrap.style.display = 'none';
+        $('#chartValuesInput').value = nums.join(', ');
+        showToast(`Loaded ${nums.length} values from selected cells`, 'info');
+      }
       openModal('#chartModal');
     });
-    $('#chartCancelBtn')?.addEventListener('click', () => closeModal('#chartModal'));
+    const chartSourceSelect = $('#chartDataSourceSelect');
+    const chartRangeWrap = $('#chartRangeWrap');
+    const chartRangeInput = $('#chartRangeInput');
+    const chartLoadRangeBtn = $('#chartLoadRangeBtn');
+
+    chartSourceSelect?.addEventListener('change', () => {
+      const mode = chartSourceSelect.value;
+      if (chartRangeWrap) chartRangeWrap.style.display = (mode === 'customRange') ? 'block' : 'none';
+      if (mode === 'selected') {
+        const cells = window.DocFlow?.getSelectedExcelCells?.() || [];
+        const nums = cells.map(c => parseFloat(c.textContent.replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+        if (nums.length > 0) {
+          $('#chartValuesInput').value = nums.join(', ');
+          showToast(`Loaded ${nums.length} values from selected cells`, 'info');
+        } else {
+          showToast('Select cells with numeric values in the spreadsheet first', 'info');
+        }
+      }
+    });
+
+    const extractValuesFromExcelRange = (query) => {
+      const table = document.querySelector('.excel-grid-table');
+      if (!table) return [];
+      const q = query.trim().toUpperCase();
+      const nums = [];
+
+      if (q === 'SELECTED' || q === 'SELECTION') {
+        const cells = window.DocFlow?.getSelectedExcelCells?.() || [];
+        cells.forEach(td => {
+          const val = parseFloat(td.textContent.replace(/[^0-9.-]/g, ''));
+          if (!isNaN(val)) nums.push(val);
+        });
+        return nums;
+      }
+
+      // Cell range match e.g. A1:D5 or A2:A10
+      const rangeMatch = q.match(/^([A-Z]+)(\d+)\s*(?:TO|:|-)\s*([A-Z]+)(\d+)$/i);
+      if (rangeMatch) {
+        const c1 = rangeMatch[1].charCodeAt(0) - 64;
+        const r1 = parseInt(rangeMatch[2], 10);
+        const c2 = rangeMatch[3].charCodeAt(0) - 64;
+        const r2 = parseInt(rangeMatch[4], 10);
+        for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) {
+          const tr = table.rows[r];
+          if (tr) {
+            for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
+              const td = tr.children[c];
+              if (td && td.tagName === 'TD') {
+                const val = parseFloat(td.textContent.replace(/[^0-9.-]/g, ''));
+                if (!isNaN(val)) nums.push(val);
+              }
+            }
+          }
+        }
+        return nums;
+      }
+
+      // Row range match e.g. "Row 2", "Row 2:4", "Rows 2-5", "2:5", "Row 2"
+      const rowRangeMatch = q.match(/^(?:ROWS?\s*)?(\d+)(?:\s*(?:TO|:|-)\s*(\d+))?$/i);
+      if (rowRangeMatch) {
+        const r1 = parseInt(rowRangeMatch[1], 10);
+        const r2 = rowRangeMatch[2] ? parseInt(rowRangeMatch[2], 10) : r1;
+        for (let r = Math.min(r1, r2); r <= Math.max(r1, r2); r++) {
+          const tr = table.rows[r];
+          if (tr) {
+            Array.from(tr.querySelectorAll('td')).forEach(td => {
+              const val = parseFloat(td.textContent.replace(/[^0-9.-]/g, ''));
+              if (!isNaN(val)) nums.push(val);
+            });
+          }
+        }
+        return nums;
+      }
+
+      // Column range match e.g. "Col B", "Column B", "Cols B:D", "B:D", "B"
+      const colRangeMatch = q.match(/^(?:COL(?:UMN)?S?\s*)?([A-Z])(?:\s*(?:TO|:|-)\s*([A-Z]))?$/i);
+      if (colRangeMatch) {
+        const c1 = colRangeMatch[1].charCodeAt(0) - 64;
+        const c2 = colRangeMatch[2] ? colRangeMatch[2].charCodeAt(0) - 64 : c1;
+        Array.from(table.querySelectorAll('tbody tr')).forEach(tr => {
+          for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) {
+            const td = tr.children[c];
+            if (td && td.tagName === 'TD') {
+              const val = parseFloat(td.textContent.replace(/[^0-9.-]/g, ''));
+              if (!isNaN(val)) nums.push(val);
+            }
+          }
+        });
+        return nums;
+      }
+
+      return [];
+    };
+
+    chartLoadRangeBtn?.addEventListener('click', () => {
+      const q = chartRangeInput?.value || '';
+      const nums = extractValuesFromExcelRange(q);
+      if (nums.length > 0) {
+        $('#chartValuesInput').value = nums.join(', ');
+        showToast(`Extracted ${nums.length} values from ${q}`, 'success');
+      } else {
+        showToast(`Could not find numbers for range "${q}". Try e.g. Row 2 or Col B`, 'warning');
+      }
+    });
+
     $('#chartInsertBtn')?.addEventListener('click', insertChartIntoDocument);
+    $('#chartCancelBtn')?.addEventListener('click', () => closeModal('#chartModal'));
 
     // Line Customization Modal Trigger (Issue 4)
     $('#ribbonInsertHrBtn')?.addEventListener('click', () => {
@@ -4849,7 +5085,7 @@
     $('#ribbonInsertDateBtn')?.addEventListener('click', () => {
       if (window.DocFlow.currentMode !== 'edit') return;
       const now = new Date();
-      const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      const dateStr = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) + ' ' + now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const cell = getActiveTableCell();
       if (cell && cell.tagName === 'TD') {
         cell.textContent = dateStr;
@@ -4890,6 +5126,30 @@
 
     const insertPageBreakAction = () => {
       if (window.DocFlow.currentMode !== 'edit') return;
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (excelContainer) {
+        const table = excelContainer.querySelector('.excel-grid-table');
+        if (table) {
+          const targetRow = (window._activeExcelCell && window._activeExcelCell.closest('tr')) || table.querySelector('tbody tr');
+          if (targetRow) {
+            window.DocFlow.Editor?.saveSnapshot?.(true);
+            targetRow.classList.add('excel-page-break-bottom');
+            const colCount = targetRow.children.length || 10;
+            const next = targetRow.nextElementSibling;
+            if (!next || !next.classList.contains('excel-page-break-row')) {
+              const pbRow = document.createElement('tr');
+              pbRow.className = 'excel-page-break-row';
+              pbRow.contentEditable = 'false';
+              pbRow.innerHTML = `<td colspan="${colCount}" class="excel-page-break-cell"><div class="excel-page-break-divider"><i class="fas fa-file-invoice"></i> --- Page Break (Page splits here on print/export) ---</div></td>`;
+              targetRow.parentNode.insertBefore(pbRow, targetRow.nextSibling);
+            }
+            window.DocFlow.Editor?.saveSnapshot?.(true);
+            window.DocFlow.Editor?.notifyChange?.();
+            showToast(`Page break inserted below row ${targetRow.rowIndex || 1}`, 'success');
+            return;
+          }
+        }
+      }
       window.DocFlow.Editor?.insertHtmlAtCursor(
         '<div class="doc-page-break" contenteditable="false"><div class="doc-page-break-line"><span>Page Break</span></div></div><p><br></p>'
       );
@@ -5329,16 +5589,7 @@
       }
     });
 
-    // 5. Layout Ribbon Panel Controls (Issue 3: Page Color, Spacing, Padding, Border, Hyphenation)
-    $('#layoutPageBgInput')?.addEventListener('input', e => {
-      const color = e.target.value;
-      const page = $('.editor-page');
-      if (page) {
-        page.style.backgroundColor = color;
-        window.DocFlow.Editor?.notifyChange();
-        showToast(`Page background color set to ${color}`, 'info');
-      }
-    });
+    // 5. Layout Ribbon Panel Controls
 
     $('#layoutParaSpacingBtn')?.addEventListener('click', e => {
       e.stopPropagation();
@@ -5411,7 +5662,206 @@
       });
     });
 
-    // Layout Ribbon Controls (Page Color, Custom Border, Text Direction)
+    // Layout Ribbon Controls (Header & Footer Modal & Handlers - Item 3)
+    function openHeaderFooterModal() {
+      const editor = $('#editor');
+      if (!editor || window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode to configure header and footer', 'warning');
+        return;
+      }
+      const activeTab = window.DocFlow.UI?.Tabs?.get(window.DocFlow.UI.Tabs.activeId);
+      const docTitle = activeTab?.name || 'Document Header';
+
+      const existingHeader = editor.querySelector('.doc-header-area, .df-page-header');
+      const existingFooter = editor.querySelector('.doc-footer-area, .df-page-footer');
+
+      const headerInput = $('#hfHeaderText');
+      const footerInput = $('#hfFooterText');
+      const headerCheck = $('#hfEnableHeaderCheck');
+      const footerCheck = $('#hfEnableFooterCheck');
+
+      if (headerInput) {
+        headerInput.value = existingHeader ? (existingHeader.querySelector('span')?.textContent || existingHeader.textContent).replace(/^\[Header\]\s*/, '').trim() : docTitle;
+      }
+      if (footerInput) {
+        footerInput.value = existingFooter ? (existingFooter.querySelector('span')?.textContent || existingFooter.textContent).trim() : 'Confidential';
+      }
+      if (headerCheck) headerCheck.checked = true;
+      if (footerCheck) footerCheck.checked = true;
+
+      window.DocFlow.UI?.openModal?.('#headerFooterModal');
+    }
+
+    function createHeaderNode(titleText) {
+      const header = document.createElement('header');
+      header.className = 'doc-header-area df-page-header';
+      header.contentEditable = 'true';
+      header.innerHTML = `<span><strong>[Header]</strong> ${escHtml(titleText || 'Document Header')}</span><span style="font-size:10px;opacity:0.8;">${new Date().toLocaleDateString()}</span><button type="button" class="df-hf-delete-btn" title="Remove Header" contenteditable="false"><i class="fas fa-times"></i></button>`;
+      return header;
+    }
+
+    function createFooterNode(footText, pageNum = 1, totalPages = 1) {
+      const footer = document.createElement('footer');
+      footer.className = 'doc-footer-area df-page-footer';
+      footer.contentEditable = 'true';
+      footer.innerHTML = `<span>${escHtml(footText || 'Confidential')}</span><span>Page ${pageNum} of ${totalPages}</span><button type="button" class="df-hf-delete-btn" title="Remove Footer" contenteditable="false"><i class="fas fa-times"></i></button>`;
+      return footer;
+    }
+
+    function applyHeaderFooterAction() {
+      const editor = $('#editor');
+      if (!editor) return;
+      const wantHeader = $('#hfEnableHeaderCheck')?.checked;
+      const wantFooter = $('#hfEnableFooterCheck')?.checked;
+      const headerText = ($('#hfHeaderText')?.value || '').trim();
+      const footerText = ($('#hfFooterText')?.value || '').trim();
+      const isAllPages = $('#hfScopeAll')?.checked;
+
+      if (!wantHeader && !wantFooter) {
+        showToast('Please check either Header or Footer to apply', 'warning');
+        return;
+      }
+
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+
+      // Clean existing headers and footers
+      if (wantHeader) {
+        editor.querySelectorAll('.doc-header-area, .df-page-header').forEach(el => el.remove());
+      }
+      if (wantFooter) {
+        editor.querySelectorAll('.doc-footer-area, .df-page-footer').forEach(el => el.remove());
+      }
+
+      if (isAllPages) {
+        const existingPages = Array.from(editor.querySelectorAll('.df-page'));
+        if (existingPages.length > 0) {
+          existingPages.forEach((p, idx) => {
+            if (wantHeader) p.insertBefore(createHeaderNode(headerText), p.firstChild);
+            if (wantFooter) p.appendChild(createFooterNode(footerText, idx + 1, existingPages.length));
+          });
+        } else {
+          // Auto split into pages by paper size (A4 ~ 950px height)
+          const children = Array.from(editor.childNodes);
+          const pages = [];
+          let curNodes = [];
+          let curHeight = 0;
+          const PAGE_HEIGHT = 920;
+
+          children.forEach(child => {
+            if (child.nodeType === Node.ELEMENT_NODE && (child.classList.contains('doc-page-break') || child.classList.contains('excel-page-break-row'))) {
+              if (curNodes.length > 0) {
+                pages.push(curNodes);
+                curNodes = [];
+                curHeight = 0;
+              }
+              return;
+            }
+            curNodes.push(child);
+            const h = (child.nodeType === Node.ELEMENT_NODE) ? (child.offsetHeight || 36) : 22;
+            curHeight += h;
+            if (curHeight >= PAGE_HEIGHT) {
+              pages.push(curNodes);
+              curNodes = [];
+              curHeight = 0;
+            }
+          });
+          if (curNodes.length > 0) pages.push(curNodes);
+
+          if (pages.length <= 1) {
+            if (wantHeader) editor.insertBefore(createHeaderNode(headerText), editor.firstChild);
+            if (wantFooter) editor.appendChild(createFooterNode(footerText, 1, 1));
+          } else {
+            editor.innerHTML = '';
+            pages.forEach((pNodes, idx) => {
+              const pageWrap = document.createElement('div');
+              pageWrap.className = 'df-page';
+              pageWrap.style.cssText = 'position:relative;min-height:980px;margin-bottom:28px;padding:24px 20px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;flex-direction:column;';
+              
+              if (wantHeader) pageWrap.appendChild(createHeaderNode(headerText));
+              const pageBody = document.createElement('div');
+              pageBody.className = 'df-page-body';
+              pageBody.style.flex = '1';
+              pNodes.forEach(n => pageBody.appendChild(n));
+              pageWrap.appendChild(pageBody);
+              if (wantFooter) pageWrap.appendChild(createFooterNode(footerText, idx + 1, pages.length));
+
+              editor.appendChild(pageWrap);
+              if (idx < pages.length - 1) {
+                const pb = document.createElement('div');
+                pb.className = 'doc-page-break';
+                pb.contentEditable = 'false';
+                pb.innerHTML = '<div class="doc-page-break-line"><span>Page Break (Page ' + (idx + 1) + ')</span></div>';
+                editor.appendChild(pb);
+              }
+            });
+          }
+        }
+      } else {
+        // Single Page: Apply to editor root
+        if (wantHeader) editor.insertBefore(createHeaderNode(headerText), editor.firstChild);
+        if (wantFooter) editor.appendChild(createFooterNode(footerText, 1, 1));
+      }
+
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
+      window.DocFlow.UI?.closeModal?.('#headerFooterModal');
+      showToast(`Header & Footer applied (${isAllPages ? 'All Pages with Auto Page-Break' : 'Single Page'})`, 'success');
+    }
+
+    $('#layoutHeaderFooterBtn')?.addEventListener('click', openHeaderFooterModal);
+    $('#headerFooterCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#headerFooterModal'));
+    $('#headerFooterCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#headerFooterModal'));
+    $('#headerFooterApplyBtn')?.addEventListener('click', applyHeaderFooterAction);
+
+    $('#hfRemoveHeaderBtn')?.addEventListener('click', () => {
+      const ed = $('#editor');
+      if (!ed) return;
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      ed.querySelectorAll('.doc-header-area, .df-page-header').forEach(el => el.remove());
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
+      window.DocFlow.UI?.closeModal?.('#headerFooterModal');
+      showToast('Header removed', 'info');
+    });
+
+    $('#hfRemoveFooterBtn')?.addEventListener('click', () => {
+      const ed = $('#editor');
+      if (!ed) return;
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      ed.querySelectorAll('.doc-footer-area, .df-page-footer').forEach(el => el.remove());
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
+      window.DocFlow.UI?.closeModal?.('#headerFooterModal');
+      showToast('Footer removed', 'info');
+    });
+
+    $('#hfRemoveAllBtn')?.addEventListener('click', () => {
+      const ed = $('#editor');
+      if (!ed) return;
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      ed.querySelectorAll('.doc-header-area, .df-page-header, .doc-footer-area, .df-page-footer').forEach(el => el.remove());
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.Editor?.notifyChange?.();
+      window.DocFlow.UI?.closeModal?.('#headerFooterModal');
+      showToast('Headers and footers removed', 'info');
+    });
+
+    document.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('.df-hf-delete-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        const headerOrFooter = delBtn.closest('.doc-header-area, .doc-footer-area, .df-page-header, .df-page-footer');
+        if (headerOrFooter) {
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          const isH = headerOrFooter.classList.contains('doc-header-area') || headerOrFooter.classList.contains('df-page-header');
+          headerOrFooter.remove();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          window.DocFlow.Editor?.notifyChange?.();
+          showToast((isH ? 'Header' : 'Footer') + ' removed', 'info');
+        }
+      }
+    });
+
     $('#layoutPageBgBtn')?.addEventListener('click', () => {
       $('#layoutPageBgInput')?.click();
     });
@@ -5420,9 +5870,20 @@
       const page = $('.editor-page');
       if (page) {
         page.style.setProperty('background-color', color, 'important');
+        page.style.setProperty('--excel-sheet-bg', color);
         page.style.backgroundColor = color;
-        window.DocFlow.Editor?.notifyChange();
       }
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (excelContainer) {
+        excelContainer.style.setProperty('background-color', color, 'important');
+        excelContainer.style.setProperty('--excel-sheet-bg', color);
+        const gridTable = excelContainer.querySelector('.excel-grid-table');
+        if (gridTable) {
+          gridTable.style.setProperty('background-color', color, 'important');
+          gridTable.style.setProperty('--excel-sheet-bg', color);
+        }
+      }
+      window.DocFlow.Editor?.notifyChange?.();
     });
     $('#layoutPageBgInput')?.addEventListener('change', e => {
       window.DocFlow.Editor?.saveSnapshot?.();
@@ -5516,6 +5977,15 @@
           mark.dataset.time = new Date().toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
           mark.title = `Comment: ${commentText.trim()} (Click or hover to view)`;
 
+          // Trim trailing whitespace or newlines from range so highlight covers strictly the word
+          while (range.toString().endsWith(' ') || range.toString().endsWith('\n') || range.toString().endsWith('\r') || range.toString().endsWith('\t')) {
+            try {
+              range.setEnd(range.endContainer, range.endOffset - 1);
+            } catch (_) {
+              break;
+            }
+          }
+
           try {
             range.surroundContents(mark);
           } catch (_) {
@@ -5525,8 +5995,30 @@
             range.insertNode(mark);
           }
 
+          // Ensure an inline text node with zero-width space directly follows the mark on the exact same line
+          let afterNode = mark.nextSibling;
+          if (!afterNode || afterNode.nodeType !== Node.TEXT_NODE) {
+            afterNode = document.createTextNode('\u200B');
+            mark.parentNode.insertBefore(afterNode, mark.nextSibling);
+          } else if (!afterNode.textContent || afterNode.textContent === '') {
+            afterNode.textContent = '\u200B';
+          }
+
+          // Give focus back to the editor and position caret directly in front of the commented word
+          const ed = $('#editor');
+          if (ed) ed.focus();
+
+          const sel = window.getSelection();
+          if (sel) {
+            const afterRange = document.createRange();
+            afterRange.setStart(afterNode, afterNode.textContent.length);
+            afterRange.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(afterRange);
+          }
+
           window.DocFlow.Editor?.notifyChange?.();
-          showToast('Comment added and word highlighted!', 'success');
+          showToast('Comment added! Type in front of the word to continue.', 'success');
         }
       });
     });
@@ -5684,10 +6176,26 @@
     $('#spellCheckCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#spellCheckModal'));
     $('#spellCheckDoneBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#spellCheckModal'));
 
+    function updateWordOnlyTools(tab) {
+      const activeTab = tab || window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
+      const name = (activeTab?.name || '').toLowerCase();
+      const type = (activeTab?.fileType || '').toLowerCase();
+      const isWord = (name.endsWith('.docx') || name.endsWith('.doc') || type === 'docx' || type === 'doc' || type === 'word') &&
+                     !name.endsWith('.xlsx') && !name.endsWith('.xls') && !name.endsWith('.csv') &&
+                     !name.endsWith('.pptx') && !name.endsWith('.ppt') && !name.endsWith('.pdf') &&
+                     !name.endsWith('.html') && !name.endsWith('.htm') && !name.endsWith('.md') && !name.endsWith('.txt');
+      const hfBtn = $('#layoutHeaderFooterBtn');
+      if (hfBtn) {
+        hfBtn.style.display = 'inline-flex';
+      }
+    }
+    window.DocFlow.updateWordOnlyTools = updateWordOnlyTools;
+
     // Problem 3: Lock & Protect Document
     function updateDocLockUI(tab) {
       const banner = $('#docLockedBanner');
       const editor = $('#editor');
+      updateWordOnlyTools(tab);
       if (!tab) {
         if (banner) banner.classList.remove('show');
         return;
@@ -6148,7 +6656,27 @@
     // Move Slides & Presentation Slide Show
     $('#pptMoveUpBtn')?.addEventListener('click', () => movePptSlide(-1));
     $('#pptMoveDownBtn')?.addEventListener('click', () => movePptSlide(1));
-    $('#pptStartSlideShowBtn')?.addEventListener('click', startSlideShow);
+    // Slide Show Dropdown & Controls (Item 2)
+    $('#pptStartSlideShowBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const menu = $('#pptStartSlideShowMenu');
+      if (menu) menu.classList.toggle('show');
+    });
+    $('#pptPlayFromBeginningBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      $('#pptStartSlideShowMenu')?.classList.remove('show');
+      startSlideShow(false);
+    });
+    $('#pptPlayFromCurrentBtn')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      $('#pptStartSlideShowMenu')?.classList.remove('show');
+      startSlideShow(true);
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#pptStartSlideShowDropdownWrap')) {
+        $('#pptStartSlideShowMenu')?.classList.remove('show');
+      }
+    });
 
     // PPT Slide Image Insertion (Problem 2)
     $('#pptInsertImageBtn')?.addEventListener('click', () => {
@@ -6585,24 +7113,102 @@
     $('#slideshowNextBtn')?.addEventListener('click', () => showSlideShowIndex(currentSlideShowIdx + 1));
     $('#slideshowExitBtn')?.addEventListener('click', exitSlideShow);
 
-    // Reading Mode (with mobile exit button)
+    // Reading Mode (Distraction-Free Reading - Document Editing Disabled: Item 4)
+    function disableEditingInReadMode() {
+      const ed = $('#editor');
+      if (!ed) return;
+      ed.contentEditable = 'false';
+      ed.querySelectorAll('.pptx-slide-card, .slide-title-box, .slide-content-box, [data-slide], .slide-freeform-rect, .slide-nested-card').forEach(el => {
+        el.contentEditable = 'false';
+      });
+      ed.querySelectorAll('.excel-grid-table td').forEach(td => {
+        td.contentEditable = 'false';
+      });
+      const formulaInput = ed.querySelector('.excel-formula-input');
+      if (formulaInput) formulaInput.disabled = true;
+    }
+
+    function restoreEditingAfterReadMode() {
+      const ed = $('#editor');
+      if (!ed) return;
+      if (window.DocFlow.currentMode === 'edit') {
+        ed.contentEditable = 'true';
+        ed.querySelectorAll('.pptx-slide-card, .slide-title-box, .slide-content-box, [data-slide], .slide-freeform-rect, .slide-nested-card').forEach(el => {
+          el.contentEditable = 'true';
+        });
+        ed.querySelectorAll('.excel-grid-table td').forEach(td => {
+          td.contentEditable = 'true';
+        });
+        const formulaInput = ed.querySelector('.excel-formula-input');
+        if (formulaInput) formulaInput.disabled = false;
+      }
+    }
+
+    const enterReadingMode = () => {
+      document.body.classList.add('reading-mode');
+      $('#readingModeBtn')?.classList.add('active');
+      disableEditingInReadMode();
+      showToast('Reading Mode: ON (Document editing disabled. Press Esc to exit)', 'info');
+    };
+
     const exitReadingMode = () => {
-      document.body.classList.remove('reading-mode');
+      document.body.classList.remove('reading-mode', 'ribbon-revealed');
       $('#readingModeBtn')?.classList.remove('active');
-      showToast('Reading Mode exited', 'info');
+      restoreEditingAfterReadMode();
+      showToast('Reading Mode: OFF', 'info');
     };
 
     $('#readingModeBtn')?.addEventListener('click', () => {
-      const isReading = document.body.classList.toggle('reading-mode');
-      $('#readingModeBtn')?.classList.toggle('active', isReading);
-      showToast(isReading ? 'Reading Mode: ON (Click Exit button or press Esc)' : 'Reading Mode: OFF', 'info');
+      if (document.body.classList.contains('reading-mode')) {
+        exitReadingMode();
+      } else {
+        enterReadingMode();
+      }
     });
 
     $('#exitReadingModeBtn')?.addEventListener('click', exitReadingMode);
 
+    // Floating Action Bar buttons in Read Mode
+    $('#readModeUndoBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.execCmd?.('undo');
+    });
+    $('#readModeRedoBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.execCmd?.('redo');
+    });
+    $('#readModeBoldBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.execCmd?.('bold');
+    });
+    $('#readModeItalicBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.execCmd?.('italic');
+    });
+    $('#readModeUnderlineBtn')?.addEventListener('click', () => {
+      window.DocFlow.Editor?.execCmd?.('underline');
+    });
+    $('#readModeSaveBtn')?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode === 'view') {
+        window.DocFlow.PDF?.downloadCurrentPdf?.();
+      } else {
+        $('#saveDropdown')?.classList.toggle('show');
+      }
+    });
+    $('#readModeFindBtn')?.addEventListener('click', () => {
+      window.DocFlow.Find?.toggleFindBar?.();
+    });
+    $('#readModeCommentBtn')?.addEventListener('click', () => {
+      $('#viewAddCommentBtn')?.click();
+    });
+    $('#readModeToggleRibbonBtn')?.addEventListener('click', () => {
+      const revealed = document.body.classList.toggle('ribbon-revealed');
+      showToast(revealed ? 'Ribbon toolbar revealed in Read Mode' : 'Ribbon toolbar hidden', 'info');
+    });
+
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape' && document.body.classList.contains('reading-mode')) {
-        exitReadingMode();
+        if (document.body.classList.contains('ribbon-revealed')) {
+          document.body.classList.remove('ribbon-revealed');
+        } else {
+          exitReadingMode();
+        }
       }
     });
 

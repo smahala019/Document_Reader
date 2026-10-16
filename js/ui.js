@@ -404,6 +404,7 @@
           } else if (tab.name && (tab.name.toLowerCase().endsWith('.html') || tab.name.toLowerCase().endsWith('.htm'))) {
             window.DocFlow?.switchRibbonTab?.('html');
           }
+          window.DocFlow?.updateWordOnlyTools?.(tab);
         });
       } else if (tab.type === 'pdf') {
         const sidebar = $('#pptxSlideSidebar');
