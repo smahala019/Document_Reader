@@ -697,6 +697,47 @@
       document.removeEventListener('touchmove', onDragMove);
       document.removeEventListener('touchend', onDragEnd);
 
+      const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+      const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      const isOverExcel = excelContainer && (
+        img.closest('.excel-spreadsheet-container') ||
+        (clientX && clientY && document.elementFromPoint(clientX, clientY)?.closest('.excel-spreadsheet-container'))
+      );
+
+      if (isOverExcel && clientX && clientY) {
+        const cell = document.elementFromPoint(clientX, clientY)?.closest('.excel-grid-table td');
+        if (cell) {
+          const cRect = cell.getBoundingClientRect();
+          const pRect = excelContainer.getBoundingClientRect();
+          img.style.position = 'absolute';
+          img.style.left = Math.round(cRect.left - pRect.left + excelContainer.scrollLeft) + 'px';
+          img.style.top = Math.round(cRect.top - pRect.top + excelContainer.scrollTop) + 'px';
+          img.style.width = Math.max(20, Math.round(cRect.width)) + 'px';
+          img.style.height = Math.max(20, Math.round(cRect.height)) + 'px';
+          img.style.margin = '0px';
+          const svg = img.querySelector('svg');
+          if (svg) {
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+          }
+          if (!excelContainer.contains(img)) {
+            excelContainer.appendChild(img);
+          }
+          if (ghostIndicator) {
+            ghostIndicator.remove();
+            ghostIndicator = null;
+          }
+          positionAllHandles(img);
+          if (activeImageToolbar) positionImageToolbar(img, activeImageToolbar);
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast(`Shape fitted to cell ${cell.dataset.coord || ''}`, 'success');
+          return;
+        }
+      }
+
       const editor = $('#editor');
       if (ghostIndicator && ghostIndicator.parentNode) {
         ghostIndicator.parentNode.insertBefore(img, ghostIndicator);
@@ -704,8 +745,6 @@
         ghostIndicator = null;
         showToast(img.tagName === 'IMG' ? 'Image repositioned' : (img.classList.contains('doc-chart-container') ? 'Chart repositioned' : 'Element repositioned'), 'success');
       } else {
-        const clientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
-        const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
         if (clientX && clientY && editor) {
           const el = document.elementFromPoint(clientX, clientY);
           const block = el ? (el.closest('#editor > *') || el.closest('#editor p, #editor div, #editor table, #editor section, #editor h1, #editor h2, #editor h3')) : null;
@@ -801,6 +840,17 @@
         <option value="front" ${currentWrap === 'front' ? 'selected' : ''}>In Front</option>
       </select>
       <div class="df-img-sep"></div>
+      <select class="df-img-select" id="dfImgShadowSelect" title="Shape/Icon Shadow">
+        <option value="none" ${(!img.style.filter || img.style.filter === 'none') ? 'selected' : ''}>No Shadow</option>
+        <option value="drop-shadow(2px 4px 6px rgba(0,0,0,0.35))" ${img.style.filter?.includes('2px 4px 6px') ? 'selected' : ''}>Classic Shadow</option>
+        <option value="drop-shadow(0 0 10px #3b82f6)" ${img.style.filter?.includes('#3b82f6') ? 'selected' : ''}>Blue Glow</option>
+        <option value="drop-shadow(0 0 10px #10b981)" ${img.style.filter?.includes('#10b981') ? 'selected' : ''}>Emerald Glow</option>
+        <option value="drop-shadow(0 0 10px #f59e0b)" ${img.style.filter?.includes('#f59e0b') ? 'selected' : ''}>Amber Glow</option>
+        <option value="drop-shadow(0 0 10px #ec4899)" ${img.style.filter?.includes('#ec4899') ? 'selected' : ''}>Pink Glow</option>
+        <option value="drop-shadow(0 0 10px #8b5cf6)" ${img.style.filter?.includes('#8b5cf6') ? 'selected' : ''}>Violet Glow</option>
+        <option value="drop-shadow(4px 6px 12px rgba(0,0,0,0.5))" ${img.style.filter?.includes('4px 6px 12px') ? 'selected' : ''}>Heavy 3D</option>
+      </select>
+      <div class="df-img-sep"></div>
       <button class="df-img-btn" data-action="crop" title="Crop image"><i class="fas fa-crop"></i> Crop</button>
       <button class="df-img-btn" data-action="alt" title="Edit description / caption"><i class="fas fa-closed-captioning"></i></button>
       <button class="df-img-btn danger" data-action="delete" title="Delete image"><i class="fas fa-trash-can"></i></button>
@@ -836,6 +886,21 @@
       positionImageToolbar(img, toolbar);
       if (activeResizeHandle) positionResizeHandle(img, activeResizeHandle);
       showToast(`Text wrap: ${wrapSelect.options[wrapSelect.selectedIndex].text}`, 'info');
+    });
+
+    // Shadow Select (Issue 3: Shape & Icon Shadows)
+    const shadowSelect = toolbar.querySelector('#dfImgShadowSelect');
+    shadowSelect?.addEventListener('change', e => {
+      const val = e.target.value;
+      if (val === 'none') {
+        img.style.filter = '';
+        img.removeAttribute('data-shadow');
+      } else {
+        img.style.filter = val;
+        img.setAttribute('data-shadow', val);
+      }
+      window.DocFlow.Editor?.notifyChange();
+      showToast('Updated shape/icon shadow', 'info');
     });
 
     // Action buttons
@@ -1591,10 +1656,69 @@
   }
 
   function attachShapeListeners(shape) {
-    shape.setAttribute('draggable', 'true');
+    shape.setAttribute('draggable', 'false');
     shape.addEventListener('click', e => {
       e.stopPropagation();
       selectImage(shape);
+    });
+
+    // Support dragging shape directly in Excel
+    let isDragging = false, startX = 0, startY = 0, initLeft = 0, initTop = 0;
+    shape.addEventListener('mousedown', e => {
+      if (e.target.closest('.df-img-handle, .df-img-move-handle, .df-img-toolbar')) return;
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (!excelContainer || !excelContainer.contains(shape)) return;
+
+      selectImage(shape);
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      initLeft = parseFloat(shape.style.left) || 0;
+      initTop = parseFloat(shape.style.top) || 0;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const onMouseMove = me => {
+        if (!isDragging) return;
+        const dx = me.clientX - startX;
+        const dy = me.clientY - startY;
+        shape.style.left = (initLeft + dx) + 'px';
+        shape.style.top = (initTop + dy) + 'px';
+        positionAllHandles(shape);
+      };
+
+      const onMouseUp = me => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+
+        // Snap and adjust dimensions to fit destination cell
+        const cell = document.elementFromPoint(me.clientX, me.clientY)?.closest('.excel-grid-table td');
+        if (cell && excelContainer) {
+          const cRect = cell.getBoundingClientRect();
+          const pRect = excelContainer.getBoundingClientRect();
+          shape.style.position = 'absolute';
+          shape.style.left = Math.round(cRect.left - pRect.left + excelContainer.scrollLeft) + 'px';
+          shape.style.top = Math.round(cRect.top - pRect.top + excelContainer.scrollTop) + 'px';
+          shape.style.width = Math.max(20, Math.round(cRect.width)) + 'px';
+          shape.style.height = Math.max(20, Math.round(cRect.height)) + 'px';
+          shape.style.margin = '0px';
+          const svg = shape.querySelector('svg');
+          if (svg) {
+            svg.setAttribute('width', '100%');
+            svg.setAttribute('height', '100%');
+          }
+          positionAllHandles(shape);
+          if (activeImageToolbar) positionImageToolbar(shape, activeImageToolbar);
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast(`Shape fitted to cell ${cell.dataset.coord || ''}`, 'success');
+        }
+      };
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
     });
   }
 
@@ -1699,6 +1823,7 @@
       const stroke = $('#shapeStrokeColor')?.value || '#d45500';
       const strokeWidth = parseInt($('#shapeStrokeWidth')?.value || '2', 10);
       const size = parseInt($('#shapeSizeSelect')?.value || '120', 10);
+      const shadow = $('#shapeShadowSelect')?.value || 'drop-shadow(2px 4px 6px rgba(0,0,0,0.35))';
 
       const customParams = shapeType === 'parametric' ? {
         paramType: $('#shapeParamType')?.value || 'polygon',
@@ -1709,7 +1834,7 @@
         path: $('#shapeParamPath')?.value.trim() || ''
       } : null;
 
-      insertShapeIntoDocument(shapeType, fill, stroke, strokeWidth, size, customParams);
+      insertShapeIntoDocument(shapeType, fill, stroke, strokeWidth, size, customParams, shadow);
       closeModal('#shapeModal');
       showToast('Shape inserted into document', 'success');
     });
@@ -1870,14 +1995,15 @@
     return `<svg class="doc-shape-svg" width="100%" height="100%" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block;overflow:visible;">${inner}</svg>`;
   }
 
-  function insertShapeIntoDocument(shapeType, fill, stroke, strokeWidth, size, customParams = null) {
+  function insertShapeIntoDocument(shapeType, fill, stroke, strokeWidth, size, customParams = null, shadow = 'none') {
     const w = (customParams && customParams.width) ? customParams.width : size;
     const h = (customParams && customParams.height) ? customParams.height : ((shapeType === 'rectangle' || shapeType === 'rounded-rect' || shapeType === 'callout') ? Math.round(w * 0.65) : w);
     const svgHtml = getShapeSvg(shapeType, fill, stroke, strokeWidth, size, customParams);
     const shapeId = 'shape_' + Date.now();
     const shapeName = shapeType.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    const filterStyle = (shadow && shadow !== 'none') ? `filter:${shadow};` : '';
     const shapeHtml = `
-      <div class="doc-shape-container" id="${shapeId}" data-shape="${shapeType}" data-shape-name="${shapeName}" title="Shape: ${shapeName}" data-fill="${fill}" data-stroke="${stroke}" data-stroke-width="${strokeWidth}" contenteditable="false" style="width:${w}px;height:${h}px;display:inline-block;cursor:pointer;position:relative;margin:8px 4px;vertical-align:middle;">
+      <div class="doc-shape-container" id="${shapeId}" data-shape="${shapeType}" data-shape-name="${shapeName}" data-shadow="${shadow}" title="Shape: ${shapeName}" data-fill="${fill}" data-stroke="${stroke}" data-stroke-width="${strokeWidth}" contenteditable="false" style="width:${w}px;height:${h}px;${filterStyle}display:inline-block;cursor:pointer;position:relative;margin:8px 4px;vertical-align:middle;">
         ${svgHtml}
       </div>&nbsp;`;
 
@@ -1895,6 +2021,39 @@
         node.style.top = '60px';
         node.style.zIndex = '10';
         slideContent.appendChild(node);
+        window.DocFlow.Editor?.notifyChange();
+        setTimeout(() => {
+          attachShapeListeners(node);
+          selectImage(node);
+        }, 50);
+        return;
+      }
+    }
+
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    if (excelContainer) {
+      const temp = document.createElement('div');
+      temp.innerHTML = shapeHtml;
+      const node = temp.firstElementChild;
+      if (node) {
+        if (getComputedStyle(excelContainer).position === 'static') {
+          excelContainer.style.position = 'relative';
+        }
+        node.style.position = 'absolute';
+        const activeCell = (window._activeExcelCell && excelContainer.contains(window._activeExcelCell))
+          ? window._activeExcelCell
+          : (excelContainer.querySelector('td.excel-cell-selected') || excelContainer.querySelector('tbody td'));
+        if (activeCell) {
+          const cRect = activeCell.getBoundingClientRect();
+          const pRect = excelContainer.getBoundingClientRect();
+          node.style.left = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + 15)) + 'px';
+          node.style.top = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop + 15)) + 'px';
+        } else {
+          node.style.left = '60px';
+          node.style.top = '60px';
+        }
+        node.style.zIndex = '25';
+        excelContainer.appendChild(node);
         window.DocFlow.Editor?.notifyChange();
         setTimeout(() => {
           attachShapeListeners(node);

@@ -541,34 +541,36 @@
 }
 
 .excel-grid-table .excel-corner {
-  background: #e2e8f0;
+  background: #dcfce7 !important;
   min-width: 45px;
   width: 45px;
   text-align: center;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #86efac !important;
   user-select: none;
+  color: #000000 !important;
+  font-weight: 700 !important;
 }
 
 .excel-grid-table .excel-col-hdr {
-  background: #f1f5f9;
-  font-weight: 700;
-  color: #475569;
+  background: #dcfce7 !important;
+  font-weight: 700 !important;
+  color: #000000 !important;
   text-align: center;
   font-size: 11.5px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #86efac !important;
   user-select: none;
   min-width: 85px;
 }
 
 .excel-grid-table .excel-row-hdr {
-  background: #f1f5f9;
-  font-weight: 700;
-  color: #475569;
+  background: #dcfce7 !important;
+  font-weight: 700 !important;
+  color: #000000 !important;
   text-align: center;
   font-size: 11.5px;
   min-width: 45px;
   width: 45px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #86efac !important;
   user-select: none;
 }
 
@@ -636,25 +638,28 @@
   background: #141416 !important;
 }
 
-[data-theme="dark"] .excel-grid-table th,
-[data-theme="dark"] .excel-grid-table td {
-  border-color: #2e2e33 !important;
+[data-theme="dark"] .excel-grid-table th {
+  border-color: #334155;
+}
+[data-theme="dark"] .excel-grid-table td:not([style*="border"]) {
+  border-color: #2e2e33;
 }
 
 [data-theme="dark"] .excel-grid-table .excel-corner,
 [data-theme="dark"] .excel-corner {
-  background: #242428 !important;
-  border-color: #2e2e33 !important;
-  color: #9ca3af !important;
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
 }
 
 [data-theme="dark"] .excel-col-hdr,
 [data-theme="dark"] .excel-row-hdr,
 [data-theme="dark"] .excel-grid-table .excel-col-hdr,
 [data-theme="dark"] .excel-grid-table .excel-row-hdr {
-  background: #1c1c1f !important;
-  border-color: #2e2e33 !important;
-  color: #cbd5e1 !important;
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="dark"] .excel-grid-table td,
@@ -982,8 +987,11 @@ td.excel-sel-right {
   position: sticky !important;
   top: 0 !important;
   z-index: 20 !important;
-  background: #f8fafc !important;
-  border-bottom: 2px solid #cbd5e1 !important;
+  background: #dcfce7 !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #86efac !important;
+  border-right: 1px solid #86efac !important;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -992,17 +1000,22 @@ td.excel-sel-right {
   top: 0 !important;
   left: 0 !important;
   z-index: 35 !important;
-  background: #f1f5f9 !important;
-  border-bottom: 2px solid #cbd5e1 !important;
-  border-right: 2px solid #cbd5e1 !important;
+  background: #bbf7d0 !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid #86efac !important;
+  border-right: 2px solid #86efac !important;
 }
 
 .excel-grid-table tbody th.excel-row-hdr {
   position: sticky !important;
   left: 0 !important;
   z-index: 10 !important;
-  background: #f8fafc !important;
-  border-right: 1px solid #cbd5e1 !important;
+  background: #dcfce7 !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+  border-right: 1px solid #86efac !important;
+  border-bottom: 1px solid #86efac !important;
 }
 
 /* Multi-Column Layout (With visible dividing line in between columns) */
@@ -3480,19 +3493,22 @@ body:not([data-mode="empty"]).editor-statusbar-hidden #statusbar {
 [data-theme="dark"] .excel-grid-table thead th {
   background: #1e293b !important;
   border-bottom-color: #334155 !important;
-  color: #94a3b8 !important;
+  color: #f8fafc !important;
+  font-weight: 700 !important;
 }
 
 [data-theme="dark"] .excel-grid-table thead th.excel-corner {
   background: #0f172a !important;
   border-bottom-color: #334155 !important;
   border-right-color: #334155 !important;
+  color: #f8fafc !important;
 }
 
 [data-theme="dark"] .excel-grid-table tbody th.excel-row-hdr {
   background: #1e293b !important;
   border-right-color: #334155 !important;
-  color: #94a3b8 !important;
+  color: #f8fafc !important;
+  font-weight: 700 !important;
 }
 
 /* ==========================================================================
@@ -3815,42 +3831,259 @@ body:not([data-mode="empty"]).editor-statusbar-hidden #statusbar {
   display: inline-flex;
 }
 
-/* Document Header & Footer Area */
+/* Document Header & Footer (Requirement 5) */
 .doc-header-area {
-  border-bottom: 1px dashed var(--border);
-  padding: 6px 12px;
-  margin-bottom: 16px;
+  position: relative !important;
+  border: none !important;
+  border-bottom: 1.5px solid var(--border, #cbd5e1) !important;
+  padding: 4px 0 !important;
+  margin: 0 0 12px 0 !important;
   color: var(--text-muted);
   font-size: 11px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: text;
-  background: rgba(2, 132, 199, 0.03);
-  border-radius: 4px;
+  display: block !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  min-height: 24px;
+  box-sizing: border-box;
+  flex: 0 0 auto !important;
+  width: 100% !important;
 }
 .doc-header-area:hover,
 .doc-header-area:focus-within {
-  border-bottom-color: var(--accent);
-  background: rgba(2, 132, 199, 0.08);
+  border-bottom-color: var(--accent, #0284c7) !important;
 }
+
 .doc-footer-area {
-  border-top: 1px dashed var(--border);
-  padding: 6px 12px;
-  margin-top: 24px;
+  position: relative !important;
+  border: none !important;
+  border-top: 1.5px solid var(--border, #cbd5e1) !important;
+  padding: 4px 0 !important;
+  margin: 12px 0 0 0 !important;
   color: var(--text-muted);
   font-size: 11px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: text;
-  background: rgba(2, 132, 199, 0.03);
-  border-radius: 4px;
+  display: block !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  min-height: 24px;
+  box-sizing: border-box;
+  flex: 0 0 auto !important;
+  width: 100% !important;
 }
 .doc-footer-area:hover,
 .doc-footer-area:focus-within {
-  border-top-color: var(--accent);
-  background: rgba(2, 132, 199, 0.08);
+  border-top-color: var(--accent, #0284c7) !important;
+}
+
+/* Close button positioned at top-right side, outside the writing area */
+.doc-header-area .df-hf-delete-btn,
+.doc-footer-area .df-hf-delete-btn {
+  position: absolute !important;
+  right: 0 !important;
+  top: -24px !important;
+  background: var(--bg-primary, #ffffff) !important;
+  border: 1px solid var(--border, #cbd5e1) !important;
+  border-radius: 4px !important;
+  color: var(--text-muted, #64748b) !important;
+  cursor: pointer !important;
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 10px !important;
+  padding: 0 !important;
+  opacity: 0.45;
+  transition: all 0.15s ease !important;
+  z-index: 10 !important;
+}
+.doc-header-area:hover .df-hf-delete-btn,
+.doc-footer-area:hover .df-hf-delete-btn,
+.doc-header-area .df-hf-delete-btn:focus,
+.doc-footer-area .df-hf-delete-btn:focus {
+  opacity: 1;
+}
+.doc-header-area .df-hf-delete-btn:hover,
+.doc-footer-area .df-hf-delete-btn:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+  opacity: 1;
+}
+
+/* Clean editable area: No rectangular boxes, full width available for writing (Bug 3) */
+.doc-header-editable,
+.doc-footer-editable {
+  user-select: text;
+  width: 100% !important;
+  min-height: 24px !important;
+  padding: 2px 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  outline: none !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+  position: relative;
+}
+.doc-header-editable:focus,
+.doc-footer-editable:focus {
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.doc-header-editable:empty::before,
+.doc-footer-editable:empty::before,
+.doc-header-editable[data-empty="true"]::before,
+.doc-footer-editable[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted, #94a3b8);
+  font-style: italic;
+  pointer-events: none;
+  cursor: text;
+}
+
+/* Table interactive move and corner handles (Bug 2) */
+.df-table-move-handle {
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.df-table-move-handle:hover {
+  background: var(--accent-hover, #0369a1) !important;
+  transform: scale(1.08);
+}
+.df-table-corner-handle:hover {
+  background: var(--accent, #0284c7) !important;
+  transform: scale(1.2);
+}
+
+/* Page with Header & Footer layout (first.txt Issue 7) */
+.editor-page.has-header-footer,
+.df-page.has-header-footer {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  min-height: 980px !important;
+  box-sizing: border-box !important;
+}
+
+.doc-content-body,
+.df-page-body {
+  flex: 1 1 auto !important;
+  min-height: 550px !important;
+  outline: none !important;
+  word-break: break-word;
+}
+
+/* Non-Editable Watermark (first.txt Issue 8) */
+.doc-watermark-overlay,
+.doc-watermark-overlay * {
+  contenteditable: false !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  pointer-events: none !important;
+}
+
+/* Resizable Text Area (Requirement 4) */
+.doc-textarea-container {
+  position: relative;
+  margin: 14px 0;
+  width: 480px;
+  max-width: 100%;
+  min-width: 220px;
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  resize: both;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid var(--border, #cbd5e1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  background: var(--bg-primary, #ffffff);
+}
+.doc-textarea-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-tertiary, #f1f5f9);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border, #cbd5e1);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  cursor: move !important;
+  user-select: none;
+  flex-shrink: 0;
+}
+.doc-textarea-del-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.doc-textarea-del-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+.doc-textarea-body {
+  flex: 1 1 auto;
+  min-height: 60px;
+  padding: 10px 14px;
+  background: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #0f172a);
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+  overflow: auto;
+  user-select: text;
+  border: none;
+}
+
+/* Table Column & Row Resizing (Requirement 3) */
+.doc-table {
+  position: relative;
+}
+.doc-table th,
+.doc-table td {
+  position: relative;
+}
+body.is-table-resizing-col,
+body.is-table-resizing-col * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+body.is-table-resizing-row,
+body.is-table-resizing-row * {
+  cursor: row-resize !important;
+  user-select: none !important;
+}
+
+/* Excel Note Badge Indicator (Requirement 1.2) */
+.excel-grid-table td.excel-has-note {
+  position: relative !important;
+}
+.excel-grid-table td.excel-has-note::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 7px 7px 0;
+  border-color: transparent #ef4444 transparent transparent;
+  pointer-events: none;
+  z-index: 5;
+}
+/* Excel High-Contrast Applied Borders (Requirement 1.5) */
+.excel-grid-table td[style*="border"],
+.excel-grid-table td.excel-border-applied {
+  z-index: 1 !important;
 }
 
 /* Excel Page Break Styles */
@@ -4110,21 +4343,26 @@ tr.excel-page-break-bottom td {
   color: var(--text-primary) !important;
 }
 
-/* Excel Chart Side Dock: Placed in empty space to the right of spreadsheet data */
+/* Excel Chart Inside Spreadsheet Area (Issue 1) */
 .excel-sheet-viewport {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: flex-start !important;
-  gap: 24px !important;
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  overflow: auto !important;
 }
 .excel-chart-dock-area {
+  position: absolute !important;
+  left: 54px !important;
+  z-index: 15 !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 20px !important;
-  padding: 16px 20px !important;
+  padding: 0 !important;
   background: transparent !important;
-  min-width: 540px !important;
-  flex-shrink: 0 !important;
+  min-width: 520px !important;
+  max-width: 90% !important;
+  pointer-events: auto !important;
+  transition: top 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .excel-chart-dock-area:empty,
 .excel-chart-dock-area:not(:has(.doc-chart-container)) {
@@ -4139,7 +4377,9 @@ tr.excel-page-break-bottom td {
 }
 .excel-chart-dock-area .doc-chart-container {
   margin: 0 !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid var(--border) !important;
+  background: var(--bg-secondary) !important;
 }
 
 /* Excel Fast Sheet Background for all cells and viewports */
@@ -4235,9 +4475,13 @@ tr.excel-page-break-bottom td {
   body.print-excel-mode .excel-grid-table td {
     border: 1px solid #94a3b8 !important;
   }
-  body.print-excel-mode .excel-chart-dock-area {
-    display: block !important;
-    margin-top: 16px !important;
+  body.print-excel-mode .excel-chart-dock-area,
+  body.print-excel-mode .excel-print-chart-dock {
+    display: flex !important;
+    position: static !important;
+    margin-top: 20px !important;
     page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    box-shadow: none !important;
   }
 }

@@ -410,6 +410,15 @@
     }
     if (window.DocFlow.currentMode !== 'edit' && window.DocFlow.currentMode !== 'empty') return false;
 
+    // First ensure latest current edits are captured on top of undoStack before undoing
+    const currentState = getCurrentDocState();
+    if (currentState && undoStack.length > 0) {
+      const top = undoStack[undoStack.length - 1];
+      if (top.html !== currentState.html || top.slideIdx !== currentState.slideIdx) {
+        undoStack.push(currentState);
+      }
+    }
+
     if (undoStack.length > 1) {
       isUndoRedoing = true;
       // Pop current state and push to redo stack
@@ -552,15 +561,6 @@
 
   // Command Execution
   function execCmd(cmd, value = null) {
-    if (document.body.classList.contains('reading-mode')) {
-      showToast('Document editing is disabled in Read Mode', 'warning');
-      return false;
-    }
-    if (window.DocFlow.currentMode !== 'edit') {
-      showToast('Open or switch to an editable document first', 'info');
-      return false;
-    }
-    focusEditor();
     if (cmd === 'undo') {
       undo();
       updateToolbarState();
@@ -570,6 +570,16 @@
       updateToolbarState();
       return true;
     }
+
+    if (document.body.classList.contains('reading-mode')) {
+      showToast('Document editing is disabled in Read Mode', 'warning');
+      return false;
+    }
+    if (window.DocFlow.currentMode !== 'edit') {
+      showToast('Open or switch to an editable document first', 'info');
+      return false;
+    }
+    focusEditor();
 
     const excelCells = getSelectedExcelCells();
     if (excelCells.length > 0) {
@@ -1166,21 +1176,24 @@
         const cols = Math.min(12, Math.max(1, parseInt($('#tableCols').value) || 3));
         const includeRowHeader = $('#tableRowHeaderCheck')?.checked === true;
         const includeColHeader = $('#tableColHeaderCheck')?.checked === true;
-        const bWidth = $('#tableBorderWidth')?.value || '1px';
-        const bColor = $('#tableBorderColor')?.value || '#cbd5e1';
-        const borderRule = `${bWidth} solid ${bColor}`;
+        const borderRule = '1px solid var(--border, #cbd5e1)';
+        const tableWidth = '100%';
+        const marginStyle = 'margin: 14px 0;';
+        const collapseStyle = 'border-collapse: collapse;';
+        const cellPadding = '8px 12px';
+
         closeModal('#tableModal');
 
         saveSnapshot();
 
-        let tableHtml = `<table class="doc-table" style="border-collapse:collapse;border:${borderRule};">`;
+        let tableHtml = `<table class="doc-table" style="width:${tableWidth}; ${marginStyle} ${collapseStyle} border:${borderRule};">`;
         if (includeRowHeader) {
           tableHtml += '<thead><tr>';
           if (includeColHeader) {
-            tableHtml += `<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
+            tableHtml += `<th style="min-width:60px;padding:${cellPadding};background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
           }
           for (let c = 1; c <= cols; c++) {
-            tableHtml += `<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
+            tableHtml += `<th style="min-width:60px;padding:${cellPadding};background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
           }
           tableHtml += '</tr></thead>';
         }
@@ -1188,10 +1201,10 @@
         for (let r = 1; r <= rows; r++) {
           tableHtml += '<tr>';
           if (includeColHeader) {
-            tableHtml += `<th style="min-width:60px;height:28px;padding:6px 10px;background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
+            tableHtml += `<th style="min-width:60px;padding:${cellPadding};background:var(--bg-tertiary);border:${borderRule};font-weight:700;"><br></th>`;
           }
           for (let c = 1; c <= cols; c++) {
-            tableHtml += `<td style="min-width:60px;height:28px;padding:6px 10px;border:${borderRule};"><br></td>`;
+            tableHtml += `<td style="min-width:60px;padding:${cellPadding};border:${borderRule};"><br></td>`;
           }
           tableHtml += '</tr>';
         }
@@ -1314,6 +1327,302 @@
         showToast(`Inserted ${rows}×${cols} ${hdrText}`, 'success');
       });
     }
+  }
+
+  // Table Row & Column Resizing (Requirement 3)
+  function setupTableResizing() {
+    let resizingCol = null;
+    let resizingRow = null;
+    let isCornerResizing = false;
+    let isTableMoving = false;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+    let startTableWidth = 0;
+    let startTableHeight = 0;
+    let targetRow = null;
+    let colIndex = -1;
+    let activeTable = null;
+    let tableGhostIndicator = null;
+
+    // Floating move handle for table
+    const tableMoveHandle = document.createElement('div');
+    tableMoveHandle.className = 'df-table-move-handle';
+    tableMoveHandle.title = 'Click and drag to move table';
+    tableMoveHandle.innerHTML = '<i class="fas fa-arrows-up-down-left-right" style="font-size:12px;"></i>';
+    tableMoveHandle.style.cssText = 'position:fixed;width:24px;height:24px;background:var(--accent,#0284c7);color:#ffffff;border-radius:4px;display:none;align-items:center;justify-content:center;cursor:move;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.2);user-select:none;';
+    document.body.appendChild(tableMoveHandle);
+
+    // Floating corner resize handle for entire table
+    const tableCornerHandle = document.createElement('div');
+    tableCornerHandle.className = 'df-table-corner-handle';
+    tableCornerHandle.title = 'Click and drag to resize entire table';
+    tableCornerHandle.style.cssText = 'position:fixed;width:12px;height:12px;background:#ffffff;border:2px solid var(--accent,#0284c7);border-radius:2px;display:none;cursor:nwse-resize;z-index:999;box-shadow:0 1px 4px rgba(0,0,0,0.25);box-sizing:border-box;user-select:none;';
+    document.body.appendChild(tableCornerHandle);
+
+    const positionTableHandles = (tbl) => {
+      if (!tbl || !document.body.contains(tbl)) {
+        tableMoveHandle.style.display = 'none';
+        tableCornerHandle.style.display = 'none';
+        return;
+      }
+      const r = tbl.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) {
+        tableMoveHandle.style.display = 'none';
+        tableCornerHandle.style.display = 'none';
+        return;
+      }
+      tableMoveHandle.style.display = 'flex';
+      tableMoveHandle.style.left = Math.max(4, Math.round(r.left - 26)) + 'px';
+      tableMoveHandle.style.top = Math.max(4, Math.round(r.top - 4)) + 'px';
+
+      tableCornerHandle.style.display = 'block';
+      tableCornerHandle.style.left = Math.round(r.right - 6) + 'px';
+      tableCornerHandle.style.top = Math.round(r.bottom - 6) + 'px';
+    };
+
+    // Corner handle mousedown
+    tableCornerHandle.addEventListener('mousedown', e => {
+      if (!activeTable) return;
+      e.preventDefault();
+      e.stopPropagation();
+      isCornerResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startTableWidth = activeTable.offsetWidth;
+      startTableHeight = activeTable.offsetHeight;
+      saveSnapshot(true);
+      document.body.style.cursor = 'nwse-resize';
+      document.body.style.userSelect = 'none';
+    });
+
+    // Move handle mousedown
+    tableMoveHandle.addEventListener('mousedown', e => {
+      if (!activeTable) return;
+      e.preventDefault();
+      e.stopPropagation();
+      isTableMoving = true;
+      tableMoveHandle.style.pointerEvents = 'none';
+      saveSnapshot(true);
+      document.body.style.cursor = 'move';
+      document.body.style.userSelect = 'none';
+    });
+
+    // Update positions on editor scroll
+    $('#editorWrap')?.addEventListener('scroll', () => {
+      if (activeTable && !isCornerResizing && !isTableMoving) {
+        positionTableHandles(activeTable);
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (isCornerResizing && activeTable) {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const newWidth = Math.max(120, startTableWidth + dx);
+        const newHeight = Math.max(50, startTableHeight + dy);
+        activeTable.style.width = newWidth + 'px';
+        activeTable.style.maxWidth = '100%';
+        if (startTableHeight > 0) {
+          const ratio = newHeight / startTableHeight;
+          Array.from(activeTable.rows).forEach(r => {
+            r.style.height = Math.max(22, Math.round(r.offsetHeight * ratio)) + 'px';
+          });
+        }
+        positionTableHandles(activeTable);
+        return;
+      }
+
+      if (isTableMoving && activeTable) {
+        const clientX = e.clientX;
+        const clientY = e.clientY;
+        tableMoveHandle.style.left = (clientX - 12) + 'px';
+        tableMoveHandle.style.top = (clientY - 12) + 'px';
+
+        const editor = $('#editor');
+        if (!tableGhostIndicator) {
+          tableGhostIndicator = document.createElement('div');
+          tableGhostIndicator.id = 'dfTableMoveGhost';
+          tableGhostIndicator.style.cssText = 'height:3px;background:var(--accent,#0284c7);border-radius:2px;margin:8px 0;box-shadow:0 0 6px var(--accent,#0284c7);pointer-events:none;';
+        }
+
+        let range = null;
+        if (document.caretRangeFromPoint) {
+          range = document.caretRangeFromPoint(clientX, clientY);
+        } else if (document.caretPositionFromPoint) {
+          const pos = document.caretPositionFromPoint(clientX, clientY);
+          if (pos) {
+            range = document.createRange();
+            range.setStart(pos.offsetNode, pos.offset);
+          }
+        }
+
+        if (range && editor?.contains(range.commonAncestorContainer) && !activeTable.contains(range.commonAncestorContainer)) {
+          try {
+            range.insertNode(tableGhostIndicator);
+          } catch (_) {}
+        } else {
+          const el = document.elementFromPoint(clientX, clientY);
+          const block = el ? (el.closest('#editor > *') || el.closest('#editor p, #editor div, #editor table, #editor section, #editor h1, #editor h2, #editor h3')) : null;
+          if (block && editor?.contains(block) && block !== tableGhostIndicator && block !== activeTable && !activeTable.contains(block)) {
+            const r = block.getBoundingClientRect();
+            if (clientY > r.top + r.height / 2) {
+              block.insertAdjacentElement('afterend', tableGhostIndicator);
+            } else {
+              block.insertAdjacentElement('beforebegin', tableGhostIndicator);
+            }
+          }
+        }
+        return;
+      }
+
+      if (resizingCol) {
+        const dx = e.clientX - startX;
+        const newWidth = Math.max(30, startWidth + dx);
+        if (activeTable && colIndex >= 0) {
+          Array.from(activeTable.rows).forEach(r => {
+            const c = r.cells[colIndex];
+            if (c) {
+              c.style.width = newWidth + 'px';
+              c.style.minWidth = newWidth + 'px';
+            }
+          });
+        }
+        if (activeTable) positionTableHandles(activeTable);
+        return;
+      }
+      if (resizingRow) {
+        const dy = e.clientY - startY;
+        const newHeight = Math.max(22, startHeight + dy);
+        if (targetRow) {
+          targetRow.style.height = newHeight + 'px';
+          Array.from(targetRow.cells).forEach(c => {
+            c.style.height = newHeight + 'px';
+          });
+        }
+        if (activeTable) positionTableHandles(activeTable);
+        return;
+      }
+
+      // Check hover over table or near cell borders
+      const tbl = e.target.closest?.('table.doc-table, #editor table:not(.excel-grid-table)');
+      if (tbl && !tbl.closest('.excel-spreadsheet-container')) {
+        activeTable = tbl;
+        positionTableHandles(tbl);
+      } else if (!e.target.closest('.df-table-move-handle, .df-table-corner-handle')) {
+        if (!activeTable || !activeTable.contains(document.activeElement)) {
+          tableMoveHandle.style.display = 'none';
+          tableCornerHandle.style.display = 'none';
+        }
+      }
+
+      const cell = e.target.closest?.('td, th');
+      if (!cell) {
+        document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
+        return;
+      }
+      const cellTable = cell.closest('table.doc-table, #editor table');
+      if (!cellTable || cell.closest('.excel-grid-table')) {
+        document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
+        return;
+      }
+
+      const rect = cell.getBoundingClientRect();
+      const nearRight = Math.abs(rect.right - e.clientX) <= 6;
+      const nearBottom = Math.abs(rect.bottom - e.clientY) <= 6;
+
+      if (nearRight) {
+        cell.style.cursor = 'col-resize';
+      } else if (nearBottom) {
+        cell.style.cursor = 'row-resize';
+      } else {
+        cell.style.cursor = '';
+      }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.df-table-move-handle, .df-table-corner-handle')) return;
+
+      const cell = e.target.closest?.('td, th');
+      if (!cell) return;
+      const tbl = cell.closest('table.doc-table, #editor table');
+      if (!tbl || cell.closest('.excel-grid-table')) return;
+
+      activeTable = tbl;
+      positionTableHandles(tbl);
+
+      const rect = cell.getBoundingClientRect();
+      const nearRight = Math.abs(rect.right - e.clientX) <= 6;
+      const nearBottom = Math.abs(rect.bottom - e.clientY) <= 6;
+
+      if (nearRight) {
+        e.preventDefault();
+        e.stopPropagation();
+        colIndex = cell.cellIndex;
+        startX = e.clientX;
+        startWidth = cell.offsetWidth;
+        resizingCol = true;
+        document.body.classList.add('is-table-resizing-col');
+        saveSnapshot(true);
+      } else if (nearBottom) {
+        e.preventDefault();
+        e.stopPropagation();
+        targetRow = cell.closest('tr');
+        startY = e.clientY;
+        startHeight = targetRow ? targetRow.offsetHeight : cell.offsetHeight;
+        resizingRow = true;
+        document.body.classList.add('is-table-resizing-row');
+        saveSnapshot(true);
+      }
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+
+      if (isCornerResizing) {
+        isCornerResizing = false;
+        notifyChange();
+        saveSnapshot(true);
+        if (activeTable) positionTableHandles(activeTable);
+      }
+
+      if (isTableMoving) {
+        isTableMoving = false;
+        tableMoveHandle.style.pointerEvents = 'auto';
+
+        const editor = $('#editor');
+        if (tableGhostIndicator && tableGhostIndicator.parentNode && activeTable) {
+          tableGhostIndicator.parentNode.insertBefore(activeTable, tableGhostIndicator);
+          tableGhostIndicator.remove();
+          tableGhostIndicator = null;
+          showToast('Table repositioned', 'success');
+        } else if (activeTable && editor) {
+          const clientX = e.clientX;
+          const clientY = e.clientY;
+          const el = document.elementFromPoint(clientX, clientY);
+          const block = el ? (el.closest('#editor > *') || el.closest('#editor p, #editor div, #editor table, #editor section, #editor h1, #editor h2, #editor h3')) : null;
+          if (block && editor.contains(block) && block !== activeTable && !activeTable.contains(block)) {
+            block.insertAdjacentElement('afterend', activeTable);
+            showToast('Table repositioned', 'success');
+          }
+        }
+        notifyChange();
+        saveSnapshot(true);
+        if (activeTable) positionTableHandles(activeTable);
+      }
+
+      if (resizingCol || resizingRow) {
+        resizingCol = null;
+        resizingRow = null;
+        targetRow = null;
+        document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
+        notifyChange();
+        saveSnapshot(true);
+        if (activeTable) positionTableHandles(activeTable);
+      }
+    });
   }
 
   // Insert Link
@@ -1868,31 +2177,63 @@
     showToast('Select lines of text or click inside a table to sort', 'info');
   }
 
-  // Toggle PowerPoint-Style Text Drop Shadow (Issue 3 replacement)
-  function toggleTextShadow() {
+  // Apply Colorful Text Shadows (Issue 2)
+  function applyTextShadow(shadowValue) {
     if (window.DocFlow.currentMode !== 'edit' || !editor) return;
     const sel = window.getSelection();
-    if (!sel || !sel.rangeCount || sel.isCollapsed) {
-      showToast('Select text first to toggle text shadow', 'info');
+    if (!sel || !sel.rangeCount) {
+      showToast('Select text first to apply text shadow', 'info');
       return;
     }
 
+    if (!shadowValue || shadowValue === 'none') {
+      const parentSpan = sel.anchorNode?.parentElement;
+      if (parentSpan && parentSpan.tagName === 'SPAN' && parentSpan.style.textShadow) {
+        parentSpan.style.textShadow = '';
+        notifyChange();
+        showToast('Text shadow removed', 'info');
+        return;
+      }
+      const range = sel.getRangeAt(0);
+      const ancestor = range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement;
+      const shadowSpan = ancestor?.closest?.('span[style*="text-shadow"]');
+      if (shadowSpan) {
+        shadowSpan.style.textShadow = '';
+        notifyChange();
+        showToast('Text shadow removed', 'info');
+        return;
+      }
+      showToast('No shadow found on selection', 'info');
+      return;
+    }
+
+    if (sel.isCollapsed) {
+      showToast('Highlight text first to apply colorful shadow', 'info');
+      return;
+    }
+
+    saveSnapshot();
     const range = sel.getRangeAt(0);
     const parentSpan = sel.anchorNode?.parentElement;
-    if (parentSpan && parentSpan.tagName === 'SPAN' && parentSpan.style.textShadow) {
-      parentSpan.style.textShadow = '';
+    if (parentSpan && parentSpan.tagName === 'SPAN' && parentSpan.textContent === sel.toString()) {
+      parentSpan.style.textShadow = shadowValue;
       notifyChange();
-      showToast('Text shadow removed', 'info');
+      showToast('Applied colorful text shadow', 'success');
       return;
     }
 
     const span = document.createElement('span');
-    span.style.textShadow = '2px 2px 4px rgba(0, 0, 0, 0.45)';
+    span.style.textShadow = shadowValue;
     const contents = range.extractContents();
     span.appendChild(contents);
     range.insertNode(span);
     notifyChange();
-    showToast('Applied PowerPoint text shadow', 'success');
+    showToast('Applied colorful text shadow', 'success');
+  }
+
+  // Toggle PowerPoint-Style Text Drop Shadow (Issue 3 replacement / backward compatibility)
+  function toggleTextShadow() {
+    applyTextShadow('2px 2px 4px rgba(0, 0, 0, 0.45)');
   }
 
   // Word Wrap Toggle (Notepad style — expands editor page width when unwrapped)
@@ -2378,6 +2719,7 @@
     // Additional Dialog Setups
     setupColorPickers();
     setupTableInsert();
+    setupTableResizing();
     setupLinkInsert();
     setupHrAndQuote();
 
@@ -2573,28 +2915,13 @@
       }
     });
 
-    // Global Keydown Handler for Ctrl+Z, Ctrl+Y, and Ctrl+\ (Problem 5: Clear format warning)
+    // Global Keydown Handler for Ctrl+\ (Problem 5: Clear format warning)
     document.addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && (e.key === '\\' || e.code === 'Backslash')) {
         e.preventDefault();
         e.stopPropagation();
         openModal('#clearFormatModal');
         return;
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
-        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
-          return; // Allow native form input undo
-        }
-        e.preventDefault();
-        e.stopPropagation();
-        undo();
-      } else if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
-        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
-          return; // Allow native form input redo
-        }
-        e.preventDefault();
-        e.stopPropagation();
-        redo();
       }
     });
 
@@ -2648,6 +2975,7 @@
     toggleFormatPainter,
     resetFormatPainter,
     sortSelectedTextOrTable,
+    applyTextShadow,
     toggleTextShadow,
     openLineModal,
     insertCustomLine,

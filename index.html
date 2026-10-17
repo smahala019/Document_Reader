@@ -1427,7 +1427,56 @@
           </div>
         </div>
         <div class="ribbon-row">
-          <button class="fmt-btn with-text" id="homePptShadowBtn" title="Toggle PowerPoint Style Text Drop Shadow"><i class="fas fa-font" style="color:#ea580c;text-shadow:2px 2px 3px rgba(0,0,0,0.4);"></i> Shadow</button>
+          <div class="bullet-dropdown-wrap" id="textShadowDropdownWrap">
+            <button class="fmt-btn with-text" id="textShadowBtn" title="Colorful Text Shadows">
+              <i class="fas fa-font" style="color:#ea580c;text-shadow:2px 2px 4px rgba(234,88,12,0.6);"></i> <span>Shadow</span> <i class="fas fa-chevron-down" style="font-size:8px;margin-left:3px;"></i>
+            </button>
+            <div class="spacing-popover" id="textShadowPopover" role="menu" style="min-width:210px;max-height:340px;overflow-y:auto;">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;padding:0 4px;">Text Shadows</div>
+              <div class="spacing-opt-item" data-shadow="none">
+                <i class="fas fa-ban" style="margin-right:8px;color:#ef4444;"></i> None (Clear Shadow)
+              </div>
+              <div class="dropdown-sep" style="margin:4px 0;"></div>
+              <div class="spacing-opt-item" data-shadow="2px 2px 4px rgba(0,0,0,0.5)">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#334155;margin-right:8px;box-shadow:2px 2px 4px rgba(0,0,0,0.5);"></span>
+                <span style="text-shadow:2px 2px 4px rgba(0,0,0,0.5);">Classic Drop Shadow</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="0 0 8px #3b82f6, 0 0 12px #60a5fa">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#2563eb;margin-right:8px;box-shadow:0 0 8px #3b82f6;"></span>
+                <span style="text-shadow:0 0 8px #3b82f6, 0 0 12px #60a5fa;color:#1e40af;font-weight:600;">Neon Blue Glow</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="0 0 8px #10b981, 0 0 14px #34d399">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#059669;margin-right:8px;box-shadow:0 0 8px #10b981;"></span>
+                <span style="text-shadow:0 0 8px #10b981, 0 0 14px #34d399;color:#065f46;font-weight:600;">Emerald Glow</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="0 0 10px #f59e0b, 2px 2px 6px #d97706">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#d97706;margin-right:8px;box-shadow:0 0 8px #f59e0b;"></span>
+                <span style="text-shadow:0 0 10px #f59e0b, 2px 2px 6px #d97706;color:#b45309;font-weight:600;">Fiery Amber</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="0 0 8px #ec4899, 0 0 14px #f472b6">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#db2777;margin-right:8px;box-shadow:0 0 8px #ec4899;"></span>
+                <span style="text-shadow:0 0 8px #ec4899, 0 0 14px #f472b6;color:#9d174d;font-weight:600;">Neon Pink</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="0 0 10px #8b5cf6, 2px 2px 6px #7c3aed">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#7c3aed;margin-right:8px;box-shadow:0 0 8px #8b5cf6;"></span>
+                <span style="text-shadow:0 0 10px #8b5cf6, 2px 2px 6px #7c3aed;color:#5b21b6;font-weight:600;">Electric Violet</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="2px 2px 0px #eab308, 3px 3px 0px #ca8a04">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#eab308;margin-right:8px;box-shadow:2px 2px 0 #ca8a04;"></span>
+                <span style="text-shadow:2px 2px 0px #eab308, 3px 3px 0px #ca8a04;color:#854d0e;font-weight:700;">Gold 3D Layer</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="0 0 10px #06b6d4, 0 0 16px #22d3ee">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#0891b2;margin-right:8px;box-shadow:0 0 8px #06b6d4;"></span>
+                <span style="text-shadow:0 0 10px #06b6d4, 0 0 16px #22d3ee;color:#0e7490;font-weight:600;">Cyan Pulse</span>
+              </div>
+              <div class="spacing-opt-item" data-shadow="2px 2px 1px #ef4444, 4px 4px 2px rgba(0,0,0,0.3)">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:#dc2626;margin-right:8px;box-shadow:2px 2px 2px #ef4444;"></span>
+                <span style="text-shadow:2px 2px 1px #ef4444, 4px 4px 2px rgba(0,0,0,0.3);color:#991b1b;font-weight:600;">Crimson Depth</span>
+              </div>
+            </div>
+          </div>
+          <!-- Backward compatible alias button -->
+          <button class="fmt-btn with-text" id="homePptShadowBtn" style="display:none;" title="Toggle PowerPoint Style Text Drop Shadow"><i class="fas fa-font"></i> Shadow</button>
         </div>
       </div>
 
@@ -1449,7 +1498,7 @@
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="ribbonInsertImageBtn"><i class="fas fa-image"></i> Picture</button>
           <button class="fmt-btn with-text" id="ribbonInsertTableBtn"><i class="fas fa-table"></i> Table</button>
-          <button class="fmt-btn with-text" id="ribbonTableLinesBtn" title="Choose Table Line Color & Width"><i class="fas fa-border-all" style="color:#0284c7;"></i> Lines</button>
+          <button class="fmt-btn with-text" id="ribbonInsertTextAreaBtn" title="Insert Resizable Text Area into Document"><i class="fas fa-square-pen" style="color:#0284c7;"></i> Text Area</button>
         </div>
         <div class="ribbon-row">
           <button class="fmt-btn with-text" id="ribbonInsertLinkBtn"><i class="fas fa-link"></i> Link</button>
@@ -1808,11 +1857,17 @@
             <button class="fmt-btn with-text" id="pptNewSlideMenuBtn" title="New Slide with Layout">
               <i class="fas fa-square-plus" style="color:#ea580c;"></i><span>New Slide</span><i class="fas fa-chevron-down" style="font-size:8px;"></i>
             </button>
-            <div class="spacing-popover" id="pptNewSlidePopover" role="menu">
+            <div class="spacing-popover" id="pptNewSlidePopover" role="menu" style="min-width:240px;max-height:360px;overflow-y:auto;">
               <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Slide Layouts</div>
               <div class="spacing-opt-item" data-ppt-layout="title"><i class="fas fa-heading" style="margin-right:6px;color:#2563eb;"></i> Title Slide</div>
-              <div class="spacing-opt-item" data-ppt-layout="title-box"><i class="fas fa-table-cells-large" style="margin-right:6px;color:#ea580c;"></i> Title & Box (Title & Content)</div>
-              <div class="spacing-opt-item" data-ppt-layout="split"><i class="fas fa-columns" style="margin-right:6px;color:#f59e0b;"></i> Two Content Columns</div>
+              <div class="spacing-opt-item" data-ppt-layout="title-box"><i class="fas fa-table-cells-large" style="margin-right:6px;color:#ea580c;"></i> Title & Content</div>
+              <div class="spacing-opt-item" data-ppt-layout="section-header"><i class="fas fa-bookmark" style="margin-right:6px;color:#8b5cf6;"></i> Section Header</div>
+              <div class="spacing-opt-item" data-ppt-layout="split"><i class="fas fa-columns" style="margin-right:6px;color:#f59e0b;"></i> Two Content</div>
+              <div class="spacing-opt-item" data-ppt-layout="comparison"><i class="fas fa-code-compare" style="margin-right:6px;color:#0284c7;"></i> Comparison</div>
+              <div class="spacing-opt-item" data-ppt-layout="title-only"><i class="fas fa-window-maximize" style="margin-right:6px;color:#10b981;"></i> Title Only</div>
+              <div class="spacing-opt-item" data-ppt-layout="content-caption"><i class="fas fa-id-card" style="margin-right:6px;color:#ec4899;"></i> Content with Caption</div>
+              <div class="spacing-opt-item" data-ppt-layout="picture-caption"><i class="fas fa-image" style="margin-right:6px;color:#14b8a6;"></i> Picture with Caption</div>
+              <div class="spacing-opt-item" data-ppt-layout="quote-slide"><i class="fas fa-quote-left" style="margin-right:6px;color:#6366f1;"></i> Quote Slide</div>
               <div class="spacing-opt-item" data-ppt-layout="cards"><i class="fas fa-layer-group" style="margin-right:6px;color:#06b6d4;"></i> 3 Card Blocks</div>
               <div class="spacing-opt-item" data-ppt-layout="blank"><i class="fas fa-square" style="margin-right:6px;color:#94a3b8;"></i> Blank Slide</div>
             </div>
@@ -2243,17 +2298,49 @@
             <button class="fmt-btn with-text" id="excelFilterBtn" title="Filter & Sort Spreadsheet Rows">
               <i class="fas fa-filter" style="color:#0284c7;"></i><span>Filter</span><i class="fas fa-chevron-down" style="font-size:8px;margin-left:3px;"></i>
             </button>
-            <div class="spacing-popover" id="excelFilterPopover" role="menu" style="min-width:220px;padding:8px;">
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:6px;">Filter &amp; Sort</div>
-              <div class="spacing-opt-item" id="excelFilterSortAsc"><i class="fas fa-arrow-down-a-z" style="margin-right:6px;color:#16a34a;"></i> Sort Ascending (A to Z)</div>
-              <div class="spacing-opt-item" id="excelFilterSortDesc"><i class="fas fa-arrow-up-z-a" style="margin-right:6px;color:#ea580c;"></i> Sort Descending (Z to A)</div>
-              <div class="dropdown-sep" style="margin:6px 0;"></div>
-              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px;">Filter Rows By Text</div>
-              <div style="display:flex;gap:4px;margin-bottom:6px;">
-                <input type="text" id="excelFilterTextInput" placeholder="Type text to filter..." style="flex:1;padding:4px 8px;font-size:11.5px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);outline:none;">
-                <button type="button" id="excelFilterApplyBtn" class="modal-btn primary" style="padding:3px 8px;font-size:11px;">Apply</button>
+            <div class="spacing-popover" id="excelFilterPopover" role="menu" style="min-width:280px;padding:12px;border-radius:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-size:12px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+                  <i class="fas fa-filter" style="color:#0284c7;"></i> Filter Rows
+                </span>
+                <span id="excelFilterCountBadge" style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--bg-tertiary);color:var(--text-muted);font-weight:600;">All rows visible</span>
               </div>
-              <div class="spacing-opt-item" id="excelFilterClearBtn" style="color:#ef4444;"><i class="fas fa-xmark" style="margin-right:6px;color:#ef4444;"></i> Clear Filter (Show All)</div>
+              <div style="margin-bottom:8px;">
+                <label for="excelFilterColumnSelect" style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Select Column</label>
+                <select id="excelFilterColumnSelect" style="width:100%;padding:5px 8px;font-size:11.5px;border:1px solid var(--border);border-radius:5px;background:var(--bg-primary);color:var(--text-primary);outline:none;">
+                  <option value="all">Entire Sheet (All Columns)</option>
+                </select>
+              </div>
+              <div style="margin-bottom:8px;">
+                <label for="excelFilterConditionSelect" style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Condition</label>
+                <select id="excelFilterConditionSelect" style="width:100%;padding:5px 8px;font-size:11.5px;border:1px solid var(--border);border-radius:5px;background:var(--bg-primary);color:var(--text-primary);outline:none;">
+                  <option value="contains" selected>Text Contains</option>
+                  <option value="not_contains">Does Not Contain</option>
+                  <option value="equals">Equals Exact (=)</option>
+                  <option value="not_equals">Does Not Equal (&ne;)</option>
+                  <option value="starts_with">Starts With</option>
+                  <option value="ends_with">Ends With</option>
+                  <option value="gt">Greater Than (&gt;)</option>
+                  <option value="gte">Greater Than or Equal (&ge;)</option>
+                  <option value="lt">Less Than (&lt;)</option>
+                  <option value="lte">Less Than or Equal (&le;)</option>
+                  <option value="between">Between (e.g. 10..100)</option>
+                  <option value="is_empty">Is Empty / Blank</option>
+                  <option value="is_not_empty">Is Not Empty / Non-Blank</option>
+                </select>
+              </div>
+              <div id="excelFilterValGroup" style="margin-bottom:8px;">
+                <label for="excelFilterTextInput" style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px;">Filter Value</label>
+                <input type="text" id="excelFilterTextInput" placeholder="Enter text or number..." style="width:100%;box-sizing:border-box;padding:5px 8px;font-size:11.5px;border:1px solid var(--border);border-radius:5px;background:var(--bg-primary);color:var(--text-primary);outline:none;">
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+                <input type="checkbox" id="excelFilterCaseCheck" style="accent-color:var(--accent);cursor:pointer;width:14px;height:14px;">
+                <label for="excelFilterCaseCheck" style="font-size:11px;color:var(--text-muted);cursor:pointer;user-select:none;">Case Sensitive</label>
+              </div>
+              <div style="display:flex;gap:6px;justify-content:flex-end;">
+                <button type="button" id="excelFilterClearBtn" class="modal-btn" style="padding:4px 10px;font-size:11px;color:#ef4444;"><i class="fas fa-xmark"></i> Clear</button>
+                <button type="button" id="excelFilterApplyBtn" class="modal-btn primary" style="padding:4px 12px;font-size:11px;background:#0284c7;color:#fff;"><i class="fas fa-filter"></i> Apply Filter</button>
+              </div>
             </div>
           </div>
           <button class="fmt-btn with-text" id="excelEquationBtn" title="Open Equation & Calculation Bar (Solve math & formulas)"><i class="fas fa-calculator" style="color:#8b5cf6;"></i><span>Equation</span></button>
@@ -2570,15 +2657,25 @@
         <input type="text" id="excelEquationInput" placeholder="e.g. =SUM(A1:B1), AVERAGE(A1:A5), 250*1.18" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-size:12px;outline:none;" />
         <button type="button" id="excelEquationSolveBtn" class="modal-btn primary" style="padding:4px 10px;font-size:11px;">Solve</button>
       </div>
-      <div class="excel-equation-quick-pills" style="display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 4px;">
-        <button type="button" class="eq-pill" data-fn="SUM" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">SUM</button>
-        <button type="button" class="eq-pill" data-fn="AVERAGE" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">AVG</button>
-        <button type="button" class="eq-pill" data-fn="COUNT" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">COUNT</button>
-        <button type="button" class="eq-pill" data-fn="MAX" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">MAX</button>
-        <button type="button" class="eq-pill" data-fn="MIN" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">MIN</button>
-        <button type="button" class="eq-pill" data-fn="PRODUCT" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">PRODUCT</button>
-        <button type="button" class="eq-pill" data-fn="ROUND" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">ROUND</button>
-        <button type="button" class="eq-pill" data-fn="SQRT" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">SQRT</button>
+      <div class="excel-equation-quick-pills" style="display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 4px;max-width:320px;">
+        <button type="button" class="eq-pill" data-fn="SUM" title="Sum of numbers or selected cells" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">SUM</button>
+        <button type="button" class="eq-pill" data-fn="AVERAGE" title="Average of numbers or selected cells" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">AVG</button>
+        <button type="button" class="eq-pill" data-fn="COUNT" title="Count of numbers" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">COUNT</button>
+        <button type="button" class="eq-pill" data-fn="MAX" title="Maximum value" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">MAX</button>
+        <button type="button" class="eq-pill" data-fn="MIN" title="Minimum value" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">MIN</button>
+        <button type="button" class="eq-pill" data-fn="PRODUCT" title="Multiply values" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">PRODUCT</button>
+        <button type="button" class="eq-pill" data-fn="ROUND" title="Round to nearest integer or decimal" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">ROUND</button>
+        <button type="button" class="eq-pill" data-fn="SQRT" title="Square root" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">SQRT</button>
+        <button type="button" class="eq-pill" data-fn="POWER" title="Power / Exponential" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">POW</button>
+        <button type="button" class="eq-pill" data-fn="LOG" title="Logarithm (base 10)" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">LOG</button>
+        <button type="button" class="eq-pill" data-fn="LN" title="Natural Logarithm (base e)" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">LN</button>
+        <button type="button" class="eq-pill" data-fn="EXP" title="Exponential e^x" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">EXP</button>
+        <button type="button" class="eq-pill" data-fn="SIN" title="Trigonometric Sine (degrees)" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">SIN</button>
+        <button type="button" class="eq-pill" data-fn="COS" title="Trigonometric Cosine (degrees)" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">COS</button>
+        <button type="button" class="eq-pill" data-fn="TAN" title="Trigonometric Tangent (degrees)" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">TAN</button>
+        <button type="button" class="eq-pill" data-fn="ABS" title="Absolute value" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">ABS</button>
+        <button type="button" class="eq-pill" data-fn="MOD" title="Modulo remainder" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">MOD</button>
+        <button type="button" class="eq-pill" data-fn="PI" title="Mathematical Constant Pi" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);cursor:pointer;color:var(--text-primary);font-weight:600;">PI</button>
       </div>
       <div class="excel-equation-bar-footer" style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
         <span id="excelEquationResult" style="font-size:12px;font-weight:700;color:#16a34a;">Result: —</span>
@@ -2785,24 +2882,7 @@
       <input type="number" id="tableRows" value="3" min="1" max="25">
       <label for="tableCols">Number of Columns</label>
       <input type="number" id="tableCols" value="3" min="1" max="12">
-      <div style="display:flex;gap:12px;margin-top:8px;">
-        <div style="flex:1;">
-          <label for="tableBorderWidth" style="font-size:12px;font-weight:600;">Line Width</label>
-          <select id="tableBorderWidth" style="width:100%;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);outline:none;">
-            <option value="1px" selected>1px (Thin)</option>
-            <option value="2px">2px (Medium)</option>
-            <option value="3px">3px (Thick)</option>
-            <option value="4px">4px (Heavy)</option>
-          </select>
-        </div>
-        <div style="flex:1;">
-          <label for="tableBorderColor" style="font-size:12px;font-weight:600;">Line Color</label>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
-            <input type="color" id="tableBorderColor" value="#cbd5e1" style="width:38px;height:32px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg-primary);">
-            <span id="tableBorderColorLabel" style="font-size:11.5px;color:var(--text-muted);">#cbd5e1</span>
-          </div>
-        </div>
-      </div>
+      <!-- Width, alignment, spacing, and padding are adjusted manually after inserting (Bug 2) -->
       <div style="margin: 12px 0 8px;display:flex;flex-direction:column;gap:8px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;cursor:pointer;color:var(--text-primary);">
           <input type="checkbox" id="tableRowHeaderCheck" style="accent-color:var(--accent);width:16px;height:16px;cursor:pointer;">
@@ -2919,15 +2999,20 @@
       </div>
 
       <div style="margin-top:12px;">
-        <label for="customWatermarkColor">Color Tone</label>
-        <select id="customWatermarkColor" class="fmt-select" style="width:100%;">
-          <option value="148, 163, 184">Subtle Slate Gray</option>
-          <option value="239, 68, 68">Soft Crimson Red</option>
-          <option value="37, 99, 235">Soft Royal Blue</option>
-          <option value="234, 88, 12">Soft Amber Orange</option>
-          <option value="168, 85, 247">Soft Purple</option>
-          <option value="22, 163, 74">Soft Forest Green</option>
-        </select>
+        <label for="customWatermarkColorPicker" style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Watermark Color & Tone</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="color" id="customWatermarkColorPicker" value="#94a3b8" style="width:40px;height:34px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer;background:var(--bg-primary);">
+          <select id="customWatermarkColor" class="fmt-select" style="flex:1;height:34px;">
+            <option value="#94a3b8" selected>Slate Gray (#94a3b8)</option>
+            <option value="#ef4444">Crimson Red (#ef4444)</option>
+            <option value="#0284c7">Corporate Blue (#0284c7)</option>
+            <option value="#16a34a">Forest Green (#16a34a)</option>
+            <option value="#d97706">Amber Gold (#d97706)</option>
+            <option value="#9333ea">Royal Purple (#9333ea)</option>
+            <option value="#000000">Deep Black (#000000)</option>
+            <option value="custom">Custom Color Picker</option>
+          </select>
+        </div>
       </div>
 
       <div class="modal-actions" style="margin-top:16px;">
@@ -3493,6 +3578,19 @@
             <option value="80">Small (80px)</option>
             <option value="180">Large (180px)</option>
             <option value="260">X-Large (260px)</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Shape Shadow:</label>
+          <select id="shapeShadowSelect" class="fmt-select" style="width:100%;height:30px;">
+            <option value="none">None</option>
+            <option value="drop-shadow(2px 4px 6px rgba(0,0,0,0.35))" selected>Classic Drop Shadow</option>
+            <option value="drop-shadow(0 0 10px #3b82f6)">Neon Blue Glow</option>
+            <option value="drop-shadow(0 0 10px #10b981)">Emerald Glow</option>
+            <option value="drop-shadow(0 0 10px #f59e0b)">Amber Glow</option>
+            <option value="drop-shadow(0 0 10px #ec4899)">Pink Glow</option>
+            <option value="drop-shadow(0 0 10px #8b5cf6)">Violet Glow</option>
+            <option value="drop-shadow(4px 6px 12px rgba(0,0,0,0.5))">Heavy 3D</option>
           </select>
         </div>
       </div>

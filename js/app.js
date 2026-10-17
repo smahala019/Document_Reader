@@ -1002,6 +1002,9 @@
 
       const tab = window.DocFlow.UI.Tabs.create(fullName, content, ext.toUpperCase(), 'edit');
       window.DocFlow.UI.Tabs.activateTab(tab);
+      setTimeout(() => {
+        window.DocFlow.Editor?.resetHistoryForTab?.(content);
+      }, 50);
 
       Recent.add({
         name: fullName,
@@ -1088,6 +1091,9 @@
             }
             break;
           case 'z':
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar, .excel-formula-input, .excel-coord-box')) {
+              return; // Allow native form input undo
+            }
             e.preventDefault();
             if (window.DocFlow.currentMode === 'view' && window.DocFlow.PDF?.undoPdf) {
               window.DocFlow.PDF.undoPdf();
@@ -1098,6 +1104,9 @@
             }
             break;
           case 'y':
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar, .excel-formula-input, .excel-coord-box')) {
+              return; // Allow native form input redo
+            }
             e.preventDefault();
             if (window.DocFlow.currentMode === 'view' && window.DocFlow.PDF?.redoPdf) {
               window.DocFlow.PDF.redoPdf();
@@ -1239,7 +1248,25 @@
     tableHtml += `</tbody></table>`;
     printArea.innerHTML = tableHtml;
 
+    // Issue 2: Include spreadsheet charts in printed output
+    const charts = excelContainer.querySelectorAll('.doc-chart-container');
+    if (charts.length) {
+      const chartDock = document.createElement('div');
+      chartDock.className = 'excel-print-chart-dock';
+      chartDock.style.cssText = 'margin-top:24px;display:flex;flex-direction:column;gap:20px;page-break-inside:avoid;break-inside:avoid;';
+      charts.forEach(chart => {
+        const clone = chart.cloneNode(true);
+        clone.style.margin = '16px auto';
+        clone.style.maxWidth = '100%';
+        chartDock.appendChild(clone);
+      });
+      printArea.appendChild(chartDock);
+    }
+
     document.body.appendChild(printArea);
+
+    const numCols = headerThs.length || 5;
+    const scale = numCols > 8 ? Math.max(0.45, 8 / numCols).toFixed(2) : '1';
 
     let style = document.getElementById('dfExcelPrintPageStyle');
     if (!style) {
@@ -1268,13 +1295,26 @@
           max-width: 100% !important;
           border-collapse: collapse !important;
           font-size: 11pt !important;
-          zoom: 1 !important;
+          zoom: ${scale} !important;
         }
         body.print-excel-mode #dfExcelPrintArea th,
         body.print-excel-mode #dfExcelPrintArea td {
           border: 1px solid #94a3b8 !important;
           padding: 6px 10px !important;
           page-break-inside: avoid !important;
+        }
+        body.print-excel-mode #dfExcelPrintArea .excel-print-chart-dock {
+          display: flex !important;
+          margin-top: 24px !important;
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+        body.print-excel-mode #dfExcelPrintArea .doc-chart-container {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          box-shadow: none !important;
+          border: 1px solid #cbd5e1 !important;
+          margin: 12px auto !important;
         }
       }
     `;
@@ -2553,6 +2593,18 @@
       bodyContent = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin:12px 0;min-height:220px;"><div class="slide-freeform-rect" contenteditable="true" style="border:1.5px dashed var(--border);border-radius:8px;padding:16px;"><h4>Left Column</h4><p>Click to edit...</p></div><div class="slide-freeform-rect" contenteditable="true" style="border:1.5px dashed var(--border);border-radius:8px;padding:16px;"><h4>Right Column</h4><p>Click to edit...</p></div></div>`;
     } else if (layout === 'cards') {
       bodyContent = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin:12px 0;min-height:180px;"><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 1</h4><p>Details...</p></div><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 2</h4><p>Details...</p></div><div class="slide-nested-card" contenteditable="true" style="border:1px solid var(--border);border-radius:8px;padding:14px;"><h4>Card 3</h4><p>Details...</p></div></div>`;
+    } else if (layout === 'section-header') {
+      bodyContent = `<div style="margin:auto 0;text-align:left;padding:24px 20px;"><div class="slide-title-box" contenteditable="true" style="font-size:36px;font-weight:800;color:var(--text-primary);margin-bottom:12px;border-bottom:3px solid var(--accent);padding-bottom:10px;">Section Header</div><div class="slide-content-box" contenteditable="true" style="font-size:18px;color:var(--text-muted);line-height:1.5;">Section description or chapter summary...</div></div>`;
+    } else if (layout === 'comparison') {
+      bodyContent = `<div class="slide-title-box" contenteditable="true" style="font-size:26px;font-weight:700;color:var(--text-primary);border-bottom:2px solid var(--border);padding-bottom:10px;margin-bottom:16px;">Comparison</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;"><div style="display:flex;flex-direction:column;gap:8px;"><div contenteditable="true" style="font-size:18px;font-weight:700;color:var(--accent);padding:4px 8px;border-bottom:1.5px solid var(--border);">Option A</div><div contenteditable="true" style="flex:1;border:1.5px dashed var(--border);border-radius:6px;padding:12px;font-size:15px;line-height:1.5;">Points for Option A...</div></div><div style="display:flex;flex-direction:column;gap:8px;"><div contenteditable="true" style="font-size:18px;font-weight:700;color:var(--accent);padding:4px 8px;border-bottom:1.5px solid var(--border);">Option B</div><div contenteditable="true" style="flex:1;border:1.5px dashed var(--border);border-radius:6px;padding:12px;font-size:15px;line-height:1.5;">Points for Option B...</div></div></div>`;
+    } else if (layout === 'title-only') {
+      bodyContent = `<div class="slide-title-box" contenteditable="true" style="font-size:28px;font-weight:700;color:var(--text-primary);border-bottom:2px solid var(--border);padding-bottom:10px;margin-bottom:16px;">Click to add Title</div><div style="flex:1;min-height:220px;" contenteditable="true"><p style="color:var(--text-muted);font-style:italic;">Click to add content or objects...</p></div>`;
+    } else if (layout === 'content-caption') {
+      bodyContent = `<div style="display:grid;grid-template-columns:1.8fr 1fr;gap:24px;flex:1;align-items:stretch;"><div contenteditable="true" style="border:1.5px dashed var(--border);border-radius:8px;padding:20px;font-size:16px;line-height:1.6;display:flex;align-items:center;justify-content:center;background:var(--bg-tertiary);"><i class="fas fa-chart-pie" style="font-size:48px;color:var(--text-muted);opacity:0.6;"></i></div><div style="display:flex;flex-direction:column;justify-content:center;"><div contenteditable="true" style="font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:10px;">Content Title</div><div contenteditable="true" style="font-size:15px;color:var(--text-secondary);line-height:1.6;">Detailed caption or explanatory notes describing the visual...</div></div></div>`;
+    } else if (layout === 'picture-caption') {
+      bodyContent = `<div style="display:flex;flex-direction:column;flex:1;gap:14px;"><div contenteditable="true" style="flex:1;min-height:220px;border:2px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--bg-tertiary);"><i class="fas fa-image" style="font-size:48px;color:var(--text-muted);opacity:0.5;"></i><span style="margin-left:12px;font-size:14px;color:var(--text-muted);">Click to insert or drag image</span></div><div><div contenteditable="true" style="font-size:20px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">Picture Title</div><div contenteditable="true" style="font-size:14px;color:var(--text-muted);">Picture caption and credits...</div></div></div>`;
+    } else if (layout === 'quote-slide') {
+      bodyContent = `<div style="margin:auto 0;text-align:center;padding:24px;"><i class="fas fa-quote-left" style="font-size:36px;color:var(--accent);opacity:0.4;margin-bottom:16px;display:block;"></i><blockquote contenteditable="true" style="font-size:26px;font-style:italic;line-height:1.5;color:var(--text-primary);margin:0 0 16px;font-family:Georgia,serif;">"Type your impactful quote or key message here..."</blockquote><div contenteditable="true" style="font-size:16px;font-weight:700;color:var(--text-secondary);letter-spacing:1px;text-transform:uppercase;">— Author Name, Title</div></div>`;
     }
 
     return `
@@ -3195,6 +3247,7 @@
         td.dataset.coord = coord;
       });
     });
+    updateExcelChartPositions(table.closest('.excel-spreadsheet-container'));
   }
 
   function restoreCellFocus(preferredCell) {
@@ -3537,6 +3590,20 @@
           return nums.length ? Math.abs(nums[0]) : 0;
         case 'POWER':
           return nums.length >= 2 ? Math.pow(nums[0], nums[1]) : (nums[0] || 0);
+        case 'LOG':
+          return nums.length && nums[0] > 0 ? Number(Math.log10(nums[0]).toFixed(4)) : 0;
+        case 'LN':
+          return nums.length && nums[0] > 0 ? Number(Math.log(nums[0]).toFixed(4)) : 0;
+        case 'EXP':
+          return nums.length ? Number(Math.exp(nums[0]).toFixed(4)) : 0;
+        case 'SIN':
+          return nums.length ? Number(Math.sin((nums[0] * Math.PI) / 180).toFixed(4)) : 0;
+        case 'COS':
+          return nums.length ? Number(Math.cos((nums[0] * Math.PI) / 180).toFixed(4)) : 0;
+        case 'TAN':
+          return nums.length ? Number(Math.tan((nums[0] * Math.PI) / 180).toFixed(4)) : 0;
+        case 'PI':
+          return Number(Math.PI.toFixed(5));
         case 'MEDIAN': {
           if (!nums.length) return 0;
           const sorted = [...nums].sort((a, b) => a - b);
@@ -3887,6 +3954,89 @@
     restoreCellFocus(targetCell);
   }
 
+  // Issue 1: Position Excel chart 5 cells after the last data cell without changing cell numbers
+  function updateExcelChartPositions(excelContainer) {
+    if (!excelContainer) excelContainer = document.querySelector('.excel-spreadsheet-container');
+    if (!excelContainer) return;
+
+    const viewport = excelContainer.querySelector('.excel-sheet-viewport');
+    const table = excelContainer.querySelector('.excel-grid-table');
+    const chartArea = viewport?.querySelector('.excel-chart-dock-area');
+    if (!viewport || !table || !chartArea) return;
+
+    const charts = chartArea.querySelectorAll('.doc-chart-container');
+    if (!charts.length) {
+      chartArea.style.display = 'none';
+      return;
+    }
+    chartArea.style.display = 'flex';
+
+    // 1. Find last cell containing data in the table
+    let maxDataRowIndex = 0;
+    const trs = Array.from(table.querySelectorAll('tbody tr'));
+    trs.forEach((tr, idx) => {
+      const rowNum = idx + 1;
+      const hasData = Array.from(tr.querySelectorAll('td')).some(td => {
+        return (td.textContent || '').trim().length > 0 ||
+          td.dataset.customFill === 'true' ||
+          (td.style.backgroundColor && td.style.backgroundColor !== 'transparent') ||
+          td.querySelector('img, svg, canvas, .excel-text-highlight');
+      });
+      if (hasData) {
+        maxDataRowIndex = Math.max(maxDataRowIndex, rowNum);
+      }
+    });
+
+    if (maxDataRowIndex === 0) maxDataRowIndex = 1;
+
+    // Target row: 5 cells after the last cell containing data
+    const targetRowIndex = maxDataRowIndex + 5;
+
+    // Ensure rows exist in tbody up to targetRowIndex + 15 without altering existing coordinates
+    const tbody = table.querySelector('tbody') || table;
+    const thead = table.querySelector('thead tr');
+    const totalCols = thead ? thead.querySelectorAll('.excel-col-hdr').length : 10;
+    const getLetter = window.DocFlow.FileIO?.getExcelColLetter || (i => {
+      let letter = '';
+      let temp = i;
+      while (temp >= 0) {
+        letter = String.fromCharCode((temp % 26) + 65) + letter;
+        temp = Math.floor(temp / 26) - 1;
+      }
+      return letter;
+    });
+
+    let currentRows = tbody.querySelectorAll('tr').length;
+    const neededRows = Math.max(targetRowIndex + 15, currentRows);
+    if (neededRows > currentRows) {
+      for (let r = currentRows + 1; r <= neededRows; r++) {
+        const tr = document.createElement('tr');
+        const rowHdr = document.createElement('th');
+        rowHdr.className = 'excel-row-hdr';
+        rowHdr.contentEditable = 'false';
+        rowHdr.textContent = r;
+        tr.appendChild(rowHdr);
+        for (let c = 0; c < totalCols; c++) {
+          const td = document.createElement('td');
+          td.contentEditable = 'true';
+          td.dataset.coord = `${getLetter(c)}${r}`;
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      setupExcelInteractions();
+    }
+
+    const allRows = tbody.querySelectorAll('tr');
+    const targetTr = allRows[targetRowIndex - 1] || allRows[allRows.length - 1];
+    if (targetTr) {
+      const firstTd = targetTr.querySelector('td');
+      const leftOffset = firstTd ? firstTd.offsetLeft : 54;
+      chartArea.style.top = (targetTr.offsetTop || 0) + 'px';
+      chartArea.style.left = leftOffset + 'px';
+    }
+  }
+
   // Visual Chart Generator (Issue 5: 9 Chart Types with Corner Resize & Drag)
   function insertChartIntoDocument() {
     if (window.DocFlow.currentMode !== 'edit') {
@@ -4177,9 +4327,10 @@
         viewport.appendChild(chartArea);
       }
       chartArea.insertAdjacentHTML('beforeend', chartHtml);
+      updateExcelChartPositions(excelContainer);
       window.DocFlow.Editor?.notifyChange();
       closeModal('#chartModal');
-      showToast('Visual Data Chart inserted in empty space to right of data', 'success');
+      showToast('Visual Data Chart placed inside spreadsheet 5 cells after data', 'success');
       setTimeout(() => {
         const newlyInserted = chartArea.querySelector('.doc-chart-container:last-child');
         if (newlyInserted) {
@@ -4556,6 +4707,29 @@
     const formulaInput = container.querySelector('.excel-formula-input');
     const coordBox = container.querySelector('.excel-coord-box');
 
+    const syncExcelNotesVisibility = (activeCell) => {
+      const activeCoord = activeCell?.dataset?.coord;
+      container.querySelectorAll('.excel-floating-note').forEach(note => {
+        const targetCoord = note.getAttribute('data-target-coord');
+        if (activeCoord && targetCoord === activeCoord) {
+          note.style.display = 'block';
+          if (!note._hasBeenDragged && activeCell) {
+            const cRect = activeCell.getBoundingClientRect();
+            const pRect = container.getBoundingClientRect();
+            if (cRect.width > 0 && cRect.height > 0) {
+              const leftPos = Math.max(10, Math.round(cRect.left - pRect.left + container.scrollLeft + cRect.width + 10));
+              const topPos = Math.max(10, Math.round(cRect.top - pRect.top + container.scrollTop));
+              note.style.left = leftPos + 'px';
+              note.style.top = topPos + 'px';
+            }
+          }
+        } else {
+          note.style.display = 'none';
+        }
+      });
+    };
+    container._syncExcelNotesVisibility = syncExcelNotesVisibility;
+
     const attachCellSync = (td) => {
       if (td._excelSynced) return;
       td._excelSynced = true;
@@ -4569,6 +4743,7 @@
         }
         if (formulaInput) formulaInput.value = td.textContent || '';
         if (coordBox) coordBox.value = td.dataset.coord || 'A1';
+        syncExcelNotesVisibility(td);
       });
 
       td.addEventListener('blur', () => {
@@ -4583,6 +4758,7 @@
           formulaInput.value = td.textContent || '';
         }
         window.DocFlow.Editor?.notifyChange();
+        updateExcelChartPositions(container);
       });
 
       td.addEventListener('keydown', e => {
@@ -4629,6 +4805,7 @@
             if (coordBox) coordBox.value = frontCell.dataset.coord || '';
             if (formulaInput) formulaInput.value = String(result);
             window.DocFlow.Editor?.notifyChange();
+            updateExcelChartPositions(container);
             showToast(`Formula evaluated: ${result}`, 'success');
           } else {
             const tr = td.closest('tr');
@@ -4738,6 +4915,7 @@
               window._activeExcelCell = firstTd;
               if (coordBox) coordBox.value = firstTd.dataset.coord || 'A1';
               if (formulaInput) formulaInput.value = firstTd.textContent || '';
+              syncExcelNotesVisibility(firstTd);
             }
             window.DocFlow.Editor?.updateToolbarState?.();
           }
@@ -4772,6 +4950,7 @@
             window._activeExcelCell = firstTd;
             if (coordBox) coordBox.value = firstTd.dataset.coord || 'A1';
             if (formulaInput) formulaInput.value = firstTd.textContent || '';
+            syncExcelNotesVisibility(firstTd);
           }
           window.DocFlow.Editor?.updateToolbarState?.();
           return;
@@ -4801,6 +4980,7 @@
           window._activeExcelCell = td;
           if (coordBox) coordBox.value = td.dataset.coord || 'A1';
           if (formulaInput) formulaInput.value = td.textContent || '';
+          syncExcelNotesVisibility(td);
           window.DocFlow.Editor?.updateToolbarState?.();
           return;
         }
@@ -4819,6 +4999,7 @@
         window._activeExcelCell = td;
         if (coordBox) coordBox.value = td.dataset.coord || 'A1';
         if (formulaInput) formulaInput.value = td.textContent || '';
+        syncExcelNotesVisibility(td);
         if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
           td.contentEditable = 'true';
           td.focus();
@@ -4897,6 +5078,7 @@
             window._activeExcelCell = touchTarget;
             if (coordBox) coordBox.value = touchTarget.dataset.coord || 'A1';
             if (formulaInput) formulaInput.value = touchTarget.textContent || '';
+            syncExcelNotesVisibility(touchTarget);
             showToast(`Cell ${touchTarget.dataset.coord || ''} ${isSel ? 'selected' : 'unselected'}`, 'info');
           } else if (touchTarget.classList.contains('excel-row-hdr')) {
             const tr = touchTarget.closest('tr');
@@ -5285,7 +5467,10 @@
       editor._focusLockedToExcel = true;
       editor.addEventListener('click', e => {
         if (editor.querySelector('.excel-spreadsheet-container')) {
-          if (!e.target.closest('.excel-spreadsheet-container')) {
+          const isAllowed = e.target.closest(
+            '.excel-spreadsheet-container, .doc-textarea-container, .doc-shape-container, .chart-render-wrapper, .excel-floating-note, .df-img-move-handle, .df-img-handle, .df-img-toolbar, .doc-table'
+          );
+          if (!isAllowed) {
             e.preventDefault();
             e.stopPropagation();
             if (window._activeExcelCell) {
@@ -5297,6 +5482,64 @@
         }
       });
     }
+
+    // Sync notes that already exist in the container
+    container.querySelectorAll('.excel-floating-note').forEach(note => {
+      const coord = note.getAttribute('data-target-coord');
+      if (coord) {
+        const td = container.querySelector(`td[data-coord="${coord}"]`);
+        if (td) td.classList.add('excel-has-note');
+      }
+      const closeBtn = note.querySelector('.excel-note-close-btn');
+      if (closeBtn && !closeBtn._bound) {
+        closeBtn._bound = true;
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const c = note.getAttribute('data-target-coord');
+          note.remove();
+          if (c) {
+            const td = container.querySelector(`td[data-coord="${c}"]`);
+            if (td) td.classList.remove('excel-has-note');
+          }
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast('Cell note removed', 'info');
+        });
+      }
+      const hdr = note.querySelector('.excel-note-header');
+      if (hdr && !hdr._bound) {
+        hdr._bound = true;
+        let isDragging = false, dragX = 0, dragY = 0, initLeft = 0, initTop = 0;
+        hdr.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.excel-note-close-btn')) return;
+          e.preventDefault();
+          isDragging = true;
+          dragX = e.clientX;
+          dragY = e.clientY;
+          initLeft = parseInt(note.style.left, 10) || 0;
+          initTop = parseInt(note.style.top, 10) || 0;
+          const onMouseMove = (me) => {
+            if (!isDragging) return;
+            note._hasBeenDragged = true;
+            note.style.left = (initLeft + (me.clientX - dragX)) + 'px';
+            note.style.top = (initTop + (me.clientY - dragY)) + 'px';
+          };
+          const onMouseUp = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            window.DocFlow.Editor?.notifyChange();
+          };
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      }
+    });
+
+    const currentCell = window._activeExcelCell || container.querySelector('td.excel-cell-selected');
+    syncExcelNotesVisibility(currentCell);
+
+    updateExcelChartPositions(container);
   }
 
   // Watermark Inner HTML Generator
@@ -5312,7 +5555,7 @@
     if (pos === 'top') alignStyle = 'align-items: flex-start; justify-content: center; padding-top: 80px;';
     if (pos === 'bottom') alignStyle = 'align-items: flex-end; justify-content: center; padding-bottom: 80px;';
 
-    const singleSpan = `<span style="font-size: 64px; font-weight: 800; color: ${color}; transform: rotate(${angle}deg); letter-spacing: 10px; text-transform: uppercase; margin: 20px; display: inline-block;">${escHtml(text)}</span>`;
+    const singleSpan = `<span contenteditable="false" style="font-size: 64px; font-weight: 800; color: ${color}; transform: rotate(${angle}deg); letter-spacing: 10px; text-transform: uppercase; margin: 20px; display: inline-block; pointer-events: none !important; user-select: none !important;">${escHtml(text)}</span>`;
 
     let inner = singleSpan;
     if (count === '2') {
@@ -5399,12 +5642,199 @@
       showToast(`Auto-Save is now ${autoSaveEnabled ? 'ON (5s timer)' : 'OFF'}`, autoSaveEnabled ? 'success' : 'info');
     });
 
-    // Home Panel Office Integration Buttons (Issue 4: Sort Dropdown handled in editor.js)
+    // Colorful Text Shadows Dropdown (first.txt Issue 2)
+    const textShadowBtn = $('#textShadowBtn');
+    const textShadowPopover = $('#textShadowPopover');
+    if (textShadowBtn && textShadowPopover) {
+      textShadowBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (textShadowPopover.classList.contains('show')) {
+          textShadowPopover.classList.remove('show');
+        } else {
+          window.DocFlow.UI?.positionPopover?.(textShadowBtn, textShadowPopover);
+          textShadowPopover.classList.add('show');
+        }
+      });
+      $$('#textShadowPopover .spacing-opt-item[data-shadow]').forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const shadowVal = item.dataset.shadow;
+          textShadowPopover.classList.remove('show');
+          window.DocFlow.Editor?.applyTextShadow?.(shadowVal);
+        });
+      });
+    }
+
     $('#homePptShadowBtn')?.addEventListener('click', () => {
-      window.DocFlow.Editor?.toggleTextShadow();
+      window.DocFlow.Editor?.toggleTextShadow?.();
     });
 
-    // 3. Insert Panel (Date, Symbol, Checklist, Note, Paint, Office Embeds)
+    // 3. Insert Panel (Text Area, Picture, Table, Charts, Symbols)
+    $('#ribbonInsertTextAreaBtn')?.addEventListener('click', () => {
+      if (window.DocFlow.currentMode !== 'edit') {
+        showToast('Open a document in edit mode first', 'info');
+        return;
+      }
+      const textAreaId = 'ta_' + Date.now();
+      const textAreaHtml = `
+        <div class="doc-textarea-container" id="${textAreaId}" contenteditable="false">
+          <div class="doc-textarea-header" title="Drag header to move text area">
+            <span><i class="fas fa-pen-to-square" style="margin-right:5px;color:var(--accent,#0284c7);"></i>Text Area</span>
+            <button type="button" class="doc-textarea-del-btn" title="Remove Text Area" contenteditable="false"><i class="fas fa-trash-can"></i></button>
+          </div>
+          <div class="doc-textarea-body" contenteditable="true">
+            <p style="margin:0;">Type your notes, explanations, or text area contents here...</p>
+          </div>
+        </div>`;
+
+      const activeSlide = window.DocFlow?.getCurrentSlideWrapper?.() || document.querySelector('.pptx-slide-wrapper.active-slide') || document.querySelector('.pptx-slide-card.active-slide');
+      if (activeSlide && (document.body.classList.contains('slide-deck-mode') || window.DocFlow?.isPptxDocument?.())) {
+        const slideContent = activeSlide.querySelector('.pptx-slide-content') || activeSlide.querySelector('.pptx-slide-card') || activeSlide;
+        const temp = document.createElement('div');
+        temp.innerHTML = textAreaHtml;
+        const node = temp.firstElementChild;
+        if (node) {
+          node.style.position = 'absolute';
+          node.style.left = '60px';
+          node.style.top = '80px';
+          node.style.zIndex = '12';
+          node.style.maxWidth = '400px';
+          slideContent.appendChild(node);
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast('Text Area added to slide', 'success');
+          return;
+        }
+      }
+
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (excelContainer && excelContainer.parentNode) {
+        const temp = document.createElement('div');
+        temp.innerHTML = textAreaHtml;
+        const node = temp.firstElementChild;
+        excelContainer.parentNode.insertBefore(node, excelContainer.nextSibling);
+        window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.Editor?.saveSnapshot?.(true);
+        showToast('Text Area inserted below spreadsheet', 'success');
+        return;
+      }
+
+      window.DocFlow.Editor?.insertHtmlAtCursor(textAreaHtml + '<p><br></p>');
+      window.DocFlow.Editor?.notifyChange();
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      showToast('Text Area inserted into document', 'success');
+    });
+
+    function cleanupExcelTrailingSpace() {
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (!excelContainer || !excelContainer.parentNode) return;
+      let next = excelContainer.nextSibling;
+      const toRemove = [];
+      while (next) {
+        const isDocObj = (next.nodeType === 1) && (
+          next.classList?.contains('doc-textarea-container') ||
+          next.classList?.contains('doc-shape-container') ||
+          next.classList?.contains('chart-render-wrapper') ||
+          next.querySelector?.('.doc-textarea-container, .doc-shape-container, .chart-render-wrapper')
+        );
+        const hasText = next.textContent && next.textContent.trim().length > 0;
+        if (!isDocObj && !hasText) {
+          toRemove.push(next);
+        } else if (isDocObj || hasText) {
+          break;
+        }
+        next = next.nextSibling;
+      }
+      toRemove.forEach(n => n.remove());
+    }
+
+    // Delegate delete button clicks on doc-textarea-container (Requirement 1.4 & Bug 1.3)
+    document.addEventListener('click', (e) => {
+      const delBtn = e.target.closest('.doc-textarea-del-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        const container = delBtn.closest('.doc-textarea-container');
+        if (container) {
+          let next = container.nextSibling;
+          while (next && (next.nodeType === 3 && !next.textContent.trim() || (next.nodeType === 1 && (next.tagName === 'BR' || (next.tagName === 'P' && !next.textContent.trim()))))) {
+            const temp = next.nextSibling;
+            next.remove();
+            next = temp;
+          }
+          let prev = container.previousSibling;
+          while (prev && (prev.nodeType === 3 && !prev.textContent.trim() || (prev.nodeType === 1 && (prev.tagName === 'BR' || (prev.tagName === 'P' && !prev.textContent.trim()))))) {
+            const temp = prev.previousSibling;
+            prev.remove();
+            prev = temp;
+          }
+          container.remove();
+          cleanupExcelTrailingSpace();
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          window.DocFlow.UI?.Tabs?.saveCurrent?.();
+          showToast('Text Area removed', 'info');
+        }
+      }
+    }, true);
+
+    // Save entered data in textarea immediately on input and blur (Bug 1.3)
+    document.addEventListener('input', (e) => {
+      if (e.target.closest('.doc-textarea-body')) {
+        window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.UI?.Tabs?.saveCurrent?.();
+      }
+    });
+    document.addEventListener('blur', (e) => {
+      if (e.target.closest?.('.doc-textarea-body')) {
+        window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.UI?.Tabs?.saveCurrent?.();
+      }
+    }, true);
+
+    // Drag to move / reposition textarea by clicking and dragging .doc-textarea-header (Requirement 4)
+    let isDraggingTa = false;
+    let dragTaContainer = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let initialLeft = 0;
+    let initialTop = 0;
+
+    document.addEventListener('mousedown', (e) => {
+      const header = e.target.closest('.doc-textarea-header');
+      if (!header || e.target.closest('.doc-textarea-del-btn')) return;
+      const container = header.closest('.doc-textarea-container');
+      if (!container) return;
+
+      e.preventDefault();
+      isDraggingTa = true;
+      dragTaContainer = container;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+
+      if (getComputedStyle(container).position === 'static') {
+        container.style.position = 'relative';
+      }
+      initialLeft = parseFloat(container.style.left) || 0;
+      initialTop = parseFloat(container.style.top) || 0;
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDraggingTa || !dragTaContainer) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      dragTaContainer.style.left = (initialLeft + dx) + 'px';
+      dragTaContainer.style.top = (initialTop + dy) + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      if (isDraggingTa) {
+        isDraggingTa = false;
+        dragTaContainer = null;
+        window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.Editor?.saveSnapshot?.(true);
+      }
+    });
     $('#ribbonInsertChartBtn')?.addEventListener('click', () => {
       if (window.DocFlow.currentMode !== 'edit') {
         showToast('Open a document in edit mode first', 'info');
@@ -5598,6 +6028,98 @@
 
     $('#insertStickyNoteBtn')?.addEventListener('click', () => {
       if (window.DocFlow.currentMode !== 'edit') return;
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      if (excelContainer) {
+        window.DocFlow.Editor?.saveSnapshot?.(true);
+        if (getComputedStyle(excelContainer).position === 'static') {
+          excelContainer.style.position = 'relative';
+        }
+        const activeCell = (window._activeExcelCell && excelContainer.contains(window._activeExcelCell))
+          ? window._activeExcelCell
+          : (excelContainer.querySelector('td.excel-cell-selected') || excelContainer.querySelector('tbody td'));
+        if (activeCell) {
+          activeCell.classList.add('excel-has-note');
+          const coord = activeCell.dataset.coord || 'Cell';
+          const cRect = activeCell.getBoundingClientRect();
+          const pRect = excelContainer.getBoundingClientRect();
+          const leftPos = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + cRect.width + 10));
+          const topPos = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop));
+
+          const noteDiv = document.createElement('div');
+          noteDiv.className = 'excel-floating-note doc-note-card';
+          noteDiv.setAttribute('data-target-coord', coord);
+          noteDiv.style.cssText = `position:absolute;left:${leftPos}px;top:${topPos}px;width:190px;min-height:95px;background:#fef9c3;border:1px solid #facc15;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:8px 10px;z-index:35;font-size:12px;color:#1e293b;cursor:default;box-sizing:border-box;`;
+          noteDiv.innerHTML = `
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:700;font-size:11px;color:#854d0e;border-bottom:1px solid #fde047;padding-bottom:3px;cursor:move;user-select:none;" class="excel-note-header">
+              <span><i class="fas fa-note-sticky" style="color:#eab308;margin-right:4px;"></i> Note (${coord})</span>
+              <button type="button" class="excel-note-close-btn" style="border:none;background:transparent;cursor:pointer;color:#a16207;font-size:14px;padding:0 2px;line-height:1;" title="Delete Note">&times;</button>
+            </div>
+            <div class="excel-note-body" contenteditable="true" style="outline:none;min-height:50px;word-break:break-word;" data-placeholder="Enter note...">Write your note here...</div>
+          `;
+
+          // Header dragging
+          const hdr = noteDiv.querySelector('.excel-note-header');
+          let isDragging = false, dragX = 0, dragY = 0, initLeft = 0, initTop = 0;
+          hdr.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.excel-note-close-btn')) return;
+            e.preventDefault();
+            isDragging = true;
+            dragX = e.clientX;
+            dragY = e.clientY;
+            initLeft = parseInt(noteDiv.style.left, 10) || leftPos;
+            initTop = parseInt(noteDiv.style.top, 10) || topPos;
+            const onMouseMove = (me) => {
+              if (!isDragging) return;
+              noteDiv._hasBeenDragged = true;
+              noteDiv.style.left = (initLeft + (me.clientX - dragX)) + 'px';
+              noteDiv.style.top = (initTop + (me.clientY - dragY)) + 'px';
+            };
+            const onMouseUp = () => {
+              isDragging = false;
+              document.removeEventListener('mousemove', onMouseMove);
+              document.removeEventListener('mouseup', onMouseUp);
+              window.DocFlow.Editor?.notifyChange();
+            };
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+          });
+
+          // Close button
+          noteDiv.querySelector('.excel-note-close-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            noteDiv.remove();
+            activeCell.classList.remove('excel-has-note');
+            window.DocFlow.Editor?.notifyChange();
+            window.DocFlow.Editor?.saveSnapshot?.(true);
+            showToast('Cell note removed', 'info');
+          });
+
+          // Hide other cell notes so only active cell's note is shown
+          excelContainer.querySelectorAll('.excel-floating-note').forEach(n => {
+            if (n.getAttribute('data-target-coord') !== coord) {
+              n.style.display = 'none';
+            }
+          });
+          noteDiv.style.display = 'block';
+
+          excelContainer.appendChild(noteDiv);
+          const body = noteDiv.querySelector('.excel-note-body');
+          body.addEventListener('input', () => {
+            window.DocFlow.Editor?.notifyChange();
+            window.DocFlow.UI?.Tabs?.saveCurrent?.();
+          });
+          body.addEventListener('blur', () => {
+            window.DocFlow.Editor?.notifyChange();
+            window.DocFlow.UI?.Tabs?.saveCurrent?.();
+          });
+          body.focus();
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast(`Note inserted for cell ${coord}`, 'success');
+          return;
+        }
+      }
+
       const noteHtml = `<div class="onenote-sticky-note" contenteditable="true"><strong><i class="fas fa-note-sticky"></i> Note:</strong> Write your note here...</div><p><br></p>`;
       window.DocFlow.Editor?.insertHtmlAtCursor(noteHtml);
       showToast('Inserted Sticky Note', 'info');
@@ -6010,6 +6532,27 @@
       if (l) l.textContent = `${e.target.value}%`;
     });
 
+    $('#customWatermarkColorPicker')?.addEventListener('input', e => {
+      const select = $('#customWatermarkColor');
+      if (select) {
+        let matched = false;
+        Array.from(select.options).forEach(opt => {
+          if (opt.value.toLowerCase() === e.target.value.toLowerCase()) {
+            select.value = opt.value;
+            matched = true;
+          }
+        });
+        if (!matched) select.value = 'custom';
+      }
+    });
+
+    $('#customWatermarkColor')?.addEventListener('change', e => {
+      const picker = $('#customWatermarkColorPicker');
+      if (picker && e.target.value.startsWith('#')) {
+        picker.value = e.target.value;
+      }
+    });
+
     $('#customWatermarkCancel')?.addEventListener('click', () => closeModal('#customWatermarkModal'));
     $('#customWatermarkApply')?.addEventListener('click', () => {
       const text = $('#customWatermarkText')?.value.trim() || 'CONFIDENTIAL';
@@ -6017,8 +6560,18 @@
       const opacityVal = (parseInt($('#customWatermarkOpacity')?.value, 10) || 18) / 100;
       const pos = $('#customWatermarkPosition')?.value || 'center';
       const count = $('#customWatermarkCount')?.value || '1';
-      const colorTone = $('#customWatermarkColor')?.value || '148, 163, 184';
-      const rgbaColor = `rgba(${colorTone}, ${opacityVal})`;
+
+      const pickerVal = $('#customWatermarkColorPicker')?.value || '#94a3b8';
+      const selectVal = $('#customWatermarkColor')?.value || '#94a3b8';
+      const finalHex = (selectVal === 'custom') ? pickerVal : (selectVal.startsWith('#') ? selectVal : pickerVal);
+
+      let r = 148, g = 163, b = 184;
+      if (finalHex.startsWith('#') && finalHex.length === 7) {
+        r = parseInt(finalHex.slice(1, 3), 16) || 148;
+        g = parseInt(finalHex.slice(3, 5), 16) || 163;
+        b = parseInt(finalHex.slice(5, 7), 16) || 184;
+      }
+      const rgbaColor = `rgba(${r}, ${g}, ${b}, ${opacityVal})`;
 
       applyWatermark(text, angle, rgbaColor, pos, count);
       closeModal('#customWatermarkModal');
@@ -6031,6 +6584,9 @@
       if (!existingWm) {
         existingWm = document.createElement('div');
         existingWm.className = 'doc-watermark-overlay';
+        existingWm.contentEditable = 'false';
+        existingWm.setAttribute('contenteditable', 'false');
+        existingWm.setAttribute('aria-hidden', 'true');
         page.style.position = 'relative';
         page.prepend(existingWm);
       }
@@ -6048,7 +6604,10 @@
       if (pos === 'top') alignStyle = 'align-items: flex-start; justify-content: center; padding-top: 80px;';
       if (pos === 'bottom') alignStyle = 'align-items: flex-end; justify-content: center; padding-bottom: 80px;';
 
-      existingWm.style.cssText = `position: absolute; inset: 0; display: flex; ${alignStyle} pointer-events: none; z-index: 0; user-select: none; overflow: hidden;`;
+      existingWm.contentEditable = 'false';
+      existingWm.setAttribute('contenteditable', 'false');
+      existingWm.setAttribute('aria-hidden', 'true');
+      existingWm.style.cssText = `position: absolute; inset: 0; display: flex; ${alignStyle} pointer-events: none !important; z-index: 0; user-select: none !important; -webkit-user-select: none !important; overflow: hidden;`;
       existingWm.innerHTML = buildWatermarkHtml(window.DocFlow.activeWatermark);
       showToast(`Watermark applied (${text})`, 'info');
     }
@@ -6203,10 +6762,10 @@
       const footerCheck = $('#hfEnableFooterCheck');
 
       if (headerInput) {
-        headerInput.value = existingHeader ? (existingHeader.querySelector('span')?.textContent || existingHeader.textContent).replace(/^\[Header\]\s*/, '').trim() : docTitle;
+        headerInput.value = existingHeader ? (existingHeader.querySelector('.doc-header-editable')?.textContent || '').trim() : '';
       }
       if (footerInput) {
-        footerInput.value = existingFooter ? (existingFooter.querySelector('span')?.textContent || existingFooter.textContent).trim() : 'Confidential';
+        footerInput.value = existingFooter ? (existingFooter.querySelector('.doc-footer-editable')?.textContent || '').trim() : '';
       }
       if (headerCheck) headerCheck.checked = true;
       if (footerCheck) footerCheck.checked = true;
@@ -6217,18 +6776,70 @@
     function createHeaderNode(titleText) {
       const header = document.createElement('header');
       header.className = 'doc-header-area df-page-header';
-      header.contentEditable = 'true';
-      header.innerHTML = `<span><strong>[Header]</strong> ${escHtml(titleText || 'Document Header')}</span><span style="font-size:10px;opacity:0.8;">${new Date().toLocaleDateString()}</span><button type="button" class="df-hf-delete-btn" title="Remove Header" contenteditable="false"><i class="fas fa-times"></i></button>`;
+      header.contentEditable = 'false';
+      header.setAttribute('contenteditable', 'false');
+      const val = titleText !== undefined && titleText !== null ? titleText.trim() : '';
+      header.innerHTML = `
+        <button type="button" class="df-hf-delete-btn" title="Remove Header" contenteditable="false"><i class="fas fa-times"></i></button>
+        <div class="doc-header-editable" contenteditable="true" spellcheck="false" data-placeholder="Type Header..." title="Click to write header text (Press Enter for new line)">${escHtml(val)}</div>`;
+
+      const editable = header.querySelector('.doc-header-editable');
+      editable?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          document.execCommand('insertLineBreak');
+        }
+      });
       return header;
     }
 
-    function createFooterNode(footText, pageNum = 1, totalPages = 1) {
+    function createFooterNode(footText) {
       const footer = document.createElement('footer');
       footer.className = 'doc-footer-area df-page-footer';
-      footer.contentEditable = 'true';
-      footer.innerHTML = `<span>${escHtml(footText || 'Confidential')}</span><span>Page ${pageNum} of ${totalPages}</span><button type="button" class="df-hf-delete-btn" title="Remove Footer" contenteditable="false"><i class="fas fa-times"></i></button>`;
+      footer.contentEditable = 'false';
+      footer.setAttribute('contenteditable', 'false');
+      const val = footText !== undefined && footText !== null ? footText.trim() : '';
+      footer.innerHTML = `
+        <button type="button" class="df-hf-delete-btn" title="Remove Footer" contenteditable="false"><i class="fas fa-times"></i></button>
+        <div class="doc-footer-editable" contenteditable="true" spellcheck="false" data-placeholder="Type Footer..." title="Click to write footer text (Press Enter for new line)">${escHtml(val)}</div>`;
+
+      const editable = footer.querySelector('.doc-footer-editable');
+      editable?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          document.execCommand('insertLineBreak');
+        }
+      });
       return footer;
     }
+
+    // Global listener to ensure Enter always adds a line break inside header/footer editable areas
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const activeEditable = e.target.closest?.('.doc-header-editable, .doc-footer-editable');
+        if (activeEditable) {
+          e.preventDefault();
+          e.stopPropagation();
+          document.execCommand('insertLineBreak');
+        }
+      }
+    });
+
+    // Auto-save changes in header and footer (Bug 3)
+    document.addEventListener('input', (e) => {
+      if (e.target.closest('.doc-header-editable, .doc-footer-editable')) {
+        window.DocFlow.Editor?.notifyChange?.();
+        window.DocFlow.UI?.Tabs?.saveCurrent?.();
+      }
+    });
+    document.addEventListener('blur', (e) => {
+      if (e.target.closest?.('.doc-header-editable, .doc-footer-editable')) {
+        window.DocFlow.Editor?.notifyChange?.();
+        window.DocFlow.UI?.Tabs?.saveCurrent?.();
+      }
+    }, true);
 
     function applyHeaderFooterAction() {
       const editor = $('#editor');
@@ -6258,76 +6869,70 @@
         const existingPages = Array.from(editor.querySelectorAll('.df-page'));
         if (existingPages.length > 0) {
           existingPages.forEach((p, idx) => {
+            p.classList.add('has-header-footer');
+            let body = p.querySelector('.df-page-body, .doc-content-body');
+            if (!body) {
+              body = document.createElement('div');
+              body.className = 'df-page-body doc-content-body';
+              body.contentEditable = 'true';
+              const toMove = Array.from(p.childNodes).filter(n =>
+                !(n.nodeType === 1 && (n.classList.contains('doc-header-area') || n.classList.contains('doc-footer-area') || n.classList.contains('df-page-header') || n.classList.contains('df-page-footer') || n.classList.contains('doc-watermark-overlay')))
+              );
+              toMove.forEach(n => body.appendChild(n));
+              p.appendChild(body);
+            }
             if (wantHeader) p.insertBefore(createHeaderNode(headerText), p.firstChild);
-            if (wantFooter) p.appendChild(createFooterNode(footerText, idx + 1, existingPages.length));
+            if (wantFooter) p.appendChild(createFooterNode(footerText));
           });
         } else {
-          // Auto split into pages by paper size (A4 ~ 950px height)
-          const children = Array.from(editor.childNodes);
-          const pages = [];
-          let curNodes = [];
-          let curHeight = 0;
-          const PAGE_HEIGHT = 920;
-
-          children.forEach(child => {
-            if (child.nodeType === Node.ELEMENT_NODE && (child.classList.contains('doc-page-break') || child.classList.contains('excel-page-break-row'))) {
-              if (curNodes.length > 0) {
-                pages.push(curNodes);
-                curNodes = [];
-                curHeight = 0;
-              }
-              return;
+          // Wrap content in page with top header, middle body, bottom footer
+          const p = editor.querySelector('.editor-page') || editor;
+          p.classList.add('has-header-footer');
+          let body = p.querySelector('.df-page-body, .doc-content-body');
+          if (!body) {
+            body = document.createElement('div');
+            body.className = 'df-page-body doc-content-body';
+            body.contentEditable = 'true';
+            const toMove = Array.from(p.childNodes).filter(n =>
+              !(n.nodeType === 1 && (n.classList.contains('doc-header-area') || n.classList.contains('doc-footer-area') || n.classList.contains('df-page-header') || n.classList.contains('df-page-footer') || n.classList.contains('doc-watermark-overlay')))
+            );
+            if (toMove.length === 0) {
+              body.innerHTML = '<p><br></p>';
+            } else {
+              toMove.forEach(n => body.appendChild(n));
             }
-            curNodes.push(child);
-            const h = (child.nodeType === Node.ELEMENT_NODE) ? (child.offsetHeight || 36) : 22;
-            curHeight += h;
-            if (curHeight >= PAGE_HEIGHT) {
-              pages.push(curNodes);
-              curNodes = [];
-              curHeight = 0;
-            }
-          });
-          if (curNodes.length > 0) pages.push(curNodes);
-
-          if (pages.length <= 1) {
-            if (wantHeader) editor.insertBefore(createHeaderNode(headerText), editor.firstChild);
-            if (wantFooter) editor.appendChild(createFooterNode(footerText, 1, 1));
-          } else {
-            editor.innerHTML = '';
-            pages.forEach((pNodes, idx) => {
-              const pageWrap = document.createElement('div');
-              pageWrap.className = 'df-page';
-              pageWrap.style.cssText = 'position:relative;min-height:980px;margin-bottom:28px;padding:24px 20px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);box-shadow:0 2px 8px rgba(0,0,0,0.06);display:flex;flex-direction:column;';
-              
-              if (wantHeader) pageWrap.appendChild(createHeaderNode(headerText));
-              const pageBody = document.createElement('div');
-              pageBody.className = 'df-page-body';
-              pageBody.style.flex = '1';
-              pNodes.forEach(n => pageBody.appendChild(n));
-              pageWrap.appendChild(pageBody);
-              if (wantFooter) pageWrap.appendChild(createFooterNode(footerText, idx + 1, pages.length));
-
-              editor.appendChild(pageWrap);
-              if (idx < pages.length - 1) {
-                const pb = document.createElement('div');
-                pb.className = 'doc-page-break';
-                pb.contentEditable = 'false';
-                pb.innerHTML = '<div class="doc-page-break-line"><span>Page Break (Page ' + (idx + 1) + ')</span></div>';
-                editor.appendChild(pb);
-              }
-            });
+            p.appendChild(body);
           }
+          if (wantHeader) p.insertBefore(createHeaderNode(headerText), p.firstChild);
+          if (wantFooter) p.appendChild(createFooterNode(footerText));
         }
       } else {
-        // Single Page: Apply to editor root
-        if (wantHeader) editor.insertBefore(createHeaderNode(headerText), editor.firstChild);
-        if (wantFooter) editor.appendChild(createFooterNode(footerText, 1, 1));
+        // Single Page: Apply to editor page with proper top/middle/bottom flex layout
+        const p = editor.querySelector('.editor-page') || editor;
+        p.classList.add('has-header-footer');
+        let body = p.querySelector('.df-page-body, .doc-content-body');
+        if (!body) {
+          body = document.createElement('div');
+          body.className = 'df-page-body doc-content-body';
+          body.contentEditable = 'true';
+          const toMove = Array.from(p.childNodes).filter(n =>
+            !(n.nodeType === 1 && (n.classList.contains('doc-header-area') || n.classList.contains('doc-footer-area') || n.classList.contains('df-page-header') || n.classList.contains('df-page-footer') || n.classList.contains('doc-watermark-overlay')))
+          );
+          if (toMove.length === 0) {
+            body.innerHTML = '<p><br></p>';
+          } else {
+            toMove.forEach(n => body.appendChild(n));
+          }
+          p.appendChild(body);
+        }
+        if (wantHeader) p.insertBefore(createHeaderNode(headerText), p.firstChild);
+        if (wantFooter) p.appendChild(createFooterNode(footerText));
       }
 
       window.DocFlow.Editor?.saveSnapshot?.(true);
       window.DocFlow.Editor?.notifyChange?.();
       window.DocFlow.UI?.closeModal?.('#headerFooterModal');
-      showToast(`Header & Footer applied (${isAllPages ? 'All Pages with Auto Page-Break' : 'Single Page'})`, 'success');
+      showToast(`Header & Footer applied (${isAllPages ? 'All Pages' : 'Single Page'})`, 'success');
     }
 
     $('#layoutHeaderFooterBtn')?.addEventListener('click', (e) => {
@@ -7433,52 +8038,93 @@
       });
     });
 
-    $('#excelFmtCurrencyBtn')?.addEventListener('click', () => {
+    function getExcelTargetCells() {
+      const table = document.querySelector('.excel-grid-table') || document.querySelector('#editor table');
+      if (!table) return [];
+      const selected = Array.from(table.querySelectorAll('td.excel-cell-selected'));
+      if (selected.length > 0) return selected;
       const cell = getActiveTableCell();
-      if (cell) {
+      return cell ? [cell] : [];
+    }
+
+    $('#excelFmtCurrencyBtn')?.addEventListener('click', () => {
+      const cells = getExcelTargetCells();
+      if (!cells.length) {
+        showToast('Click inside a spreadsheet cell first', 'info');
+        return;
+      }
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      cells.forEach(cell => {
         const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
         cell.textContent = `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        window.DocFlow.Editor?.notifyChange();
-        showToast('Formatted as Currency ($)', 'info');
-      } else showToast('Click inside a table cell first', 'info');
-      restoreCellFocus(cell);
+      });
+      const formulaInput = document.querySelector('.excel-formula-input');
+      if (formulaInput && window._activeExcelCell) formulaInput.value = window._activeExcelCell.textContent || '';
+      window.DocFlow.Editor?.notifyChange();
+      showToast(`Formatted ${cells.length} cell(s) as Currency ($)`, 'info');
+      restoreCellFocus(cells[0]);
     });
 
     $('#excelFmtPercentBtn')?.addEventListener('click', () => {
-      const cell = getActiveTableCell();
-      if (cell) {
+      const cells = getExcelTargetCells();
+      if (!cells.length) {
+        showToast('Click inside a spreadsheet cell first', 'info');
+        return;
+      }
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      cells.forEach(cell => {
         const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
         cell.textContent = `${(num * (num < 1 ? 100 : 1)).toFixed(1)}%`;
-        window.DocFlow.Editor?.notifyChange();
-        showToast('Formatted as Percentage (%)', 'info');
-      } else showToast('Click inside a table cell first', 'info');
-      restoreCellFocus(cell);
+      });
+      const formulaInput = document.querySelector('.excel-formula-input');
+      if (formulaInput && window._activeExcelCell) formulaInput.value = window._activeExcelCell.textContent || '';
+      window.DocFlow.Editor?.notifyChange();
+      showToast(`Formatted ${cells.length} cell(s) as Percentage (%)`, 'info');
+      restoreCellFocus(cells[0]);
     });
 
     $('#excelFmtDecimalIncBtn')?.addEventListener('click', () => {
-      const cell = getActiveTableCell();
-      if (cell) {
-        const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
-        cell.textContent = num.toFixed(2);
-        window.DocFlow.Editor?.notifyChange();
-        showToast('Increased decimals (.00)', 'info');
-      } else {
-        showToast('Click inside a table cell first', 'info');
+      const cells = getExcelTargetCells();
+      if (!cells.length) {
+        showToast('Click inside a spreadsheet cell first', 'info');
+        return;
       }
-      restoreCellFocus(cell);
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      cells.forEach(cell => {
+        const text = (cell.textContent || '').trim();
+        const num = parseFloat(text.replace(/[^0-9.-]/g, '')) || 0;
+        const decMatch = text.match(/\.(\d+)/);
+        const curDec = decMatch ? decMatch[1].length : 0;
+        const newDec = Math.min(6, curDec + 1);
+        cell.textContent = num.toFixed(newDec);
+      });
+      const formulaInput = document.querySelector('.excel-formula-input');
+      if (formulaInput && window._activeExcelCell) formulaInput.value = window._activeExcelCell.textContent || '';
+      window.DocFlow.Editor?.notifyChange();
+      showToast(`Increased decimals on ${cells.length} cell(s)`, 'info');
+      restoreCellFocus(cells[0]);
     });
 
     $('#excelFmtDecimalDecBtn')?.addEventListener('click', () => {
-      const cell = getActiveTableCell();
-      if (cell) {
-        const num = parseFloat(cell.textContent.replace(/[^0-9.-]/g, '')) || 0;
-        cell.textContent = num.toFixed(1);
-        window.DocFlow.Editor?.notifyChange();
-        showToast('Decreased decimals (.0)', 'info');
-      } else {
-        showToast('Click inside a table cell first', 'info');
+      const cells = getExcelTargetCells();
+      if (!cells.length) {
+        showToast('Click inside a spreadsheet cell first', 'info');
+        return;
       }
-      restoreCellFocus(cell);
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      cells.forEach(cell => {
+        const text = (cell.textContent || '').trim();
+        const num = parseFloat(text.replace(/[^0-9.-]/g, '')) || 0;
+        const decMatch = text.match(/\.(\d+)/);
+        const curDec = decMatch ? decMatch[1].length : 0;
+        const newDec = Math.max(0, curDec - 1);
+        cell.textContent = newDec === 0 ? Math.round(num).toString() : num.toFixed(newDec);
+      });
+      const formulaInput = document.querySelector('.excel-formula-input');
+      if (formulaInput && window._activeExcelCell) formulaInput.value = window._activeExcelCell.textContent || '';
+      window.DocFlow.Editor?.notifyChange();
+      showToast(`Decreased decimals on ${cells.length} cell(s)`, 'info');
+      restoreCellFocus(cells[0]);
     });
 
     $('#excelBorderBtn')?.addEventListener('click', e => {
@@ -7503,28 +8149,57 @@
           window.DocFlow.Editor?.saveSnapshot?.();
           const selected = Array.from(table.querySelectorAll('td.excel-cell-selected'));
           const targets = selected.length > 0 ? selected : (cell ? [cell] : Array.from(table.querySelectorAll('td')));
-          targets.forEach(c => {
-            if (type === 'all') {
-              c.style.border = '1px solid var(--border, #cbd5e1)';
-            } else if (type === 'outside') {
-              c.style.border = '2px solid var(--accent, #16a34a)';
-            } else if (type === 'thick-bottom') {
-              c.style.borderBottom = '3px solid #0f172a';
-            } else if (type === 'top-bottom') {
-              c.style.borderTop = '1px solid var(--border, #cbd5e1)';
-              c.style.borderBottom = '2px double #0f172a';
-            } else if (type === 'left') {
-              c.style.borderLeft = '2px solid var(--accent, #16a34a)';
-            } else if (type === 'right') {
-              c.style.borderRight = '2px solid var(--accent, #16a34a)';
-            } else if (type === 'top') {
-              c.style.borderTop = '2px solid var(--accent, #16a34a)';
-            } else if (type === 'bottom') {
-              c.style.borderBottom = '2px solid var(--accent, #16a34a)';
-            } else if (type === 'none') {
-              c.style.border = '1px solid transparent';
-            }
-          });
+          const isDark = document.body.getAttribute('data-theme') === 'dark' || document.documentElement.getAttribute('data-theme') === 'dark';
+          const defaultBorderColor = isDark ? '#f8fafc' : '#0f172a';
+
+          if (type === 'outside') {
+            const minR = Math.min(...targets.map(c => c.closest('tr').rowIndex));
+            const maxR = Math.max(...targets.map(c => c.closest('tr').rowIndex));
+            const minC = Math.min(...targets.map(c => c.cellIndex));
+            const maxC = Math.max(...targets.map(c => c.cellIndex));
+            targets.forEach(c => {
+              c.classList.add('excel-border-applied');
+              const rIdx = c.closest('tr').rowIndex;
+              const cIdx = c.cellIndex;
+              if (rIdx === minR) c.style.setProperty('border-top', `2px solid ${defaultBorderColor}`, 'important');
+              if (rIdx === maxR) c.style.setProperty('border-bottom', `2px solid ${defaultBorderColor}`, 'important');
+              if (cIdx === minC) c.style.setProperty('border-left', `2px solid ${defaultBorderColor}`, 'important');
+              if (cIdx === maxC) c.style.setProperty('border-right', `2px solid ${defaultBorderColor}`, 'important');
+            });
+          } else {
+            targets.forEach(c => {
+              if (type === 'all') {
+                c.classList.add('excel-border-applied');
+                c.style.setProperty('border', `1.5px solid ${defaultBorderColor}`, 'important');
+              } else if (type === 'thick-bottom') {
+                c.classList.add('excel-border-applied');
+                c.style.setProperty('border-bottom', `3px solid ${defaultBorderColor}`, 'important');
+              } else if (type === 'top-bottom') {
+                c.classList.add('excel-border-applied');
+                c.style.setProperty('border-top', `1.5px solid ${defaultBorderColor}`, 'important');
+                c.style.setProperty('border-bottom', `3px double ${defaultBorderColor}`, 'important');
+              } else if (type === 'left') {
+                c.classList.add('excel-border-applied');
+                c.style.setProperty('border-left', `2px solid ${defaultBorderColor}`, 'important');
+              } else if (type === 'right') {
+                c.classList.add('excel-border-applied');
+                c.style.setProperty('border-right', `2px solid ${defaultBorderColor}`, 'important');
+              } else if (type === 'top') {
+                c.classList.add('excel-border-applied');
+                c.style.setProperty('border-top', `2px solid ${defaultBorderColor}`, 'important');
+              } else if (type === 'bottom') {
+                c.classList.add('excel-border-applied');
+                c.style.setProperty('border-bottom', `2px solid ${defaultBorderColor}`, 'important');
+              } else if (type === 'none') {
+                c.classList.remove('excel-border-applied');
+                c.style.removeProperty('border');
+                c.style.removeProperty('border-top');
+                c.style.removeProperty('border-bottom');
+                c.style.removeProperty('border-left');
+                c.style.removeProperty('border-right');
+              }
+            });
+          }
           window.DocFlow.Editor?.notifyChange();
           showToast(`Border style applied: ${type}`, 'info');
         }
@@ -7577,28 +8252,30 @@
         const maxC = Math.max(...targets.map(c => c.cellIndex));
 
         targets.forEach(c => {
+          c.classList.add('excel-border-applied');
           const rIdx = c.closest('tr').rowIndex;
           const cIdx = c.cellIndex;
-          if (rIdx === minR) c.style.borderTop = borderRule;
-          if (rIdx === maxR) c.style.borderBottom = borderRule;
-          if (cIdx === minC) c.style.borderLeft = borderRule;
-          if (cIdx === maxC) c.style.borderRight = borderRule;
+          if (rIdx === minR) c.style.setProperty('border-top', borderRule, 'important');
+          if (rIdx === maxR) c.style.setProperty('border-bottom', borderRule, 'important');
+          if (cIdx === minC) c.style.setProperty('border-left', borderRule, 'important');
+          if (cIdx === maxC) c.style.setProperty('border-right', borderRule, 'important');
         });
       } else {
         targets.forEach(c => {
+          c.classList.add('excel-border-applied');
           if (sides === 'all') {
-            c.style.border = borderRule;
+            c.style.setProperty('border', borderRule, 'important');
           } else if (sides === 'top') {
-            c.style.borderTop = borderRule;
+            c.style.setProperty('border-top', borderRule, 'important');
           } else if (sides === 'bottom') {
-            c.style.borderBottom = borderRule;
+            c.style.setProperty('border-bottom', borderRule, 'important');
           } else if (sides === 'left') {
-            c.style.borderLeft = borderRule;
+            c.style.setProperty('border-left', borderRule, 'important');
           } else if (sides === 'right') {
-            c.style.borderRight = borderRule;
+            c.style.setProperty('border-right', borderRule, 'important');
           } else if (sides === 'top-bottom') {
-            c.style.borderTop = borderRule;
-            c.style.borderBottom = borderRule;
+            c.style.setProperty('border-top', borderRule, 'important');
+            c.style.setProperty('border-bottom', borderRule, 'important');
           }
         });
       }
@@ -7657,7 +8334,36 @@
       window.DocFlow.Editor?.sortSelectedTextOrTable('desc');
       restoreCellFocus(getActiveTableCell());
     });
-    // Excel Filter Dropdown & Functionality (Issue 1.5)
+    // Excel Filter Dropdown & Functionality (Issue 3: Condition-Based Filtering)
+    const populateExcelFilterColumns = () => {
+      const colSelect = $('#excelFilterColumnSelect');
+      if (!colSelect) return;
+      const table = document.querySelector('.excel-grid-table') || document.querySelector('#editor table');
+      const curVal = colSelect.value;
+      colSelect.innerHTML = '<option value="all">Entire Sheet (All Columns)</option>';
+      if (!table) return;
+
+      const theadThs = Array.from(table.querySelectorAll('thead th.excel-col-hdr'));
+      const firstRowTds = Array.from(table.querySelectorAll('tbody tr:first-child td'));
+
+      theadThs.forEach((th, idx) => {
+        const colLetter = th.textContent.trim() || `Col ${idx + 1}`;
+        const headerName = firstRowTds[idx]?.textContent.trim();
+        const label = headerName ? `${colLetter} — "${headerName.substring(0, 16)}"` : `Column ${colLetter}`;
+        const opt = document.createElement('option');
+        opt.value = String(idx + 1);
+        opt.textContent = label;
+        colSelect.appendChild(opt);
+      });
+
+      const activeCell = window._activeExcelCell || table.querySelector('td.excel-cell-selected');
+      if (activeCell && activeCell.cellIndex > 0) {
+        colSelect.value = String(activeCell.cellIndex);
+      } else if (curVal && colSelect.querySelector(`option[value="${curVal}"]`)) {
+        colSelect.value = curVal;
+      }
+    };
+
     $('#excelFilterBtn')?.addEventListener('click', (e) => {
       e.stopPropagation();
       const pop = $('#excelFilterPopover');
@@ -7666,49 +8372,112 @@
         if (pop.classList.contains('show')) {
           pop.classList.remove('show');
         } else {
+          populateExcelFilterColumns();
           window.DocFlow.UI?.positionPopover?.(btn, pop);
         }
       }
     });
 
-    $('#excelFilterSortAsc')?.addEventListener('click', () => {
-      $('#excelFilterPopover')?.classList.remove('show');
-      window.DocFlow.Editor?.sortSelectedTextOrTable('asc');
-      restoreCellFocus(getActiveTableCell());
+    $('#excelFilterConditionSelect')?.addEventListener('change', e => {
+      const valGroup = $('#excelFilterValGroup');
+      const cond = e.target.value;
+      if (valGroup) {
+        valGroup.style.display = (cond === 'is_empty' || cond === 'is_not_empty') ? 'none' : 'block';
+      }
     });
 
-    $('#excelFilterSortDesc')?.addEventListener('click', () => {
-      $('#excelFilterPopover')?.classList.remove('show');
-      window.DocFlow.Editor?.sortSelectedTextOrTable('desc');
-      restoreCellFocus(getActiveTableCell());
-    });
+    function testCellFilterCondition(cellRawText, cond, query, isCase) {
+      let val = (cellRawText || '').trim();
+      let target = (query || '').trim();
+      if (!isCase) {
+        val = val.toLowerCase();
+        target = target.toLowerCase();
+      }
+      const numVal = parseFloat(val.replace(/[^0-9.-]/g, ''));
+      const numTarget = parseFloat(target.replace(/[^0-9.-]/g, ''));
+      const hasNumbers = !isNaN(numVal) && !isNaN(numTarget) && val.length > 0 && target.length > 0;
+
+      switch (cond) {
+        case 'contains':
+          return val.includes(target);
+        case 'not_contains':
+          return !val.includes(target);
+        case 'equals':
+          return hasNumbers ? numVal === numTarget : val === target;
+        case 'not_equals':
+          return hasNumbers ? numVal !== numTarget : val !== target;
+        case 'starts_with':
+          return val.startsWith(target);
+        case 'ends_with':
+          return val.endsWith(target);
+        case 'gt':
+          return hasNumbers ? numVal > numTarget : val > target;
+        case 'gte':
+          return hasNumbers ? numVal >= numTarget : val >= target;
+        case 'lt':
+          return hasNumbers ? numVal < numTarget : val < target;
+        case 'lte':
+          return hasNumbers ? numVal <= numTarget : val <= target;
+        case 'between': {
+          const parts = target.split(/\.\.|\s+to\s+|,|-/).map(p => parseFloat(p.trim())).filter(n => !isNaN(n));
+          if (parts.length >= 2 && !isNaN(numVal)) {
+            const min = Math.min(parts[0], parts[1]);
+            const max = Math.max(parts[0], parts[1]);
+            return numVal >= min && numVal <= max;
+          }
+          return true;
+        }
+        case 'is_empty':
+          return val.length === 0;
+        case 'is_not_empty':
+          return val.length > 0;
+        default:
+          return val.includes(target);
+      }
+    }
 
     const applyExcelFilter = () => {
-      const q = ($('#excelFilterTextInput')?.value || '').trim().toLowerCase();
       const table = document.querySelector('.excel-grid-table');
       if (!table) return;
+
+      const colVal = $('#excelFilterColumnSelect')?.value || 'all';
+      const cond = $('#excelFilterConditionSelect')?.value || 'contains';
+      const q = ($('#excelFilterTextInput')?.value || '').trim();
+      const isCase = $('#excelFilterCaseCheck')?.checked || false;
+
       const tbody = table.querySelector('tbody') || table;
       const rows = Array.from(tbody.querySelectorAll('tr'));
-      const activeCell = window._activeExcelCell || table.querySelector('td.excel-cell-selected');
-      const colIdx = (activeCell && activeCell.cellIndex > 0) ? activeCell.cellIndex : -1;
-
       let visibleCount = 0;
+
       rows.forEach(r => {
-        if (!q) {
-          r.style.display = '';
-          visibleCount++;
-          return;
-        }
+        const cells = Array.from(r.querySelectorAll('td'));
         let match = false;
-        if (colIdx > 0 && r.cells[colIdx]) {
-          match = (r.cells[colIdx].textContent || '').toLowerCase().includes(q);
+        if (colVal === 'all') {
+          if (cond === 'not_contains' || cond === 'not_equals') {
+            match = cells.every(td => testCellFilterCondition(td.textContent, cond, q, isCase));
+          } else if (cond === 'is_empty') {
+            match = cells.every(td => (td.textContent || '').trim().length === 0);
+          } else {
+            match = cells.some(td => testCellFilterCondition(td.textContent, cond, q, isCase));
+          }
         } else {
-          match = Array.from(r.querySelectorAll('td')).some(td => (td.textContent || '').toLowerCase().includes(q));
+          const cIdx = parseInt(colVal, 10);
+          const td = r.cells[cIdx];
+          match = td ? testCellFilterCondition(td.textContent, cond, q, isCase) : false;
         }
+
         r.style.display = match ? '' : 'none';
         if (match) visibleCount++;
       });
-      showToast(`Filter applied: ${visibleCount} row(s) visible`, 'info');
+
+      const badge = $('#excelFilterCountBadge');
+      if (badge) {
+        badge.textContent = `${visibleCount} of ${rows.length} rows visible`;
+        badge.style.background = visibleCount < rows.length ? '#0284c7' : 'var(--bg-tertiary)';
+        badge.style.color = visibleCount < rows.length ? '#ffffff' : 'var(--text-muted)';
+      }
+      updateExcelChartPositions(table.closest('.excel-spreadsheet-container'));
+      showToast(`Filter applied: ${visibleCount} of ${rows.length} row(s) visible`, 'info');
     };
 
     $('#excelFilterApplyBtn')?.addEventListener('click', applyExcelFilter);
@@ -7719,11 +8488,27 @@
     $('#excelFilterClearBtn')?.addEventListener('click', () => {
       const input = $('#excelFilterTextInput');
       if (input) input.value = '';
+      const condSel = $('#excelFilterConditionSelect');
+      if (condSel) condSel.value = 'contains';
+      const caseCheck = $('#excelFilterCaseCheck');
+      if (caseCheck) caseCheck.checked = false;
+      const colSelect = $('#excelFilterColumnSelect');
+      if (colSelect) colSelect.value = 'all';
+      const valGroup = $('#excelFilterValGroup');
+      if (valGroup) valGroup.style.display = 'block';
+
       const table = document.querySelector('.excel-grid-table');
       if (table) {
         table.querySelectorAll('tbody tr').forEach(r => r.style.display = '');
       }
+      const badge = $('#excelFilterCountBadge');
+      if (badge) {
+        badge.textContent = 'All rows visible';
+        badge.style.background = 'var(--bg-tertiary)';
+        badge.style.color = 'var(--text-muted)';
+      }
       $('#excelFilterPopover')?.classList.remove('show');
+      updateExcelChartPositions(table?.closest('.excel-spreadsheet-container'));
       showToast('Spreadsheet filter cleared: All rows visible', 'success');
       restoreCellFocus(getActiveTableCell());
     });
@@ -7762,18 +8547,53 @@
     const solveEquation = () => {
       const input = $('#excelEquationInput');
       const resEl = $('#excelEquationResult');
-      if (!input || !resEl) return;
-      let expr = input.value.trim();
+      if (!input || !resEl) return null;
+      let expr = (input.value || '').trim();
       if (!expr) {
-        resEl.textContent = '0';
+        resEl.textContent = 'Result: 0';
         return 0;
       }
 
       if (expr.startsWith('=')) expr = expr.substring(1).trim();
 
-      // Resolve spreadsheet cell references like A1, B2 if in Excel
       const table = document.querySelector('.excel-grid-table');
+
+      // 1. Resolve spreadsheet cell ranges like A1:B3 into comma-separated numbers
       if (table) {
+        expr = expr.replace(/\b([A-Z]+)(\d+):([A-Z]+)(\d+)\b/gi, (match, col1, row1, col2, row2) => {
+          const getColIdx = (letters) => {
+            let idx = 0;
+            for (let i = 0; i < letters.length; i++) {
+              idx = idx * 26 + (letters.charCodeAt(i) - 64);
+            }
+            return idx;
+          };
+          const c1 = getColIdx(col1.toUpperCase());
+          const c2 = getColIdx(col2.toUpperCase());
+          const r1 = parseInt(row1, 10);
+          const r2 = parseInt(row2, 10);
+
+          const minC = Math.min(c1, c2);
+          const maxC = Math.max(c1, c2);
+          const minR = Math.min(r1, r2);
+          const maxR = Math.max(r1, r2);
+
+          const vals = [];
+          for (let r = minR; r <= maxR; r++) {
+            const row = table.rows[r];
+            if (row) {
+              for (let c = minC; c <= maxC; c++) {
+                if (row.cells[c]) {
+                  const num = parseFloat((row.cells[c].textContent || '').replace(/[^0-9.-]/g, ''));
+                  vals.push(isNaN(num) ? 0 : num);
+                }
+              }
+            }
+          }
+          return vals.join(', ');
+        });
+
+        // 2. Resolve single cell references like A1, B2
         expr = expr.replace(/\b([A-Z]+)(\d+)\b/g, (match, colLetters, rowNum) => {
           let colIdx = 0;
           for (let i = 0; i < colLetters.length; i++) {
@@ -7781,24 +8601,81 @@
           }
           const row = table.rows[parseInt(rowNum, 10)];
           if (row && row.cells[colIdx]) {
-            const val = parseFloat((row.cells[colIdx].textContent || '').replace(/[^0-9.-]/g, '')) || 0;
-            return val;
+            const val = parseFloat((row.cells[colIdx].textContent || '').replace(/[^0-9.-]/g, ''));
+            return isNaN(val) ? 0 : val;
           }
           return 0;
         });
       }
 
-      // Handle common functions like SUM, AVG
-      expr = expr.replace(/\bSUM\(([^)]+)\)/gi, (m, args) => {
-        const parts = args.split(',').map(v => parseFloat(v.trim()) || 0);
-        return parts.reduce((a, b) => a + b, 0);
-      });
+      // 3. Define mathematical environment & functions
+      const mathScope = {
+        SUM: (...args) => args.flat(Infinity).reduce((a, b) => Number(a) + Number(b), 0),
+        AVG: (...args) => { const a = args.flat(Infinity); return a.length ? a.reduce((x, y) => Number(x) + Number(y), 0) / a.length : 0; },
+        AVERAGE: (...args) => mathScope.AVG(...args),
+        COUNT: (...args) => args.flat(Infinity).filter(x => !isNaN(parseFloat(x))).length,
+        MAX: (...args) => Math.max(...args.flat(Infinity)),
+        MIN: (...args) => Math.min(...args.flat(Infinity)),
+        PRODUCT: (...args) => args.flat(Infinity).reduce((a, b) => Number(a) * Number(b), 1),
+        ROUND: (x, d = 0) => { const m = Math.pow(10, d); return Math.round(Number(x) * m) / m; },
+        SQRT: (x) => Math.sqrt(Number(x)),
+        POW: (x, y) => Math.pow(Number(x), Number(y)),
+        POWER: (x, y) => Math.pow(Number(x), Number(y)),
+        LOG: (x) => Math.log10(Number(x)),
+        LOG10: (x) => Math.log10(Number(x)),
+        LN: (x) => Math.log(Number(x)),
+        EXP: (x) => Math.exp(Number(x)),
+        ABS: (x) => Math.abs(Number(x)),
+        MOD: (x, y) => Number(x) % Number(y),
+        SIN: (x) => {
+          const rad = (Number(x) * Math.PI) / 180;
+          return Math.abs(Math.sin(rad)) < 1e-12 ? 0 : (Math.abs(Math.sin(rad) - 1) < 1e-12 ? 1 : Number(Math.sin(rad).toFixed(6)));
+        },
+        COS: (x) => {
+          const rad = (Number(x) * Math.PI) / 180;
+          return Math.abs(Math.cos(rad)) < 1e-12 ? 0 : (Math.abs(Math.cos(rad) - 1) < 1e-12 ? 1 : Number(Math.cos(rad).toFixed(6)));
+        },
+        TAN: (x) => {
+          const rad = (Number(x) * Math.PI) / 180;
+          return Number(Math.tan(rad).toFixed(6));
+        },
+        PI: Math.PI,
+        E: Math.E
+      };
+
+      let evalStr = expr.replace(/\^/g, '**');
+      evalStr = evalStr.replace(/(\d+(?:\.\d+)?)\s*%(?!\s*\d)/g, '($1 * 0.01)');
 
       try {
-        const sanitized = expr.replace(/[^0-9+\-*/()., %^eE]/g, '');
-        const val = Function(`'use strict'; return (${sanitized});`)();
-        const displayVal = typeof val === 'number' ? (Number.isInteger(val) ? val.toString() : val.toFixed(4).replace(/\.?0+$/, '')) : (val || 0);
-        resEl.textContent = displayVal;
+        const scopeKeys = Object.keys(mathScope);
+        const scopeVals = Object.values(mathScope);
+        scopeKeys.forEach(k => {
+          if (typeof mathScope[k] === 'function') {
+            const lowerK = k.toLowerCase();
+            if (!mathScope[lowerK]) {
+              mathScope[lowerK] = mathScope[k];
+              scopeKeys.push(lowerK);
+              scopeVals.push(mathScope[k]);
+            }
+          }
+        });
+        mathScope['pi'] = Math.PI;
+        scopeKeys.push('pi'); scopeVals.push(Math.PI);
+        mathScope['e'] = Math.E;
+        scopeKeys.push('e'); scopeVals.push(Math.E);
+
+        const fn = new Function(...scopeKeys, `'use strict'; return (${evalStr});`);
+        const val = fn(...scopeVals);
+
+        let displayVal = '0';
+        if (typeof val === 'number') {
+          if (isNaN(val)) displayVal = 'NaN';
+          else if (!isFinite(val)) displayVal = val > 0 ? 'Infinity' : '-Infinity';
+          else displayVal = Number.isInteger(val) ? val.toString() : parseFloat(val.toFixed(6)).toString();
+        } else if (val !== undefined && val !== null) {
+          displayVal = String(val);
+        }
+        resEl.textContent = `Result: ${displayVal}`;
         return displayVal;
       } catch (err) {
         resEl.textContent = 'Syntax Error';
@@ -7806,7 +8683,60 @@
       }
     };
 
+    // Issue 4: Make equation pills clickable, evaluate immediately & display output
+    $$('#excelEquationBar .eq-pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const fnName = pill.dataset.fn || pill.textContent.trim();
+        const input = $('#excelEquationInput');
+        if (!input) return;
+
+        const table = document.querySelector('.excel-grid-table');
+        const selectedCells = table ? Array.from(table.querySelectorAll('td.excel-cell-selected')) : [];
+
+        let insertedExpr = '';
+        if (selectedCells.length > 1) {
+          if (['SUM', 'AVERAGE', 'AVG', 'COUNT', 'MAX', 'MIN', 'PRODUCT'].includes(fnName.toUpperCase())) {
+            const nums = selectedCells.map(c => parseFloat((c.textContent || '').replace(/[^0-9.-]/g, ''))).filter(n => !isNaN(n));
+            insertedExpr = `${fnName}(${nums.length ? nums.join(', ') : '10, 20, 30'})`;
+          } else {
+            const firstVal = parseFloat((selectedCells[0].textContent || '').replace(/[^0-9.-]/g, '')) || 0;
+            insertedExpr = fnName === 'PI' ? 'PI' : `${fnName}(${firstVal})`;
+          }
+        } else if (window._activeExcelCell && (window._activeExcelCell.textContent || '').trim().length > 0) {
+          const cellVal = window._activeExcelCell.textContent.trim();
+          const num = parseFloat(cellVal.replace(/[^0-9.-]/g, ''));
+          const arg = !isNaN(num) ? num : cellVal;
+          insertedExpr = fnName === 'PI' ? 'PI' : `${fnName}(${arg})`;
+        } else if (input.value.trim().length > 0) {
+          const curVal = input.value.trim().replace(/^=/, '');
+          if (fnName === 'PI') {
+            insertedExpr = `${curVal} * PI`;
+          } else if (['POWER', 'POW', 'MOD', 'ROUND'].includes(fnName.toUpperCase()) && !curVal.includes(',')) {
+            insertedExpr = `${fnName}(${curVal}, 2)`;
+          } else {
+            insertedExpr = `${fnName}(${curVal})`;
+          }
+        } else {
+          if (fnName === 'PI') insertedExpr = 'PI';
+          else if (['POWER', 'POW', 'MOD', 'ROUND'].includes(fnName.toUpperCase())) insertedExpr = `${fnName}(10, 2)`;
+          else if (fnName === 'SQRT') insertedExpr = 'SQRT(16)';
+          else if (['SIN', 'COS', 'TAN'].includes(fnName.toUpperCase())) insertedExpr = `${fnName}(90)`;
+          else if (fnName === 'LOG') insertedExpr = 'LOG(100)';
+          else if (fnName === 'LN') insertedExpr = 'LN(10)';
+          else if (fnName === 'EXP') insertedExpr = 'EXP(1)';
+          else insertedExpr = `${fnName}(10, 20, 30)`;
+        }
+
+        input.value = insertedExpr;
+        input.focus();
+        solveEquation();
+      });
+    });
+
     $('#excelEquationSolveBtn')?.addEventListener('click', solveEquation);
+    $('#excelEquationInput')?.addEventListener('input', () => {
+      solveEquation();
+    });
     $('#excelEquationInput')?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') solveEquation();
     });
@@ -7822,6 +8752,7 @@
           if (formulaInput) formulaInput.value = val;
           window.DocFlow.Editor?.notifyChange();
           window.DocFlow.Editor?.saveSnapshot?.(true);
+          updateExcelChartPositions(cell.closest('.excel-spreadsheet-container'));
           showToast(`Inserted ${val} into active cell`, 'success');
           restoreCellFocus(cell);
         } else {
@@ -8012,15 +8943,20 @@
       Recent.clearAll();
     });
 
-    // 10. Dedicated Excel Ribbon Selection Management (Issue 2)
+    // 10. Dedicated Excel Ribbon Selection Management (Issue 2 & Issue 5)
     function clearExcelSelections(table) {
+      if (!table) table = document.querySelector('.excel-grid-table') || document.querySelector('#editor table');
       if (!table) return;
-      table.querySelectorAll('td.excel-cell-selected, td.excel-row-selected, td.excel-col-selected').forEach(c => {
-        c.classList.remove('excel-cell-selected', 'excel-row-selected', 'excel-col-selected', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
+      table.querySelectorAll('td.excel-cell-selected, td.excel-row-selected, td.excel-col-selected, td.excel-cell-focus').forEach(c => {
+        c.classList.remove('excel-cell-selected', 'excel-row-selected', 'excel-col-selected', 'excel-cell-focus', 'excel-sel-top', 'excel-sel-bottom', 'excel-sel-left', 'excel-sel-right');
       });
       table.querySelectorAll('tr.excel-row-selected, th.excel-row-selected, th.excel-col-selected').forEach(el => {
         el.classList.remove('excel-row-selected', 'excel-col-selected');
       });
+      window._activeExcelCell = null;
+      if (document.activeElement && table.contains(document.activeElement)) {
+        try { document.activeElement.blur(); } catch (_) {}
+      }
     }
 
     $('#excelSelectRowBtn')?.addEventListener('click', () => {
@@ -8230,15 +9166,15 @@
       }
     });
 
-    // Deselect Row & Column Handlers (Issue 2)
+    // Deselect Row & Column Handlers (Issue 2 & Issue 5)
     const handleExcelDeselect = () => {
-      const table = document.querySelector('#editor table');
+      const table = document.querySelector('.excel-grid-table') || document.querySelector('#editor table');
       if (!table) {
         showToast('No spreadsheet table found', 'info');
         return;
       }
       clearExcelSelections(table);
-      showToast('Spreadsheet selections cleared (Rows & Columns deselected)', 'info');
+      showToast('Spreadsheet selections cleared (All rows & columns deselected)', 'info');
     };
 
     $('#excelDeselectBtn')?.addEventListener('click', handleExcelDeselect);
@@ -10178,6 +11114,7 @@
   window.DocFlow.startSlideShow = startSlideShow;
   window.DocFlow.insertPptSlide = insertPptSlide;
   window.DocFlow.insertChartIntoDocument = insertChartIntoDocument;
+  window.DocFlow.updateExcelChartPositions = updateExcelChartPositions;
   window.DocFlow.togglePageOrientation = togglePageOrientation;
   window.DocFlow.togglePageBorders = togglePageBorders;
   window.DocFlow.setPrintArea = setPrintArea;
