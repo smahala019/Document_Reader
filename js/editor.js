@@ -146,9 +146,65 @@
   function insertHtmlAtCursor(html) {
     if (!editor) return;
     const isSpecialBlock = /<table|<svg|doc-chart-container|doc-page-break/i.test(html);
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
     const activeCell = (window._activeExcelCell && document.body.contains(window._activeExcelCell))
       ? window._activeExcelCell
-      : null;
+      : (excelContainer ? (excelContainer.querySelector('td.excel-cell-selected') || excelContainer.querySelector('tbody td')) : null);
+
+    // Issue 4: Handle checklist, full-row line, and quote in Excel spreadsheet cells correctly
+    if (activeCell && excelContainer && excelContainer.contains(activeCell)) {
+      if (html.includes('onenote-checklist-item')) {
+        saveSnapshot();
+        activeCell.innerHTML = `<div class="onenote-checklist-item" style="display:flex;align-items:center;gap:8px;"><input type="checkbox" class="onenote-checklist-checkbox" style="cursor:pointer;"><span class="onenote-checklist-text" contenteditable="true" style="outline:none;">To-do item...</span></div>`;
+        const cb = activeCell.querySelector('.onenote-checklist-checkbox');
+        const txt = activeCell.querySelector('.onenote-checklist-text');
+        cb?.addEventListener('change', () => {
+          if (cb.checked) {
+            txt.style.textDecoration = 'line-through';
+            txt.style.color = '#94a3b8';
+          } else {
+            txt.style.textDecoration = 'none';
+            txt.style.color = '';
+          }
+          notifyChange();
+          saveSnapshot();
+        });
+        txt?.focus();
+        notifyChange();
+        showToast('Interactive checklist inserted into cell', 'success');
+        return activeCell;
+      }
+
+      if (html.includes('doc-custom-line') || /<hr\b/i.test(html)) {
+        const tr = activeCell.closest('tr');
+        if (tr) {
+          saveSnapshot();
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+          const hr = temp.querySelector('hr');
+          const borderStyle = hr ? hr.style.borderTop : '2px solid #0284c7';
+          tr.classList.add('excel-row-line');
+          tr.querySelectorAll('td, th').forEach(c => {
+            c.style.setProperty('border-bottom', borderStyle || '2px solid #0284c7', 'important');
+          });
+          tr.dataset.hasRowLine = 'true';
+          tr.dataset.rowLineStyle = borderStyle || '2px solid #0284c7';
+          notifyChange();
+          showToast(`Line applied across row ${tr.rowIndex || ''}`, 'success');
+          return activeCell;
+        }
+      }
+
+      if (html.includes('blockquote')) {
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        const bq = temp.querySelector('blockquote');
+        const qText = bq ? bq.textContent.trim() : '';
+        insertQuoteIntoExcel(activeCell, excelContainer, qText);
+        return activeCell;
+      }
+    }
+
     if (activeCell && !isSpecialBlock) {
       saveSnapshot();
       activeCell.focus();
@@ -171,7 +227,6 @@
       return activeCell;
     }
 
-    const excelContainer = document.querySelector('.excel-spreadsheet-container');
     if (excelContainer && isSpecialBlock) {
       saveSnapshot();
       const fragment = document.createRange().createContextualFragment(html);
@@ -410,6 +465,15 @@
     }
     if (window.DocFlow.currentMode !== 'edit' && window.DocFlow.currentMode !== 'empty') return false;
 
+    if (document.activeElement?.closest?.('.excel-note-body, .excel-quote-body')) {
+      try {
+        if (document.execCommand('undo')) {
+          notifyChange();
+          return true;
+        }
+      } catch (_) {}
+    }
+
     // First ensure latest current edits are captured on top of undoStack before undoing
     const currentState = getCurrentDocState();
     if (currentState && undoStack.length > 0) {
@@ -478,6 +542,15 @@
       return window.DocFlow.PDF.redoPdf();
     }
     if (window.DocFlow.currentMode !== 'edit' && window.DocFlow.currentMode !== 'empty') return false;
+
+    if (document.activeElement?.closest?.('.excel-note-body, .excel-quote-body')) {
+      try {
+        if (document.execCommand('redo')) {
+          notifyChange();
+          return true;
+        }
+      } catch (_) {}
+    }
 
     if (redoStack.length > 0) {
       isUndoRedoing = true;
@@ -1344,25 +1417,31 @@
     let targetRow = null;
     let colIndex = -1;
     let activeTable = null;
+    let resizingTable = null;
     let tableGhostIndicator = null;
+
+    // Red visual table resizer line (Issue 2)
+    const resizerLine = document.createElement('div');
+    resizerLine.className = 'df-table-resizer-line';
+    document.body.appendChild(resizerLine);
 
     // Floating move handle for table
     const tableMoveHandle = document.createElement('div');
     tableMoveHandle.className = 'df-table-move-handle';
     tableMoveHandle.title = 'Click and drag to move table';
     tableMoveHandle.innerHTML = '<i class="fas fa-arrows-up-down-left-right" style="font-size:12px;"></i>';
-    tableMoveHandle.style.cssText = 'position:fixed;width:24px;height:24px;background:var(--accent,#0284c7);color:#ffffff;border-radius:4px;display:none;align-items:center;justify-content:center;cursor:move;z-index:999;box-shadow:0 2px 8px rgba(0,0,0,0.2);user-select:none;';
+    tableMoveHandle.style.cssText = 'position:fixed;width:24px;height:24px;background:var(--accent,#0284c7);color:#ffffff;border-radius:4px;display:none;align-items:center;justify-content:center;cursor:move;z-index:9999;box-shadow:0 2px 8px rgba(0,0,0,0.25);user-select:none;pointer-events:auto;';
     document.body.appendChild(tableMoveHandle);
 
     // Floating corner resize handle for entire table
     const tableCornerHandle = document.createElement('div');
     tableCornerHandle.className = 'df-table-corner-handle';
     tableCornerHandle.title = 'Click and drag to resize entire table';
-    tableCornerHandle.style.cssText = 'position:fixed;width:12px;height:12px;background:#ffffff;border:2px solid var(--accent,#0284c7);border-radius:2px;display:none;cursor:nwse-resize;z-index:999;box-shadow:0 1px 4px rgba(0,0,0,0.25);box-sizing:border-box;user-select:none;';
+    tableCornerHandle.style.cssText = 'position:fixed;width:12px;height:12px;background:#ffffff;border:2px solid var(--accent,#0284c7);border-radius:2px;display:none;cursor:nwse-resize;z-index:9999;box-shadow:0 1px 4px rgba(0,0,0,0.25);box-sizing:border-box;user-select:none;';
     document.body.appendChild(tableCornerHandle);
 
     const positionTableHandles = (tbl) => {
-      if (!tbl || !document.body.contains(tbl)) {
+      if (!tbl || !document.body.contains(tbl) || tbl.classList.contains('excel-grid-table') || tbl.closest('.excel-spreadsheet-container')) {
         tableMoveHandle.style.display = 'none';
         tableCornerHandle.style.display = 'none';
         return;
@@ -1403,7 +1482,6 @@
       e.preventDefault();
       e.stopPropagation();
       isTableMoving = true;
-      tableMoveHandle.style.pointerEvents = 'none';
       saveSnapshot(true);
       document.body.style.cursor = 'move';
       document.body.style.userSelect = 'none';
@@ -1480,14 +1558,23 @@
       if (resizingCol) {
         const dx = e.clientX - startX;
         const newWidth = Math.max(30, startWidth + dx);
-        if (activeTable && colIndex >= 0) {
-          Array.from(activeTable.rows).forEach(r => {
+        resizerLine.style.left = (e.clientX - 1) + 'px';
+        const tblToResize = resizingTable || activeTable;
+        if (tblToResize && colIndex >= 0) {
+          Array.from(tblToResize.rows).forEach(r => {
             const c = r.cells[colIndex];
             if (c) {
               c.style.width = newWidth + 'px';
               c.style.minWidth = newWidth + 'px';
+              if (c.dataset.origWidth) c.dataset.origWidth = newWidth + 'px';
             }
           });
+          const theadTh = tblToResize.querySelector('thead tr')?.children[colIndex] || tblToResize.querySelector(`thead th:nth-child(${colIndex + 1})`);
+          if (theadTh) {
+            theadTh.style.width = newWidth + 'px';
+            theadTh.style.minWidth = newWidth + 'px';
+            if (theadTh.dataset.origWidth) theadTh.dataset.origWidth = newWidth + 'px';
+          }
         }
         if (activeTable) positionTableHandles(activeTable);
         return;
@@ -1495,8 +1582,10 @@
       if (resizingRow) {
         const dy = e.clientY - startY;
         const newHeight = Math.max(22, startHeight + dy);
+        resizerLine.style.top = (e.clientY - 1) + 'px';
         if (targetRow) {
           targetRow.style.height = newHeight + 'px';
+          if (targetRow.dataset.origHeight) targetRow.dataset.origHeight = newHeight + 'px';
           Array.from(targetRow.cells).forEach(c => {
             c.style.height = newHeight + 'px';
           });
@@ -1505,13 +1594,34 @@
         return;
       }
 
-      // Check hover over table or near cell borders
+      // Hide table handles immediately over excel spreadsheet (Problem 2)
+      if (e.target.closest?.('.excel-spreadsheet-container')) {
+        tableMoveHandle.style.display = 'none';
+        tableCornerHandle.style.display = 'none';
+        activeTable = null;
+      }
+
+      // Check hover over table or near cell borders (with 35px hover buffer zone to prevent disappearing)
       const tbl = e.target.closest?.('table.doc-table, #editor table:not(.excel-grid-table)');
+      const isNearHandles = e.target.closest?.('.df-table-move-handle, .df-table-corner-handle');
+
       if (tbl && !tbl.closest('.excel-spreadsheet-container')) {
         activeTable = tbl;
         positionTableHandles(tbl);
-      } else if (!e.target.closest('.df-table-move-handle, .df-table-corner-handle')) {
-        if (!activeTable || !activeTable.contains(document.activeElement)) {
+      } else if (!isNearHandles) {
+        if (activeTable) {
+          const r = activeTable.getBoundingClientRect();
+          const inBufferZone = (
+            e.clientX >= r.left - 40 &&
+            e.clientX <= r.right + 20 &&
+            e.clientY >= r.top - 20 &&
+            e.clientY <= r.bottom + 20
+          );
+          if (!inBufferZone && !activeTable.contains(document.activeElement)) {
+            tableMoveHandle.style.display = 'none';
+            tableCornerHandle.style.display = 'none';
+          }
+        } else {
           tableMoveHandle.style.display = 'none';
           tableCornerHandle.style.display = 'none';
         }
@@ -1519,25 +1629,48 @@
 
       const cell = e.target.closest?.('td, th');
       if (!cell) {
-        document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
+        if (!resizingCol && !resizingRow) {
+          resizerLine.style.display = 'none';
+          document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
+        }
         return;
       }
-      const cellTable = cell.closest('table.doc-table, #editor table');
-      if (!cellTable || cell.closest('.excel-grid-table')) {
-        document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
+      const cellTable = cell.closest('table.doc-table, #editor table, .excel-grid-table');
+      if (!cellTable) {
+        if (!resizingCol && !resizingRow) {
+          resizerLine.style.display = 'none';
+          document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
+        }
         return;
       }
 
       const rect = cell.getBoundingClientRect();
-      const nearRight = Math.abs(rect.right - e.clientX) <= 6;
-      const nearBottom = Math.abs(rect.bottom - e.clientY) <= 6;
+      const tblRect = cellTable.getBoundingClientRect();
+      const nearRight = Math.abs(rect.right - e.clientX) <= 7;
+      const nearBottom = Math.abs(rect.bottom - e.clientY) <= 7;
 
       if (nearRight) {
-        cell.style.cursor = 'col-resize';
+        cell.style.cursor = 'var(--cursor-col-resize-red, col-resize)';
+        document.body.style.cursor = 'var(--cursor-col-resize-red, col-resize)';
+        resizerLine.className = 'df-table-resizer-line col';
+        resizerLine.style.display = 'block';
+        resizerLine.style.left = (rect.right - 1) + 'px';
+        resizerLine.style.top = tblRect.top + 'px';
+        resizerLine.style.height = tblRect.height + 'px';
       } else if (nearBottom) {
-        cell.style.cursor = 'row-resize';
+        cell.style.cursor = 'var(--cursor-row-resize-red, row-resize)';
+        document.body.style.cursor = 'var(--cursor-row-resize-red, row-resize)';
+        resizerLine.className = 'df-table-resizer-line row';
+        resizerLine.style.display = 'block';
+        resizerLine.style.top = (rect.bottom - 1) + 'px';
+        resizerLine.style.left = tblRect.left + 'px';
+        resizerLine.style.width = tblRect.width + 'px';
       } else {
         cell.style.cursor = '';
+        if (!resizingCol && !resizingRow) {
+          document.body.style.cursor = '';
+          resizerLine.style.display = 'none';
+        }
       }
     });
 
@@ -1546,15 +1679,23 @@
 
       const cell = e.target.closest?.('td, th');
       if (!cell) return;
-      const tbl = cell.closest('table.doc-table, #editor table');
-      if (!tbl || cell.closest('.excel-grid-table')) return;
+      const tbl = cell.closest('table.doc-table, #editor table, .excel-grid-table');
+      if (!tbl) return;
 
-      activeTable = tbl;
-      positionTableHandles(tbl);
+      const isExcelTable = tbl.classList.contains('excel-grid-table') || tbl.closest('.excel-spreadsheet-container');
+      if (!isExcelTable) {
+        activeTable = tbl;
+        positionTableHandles(tbl);
+      } else {
+        activeTable = null;
+        tableMoveHandle.style.display = 'none';
+        tableCornerHandle.style.display = 'none';
+      }
 
       const rect = cell.getBoundingClientRect();
-      const nearRight = Math.abs(rect.right - e.clientX) <= 6;
-      const nearBottom = Math.abs(rect.bottom - e.clientY) <= 6;
+      const tblRect = tbl.getBoundingClientRect();
+      const nearRight = Math.abs(rect.right - e.clientX) <= 7;
+      const nearBottom = Math.abs(rect.bottom - e.clientY) <= 7;
 
       if (nearRight) {
         e.preventDefault();
@@ -1563,7 +1704,18 @@
         startX = e.clientX;
         startWidth = cell.offsetWidth;
         resizingCol = true;
+        resizingTable = tbl;
+        if (!isExcelTable) {
+          activeTable = tbl;
+        } else {
+          activeTable = null;
+        }
         document.body.classList.add('is-table-resizing-col');
+        resizerLine.className = 'df-table-resizer-line col';
+        resizerLine.style.display = 'block';
+        resizerLine.style.left = (rect.right - 1) + 'px';
+        resizerLine.style.top = tblRect.top + 'px';
+        resizerLine.style.height = tblRect.height + 'px';
         saveSnapshot(true);
       } else if (nearBottom) {
         e.preventDefault();
@@ -1572,7 +1724,18 @@
         startY = e.clientY;
         startHeight = targetRow ? targetRow.offsetHeight : cell.offsetHeight;
         resizingRow = true;
+        resizingTable = tbl;
+        if (!isExcelTable) {
+          activeTable = tbl;
+        } else {
+          activeTable = null;
+        }
         document.body.classList.add('is-table-resizing-row');
+        resizerLine.className = 'df-table-resizer-line row';
+        resizerLine.style.display = 'block';
+        resizerLine.style.top = (rect.bottom - 1) + 'px';
+        resizerLine.style.left = tblRect.left + 'px';
+        resizerLine.style.width = tblRect.width + 'px';
         saveSnapshot(true);
       }
     });
@@ -1580,6 +1743,7 @@
     document.addEventListener('mouseup', (e) => {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      resizerLine.style.display = 'none';
 
       if (isCornerResizing) {
         isCornerResizing = false;
@@ -1617,6 +1781,7 @@
         resizingCol = null;
         resizingRow = null;
         targetRow = null;
+        resizingTable = null;
         document.body.classList.remove('is-table-resizing-col', 'is-table-resizing-row');
         notifyChange();
         saveSnapshot(true);
@@ -1677,6 +1842,101 @@
     }
   }
 
+  // Floating Quote Container in Excel (Issue 4)
+  function insertQuoteIntoExcel(activeCell, excelContainer, quoteText = '') {
+    if (!activeCell || !excelContainer) return;
+    saveSnapshot(true);
+    activeCell.classList.add('excel-has-quote');
+    const coord = activeCell.dataset.coord || 'Cell';
+    const cRect = activeCell.getBoundingClientRect();
+    const pRect = excelContainer.getBoundingClientRect();
+    const leftPos = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + cRect.width + 10));
+    const topPos = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop));
+
+    const quoteDiv = document.createElement('div');
+    quoteDiv.className = 'excel-floating-quote doc-quote-card';
+    quoteDiv.setAttribute('data-target-coord', coord);
+    quoteDiv.style.cssText = `position:absolute;left:${leftPos}px;top:${topPos}px;width:210px;min-height:95px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.18);padding:8px 10px;z-index:35;font-size:12px;color:#1e293b;cursor:default;box-sizing:border-box;`;
+    quoteDiv.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:700;font-size:11px;color:#15803d;border-bottom:1px solid #bbf7d0;padding-bottom:3px;cursor:move;user-select:none;" class="excel-quote-header">
+        <span><i class="fas fa-quote-left" style="color:#16a34a;margin-right:4px;"></i> Quote (${coord})</span>
+        <button type="button" class="excel-quote-close-btn" style="border:none;background:transparent;cursor:pointer;color:#15803d;font-size:14px;padding:0 2px;line-height:1;" title="Delete Quote">&times;</button>
+      </div>
+      <div class="excel-quote-body" contenteditable="true" style="outline:none;min-height:50px;word-break:break-word;cursor:text;" data-placeholder="Enter quote...">${quoteText ? escHtml(quoteText) : ''}</div>
+    `;
+
+    // Header dragging
+    const hdr = quoteDiv.querySelector('.excel-quote-header');
+    let isDragging = false, dragX = 0, dragY = 0, initLeft = 0, initTop = 0;
+    hdr.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.excel-quote-close-btn')) return;
+      e.preventDefault();
+      isDragging = true;
+      dragX = e.clientX;
+      dragY = e.clientY;
+      initLeft = parseInt(quoteDiv.style.left, 10) || leftPos;
+      initTop = parseInt(quoteDiv.style.top, 10) || topPos;
+      const onMouseMove = (me) => {
+        if (!isDragging) return;
+        quoteDiv._hasBeenDragged = true;
+        quoteDiv.style.left = (initLeft + (me.clientX - dragX)) + 'px';
+        quoteDiv.style.top = (initTop + (me.clientY - dragY)) + 'px';
+      };
+      const onMouseUp = () => {
+        isDragging = false;
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        notifyChange();
+      };
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+
+    // Close button
+    quoteDiv.querySelector('.excel-quote-close-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      quoteDiv.remove();
+      activeCell.classList.remove('excel-has-quote');
+      notifyChange();
+      saveSnapshot(true);
+      showToast('Cell quote removed', 'info');
+    });
+
+    // Auto-hide other quotes/notes
+    excelContainer.querySelectorAll('.excel-floating-quote').forEach(q => {
+      if (q.getAttribute('data-target-coord') !== coord) {
+        q.style.display = 'none';
+      }
+    });
+    quoteDiv.style.display = 'block';
+    excelContainer.appendChild(quoteDiv);
+
+    const body = quoteDiv.querySelector('.excel-quote-body');
+    quoteDiv.addEventListener('click', (e) => {
+      if (!e.target.closest('.excel-quote-header')) {
+        body.focus();
+      }
+    });
+    body.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+    body.addEventListener('input', () => {
+      notifyChange();
+      saveSnapshot();
+      window.DocFlow.UI?.Tabs?.saveCurrent?.();
+    });
+    body.addEventListener('blur', () => {
+      notifyChange();
+      window.DocFlow.UI?.Tabs?.saveCurrent?.();
+    });
+
+    activeCell.classList.add('excel-has-quote');
+    body.focus();
+    notifyChange();
+    saveSnapshot(true);
+    showToast(`Quote container inserted for cell ${coord}`, 'success');
+  }
+
   // Insert Horizontal Rule with Full Customization (Issue 4) & Blockquote
   function setupHrAndQuote() {
     ($('#insertHrBtn') || $('#ribbonInsertHrBtn'))?.addEventListener('click', () => {
@@ -1699,14 +1959,27 @@
       insertCustomLine();
     });
 
-    ($('#insertBlockquoteBtn') || $('#ribbonInsertQuoteBtn'))?.addEventListener('click', () => {
+    const handleQuoteInsert = () => {
       if (window.DocFlow.currentMode !== 'edit') return;
       saveSelection();
+      const excelContainer = document.querySelector('.excel-spreadsheet-container');
+      const activeCell = (window._activeExcelCell && excelContainer?.contains(window._activeExcelCell))
+        ? window._activeExcelCell
+        : (excelContainer?.querySelector('td.excel-cell-selected') || excelContainer?.querySelector('tbody td'));
+      if (excelContainer && activeCell) {
+        const sel = window.getSelection();
+        const quoteText = sel && sel.toString().trim() ? sel.toString().trim() : '';
+        insertQuoteIntoExcel(activeCell, excelContainer, quoteText);
+        return;
+      }
       const sel = window.getSelection();
       const quoteText = sel && sel.toString().trim() ? sel.toString() : 'Quote text here...';
       insertHtmlAtCursor(`<blockquote>${escHtml(quoteText)}</blockquote><p><br></p>`);
       showToast('Blockquote inserted', 'info');
-    });
+    };
+
+    $('#insertBlockquoteBtn')?.addEventListener('click', handleQuoteInsert);
+    $('#ribbonInsertQuoteBtn')?.addEventListener('click', handleQuoteInsert);
   }
 
   function openLineModal() {
@@ -1741,6 +2014,29 @@
     const style = $('#lineStyleSelect')?.value || 'solid';
     const align = $('#lineAlignSelect')?.value || 'center';
     const color = $('#lineColorInput')?.value || '#e2e8f0';
+
+    // Issue 4: In Excel spreadsheets, the line applies across the entire row
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    const activeCell = (window._activeExcelCell && excelContainer?.contains(window._activeExcelCell))
+      ? window._activeExcelCell
+      : (excelContainer?.querySelector('td.excel-cell-selected') || excelContainer?.querySelector('tbody td'));
+    if (excelContainer && activeCell) {
+      const tr = activeCell.closest('tr');
+      if (tr) {
+        saveSnapshot(true);
+        const borderStyle = `${height} ${style} ${color}`;
+        tr.classList.add('excel-row-line');
+        tr.querySelectorAll('td, th').forEach(c => {
+          c.style.setProperty('border-bottom', borderStyle, 'important');
+        });
+        tr.dataset.hasRowLine = 'true';
+        tr.dataset.rowLineStyle = borderStyle;
+        window.DocFlow.UI?.closeModal('#lineModal');
+        notifyChange();
+        showToast(`Line applied across whole row ${tr.rowIndex || ''}`, 'success');
+        return;
+      }
+    }
 
     const marginStyle = align === 'left' ? 'margin: 18px auto 18px 0;' : (align === 'right' ? 'margin: 18px 0 18px auto;' : 'margin: 18px auto;');
     const hrHtml = `<hr class="doc-custom-line" style="width:${width};height:${height};border:none;border-top:${height} ${style} ${color};background-color:${style === 'solid' ? color : 'transparent'};${marginStyle}"><p><br></p>`;
@@ -2915,13 +3211,34 @@
       }
     });
 
-    // Global Keydown Handler for Ctrl+\ (Problem 5: Clear format warning)
+    // Global Keydown Handler for Undo (Ctrl+Z), Redo (Ctrl+Y / Ctrl+Shift+Z), and Clear Format (Ctrl+\) (Issue 3)
     document.addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && (e.key === '\\' || e.code === 'Backslash')) {
         e.preventDefault();
         e.stopPropagation();
         openModal('#clearFormatModal');
         return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
+          return; // Allow native form input undo
+        }
+        if (e.target && e.target.closest && e.target.closest('.excel-note-body, .excel-quote-body')) {
+          return; // Allow native undo inside note and quote bodies
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        undo();
+      } else if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
+          return; // Allow native form input redo
+        }
+        if (e.target && e.target.closest && e.target.closest('.excel-note-body, .excel-quote-body')) {
+          return; // Allow native redo inside note and quote bodies
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        redo();
       }
     });
 
@@ -2956,6 +3273,7 @@
     focusEditor,
     insertNodeAtCursor,
     insertHtmlAtCursor,
+    insertQuoteIntoExcel,
     execCmd,
     saveSnapshot,
     debouncedSnapshot,

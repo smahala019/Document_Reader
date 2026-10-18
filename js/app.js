@@ -4364,6 +4364,12 @@
       const charts = $('#editor')?.querySelectorAll('.doc-chart-container');
       if (charts && charts.length) {
         const newlyInserted = charts[charts.length - 1];
+        const cell = newlyInserted.closest('td, th');
+        if (cell) {
+          const cw = parseFloat(newlyInserted.style.width) || newlyInserted.offsetWidth || 340;
+          const ch = parseFloat(newlyInserted.style.height) || newlyInserted.offsetHeight || 220;
+          window.DocFlow.ImageManager?.expandCellToObject(cell, cw, ch);
+        }
         window.DocFlow.ImageManager?.attachShapeListeners(newlyInserted);
         window.DocFlow.ImageManager?.selectImage(newlyInserted);
       }
@@ -4709,7 +4715,7 @@
 
     const syncExcelNotesVisibility = (activeCell) => {
       const activeCoord = activeCell?.dataset?.coord;
-      container.querySelectorAll('.excel-floating-note').forEach(note => {
+      container.querySelectorAll('.excel-floating-note, .excel-floating-quote').forEach(note => {
         const targetCoord = note.getAttribute('data-target-coord');
         if (activeCoord && targetCoord === activeCoord) {
           note.style.display = 'block';
@@ -5340,7 +5346,8 @@
       };
 
       container.addEventListener('copy', e => {
-        if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+        if (document.activeElement === formulaInput || document.activeElement === coordBox ||
+            e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, [contenteditable="true"]:not(td):not(th)')) return;
         const cells = getSelectedExcelCells();
         if (cells.length > 0) {
           e.preventDefault();
@@ -5349,12 +5356,27 @@
       });
 
       container.addEventListener('cut', e => {
-        if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+        if (document.activeElement === formulaInput || document.activeElement === coordBox ||
+            e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, [contenteditable="true"]:not(td):not(th)')) return;
         const cells = getSelectedExcelCells();
         if (cells.length > 0) {
           e.preventDefault();
           copySelectedToClipboard().then(() => {
-            cells.forEach(c => { c.textContent = ''; });
+            cells.forEach(c => {
+              c.textContent = '';
+              const coord = c.dataset.coord;
+              if (coord) {
+                const attached = document.querySelectorAll(`[data-cell-coord="${coord}"]`);
+                attached.forEach(att => att.remove());
+                const targetQuotes = document.querySelectorAll(`.excel-floating-quote[data-target-coord="${coord}"]`);
+                targetQuotes.forEach(q => q.remove());
+                c.classList.remove('excel-has-quote');
+                const targetNotes = document.querySelectorAll(`.excel-floating-note[data-target-coord="${coord}"]`);
+                targetNotes.forEach(n => n.remove());
+                c.classList.remove('excel-has-note');
+                window.DocFlow.ImageManager?.restoreCellSize(coord);
+              }
+            });
             if (formulaInput && window._activeExcelCell) formulaInput.value = '';
             window.DocFlow.Editor?.notifyChange();
             showToast(`Cut ${cells.length} cells`, 'info');
@@ -5363,7 +5385,8 @@
       });
 
       container.addEventListener('paste', e => {
-        if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+        if (document.activeElement === formulaInput || document.activeElement === coordBox ||
+            e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, [contenteditable="true"]:not(td):not(th)')) return;
         const clipData = e.clipboardData?.getData('text/plain');
         if (clipData && (clipData.includes('\t') || clipData.includes('\n'))) {
           e.preventDefault();
@@ -5373,7 +5396,8 @@
 
       container.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
-          if (document.activeElement === formulaInput || document.activeElement === coordBox) {
+          if (document.activeElement === formulaInput || document.activeElement === coordBox ||
+              e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, [contenteditable="true"]:not(td):not(th)')) {
             return;
           }
           e.preventDefault();
@@ -5422,14 +5446,16 @@
             window.DocFlow.Editor?.updateToolbarState?.();
           }
         } else if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
-          if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          if (document.activeElement === formulaInput || document.activeElement === coordBox ||
+              e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, [contenteditable="true"]:not(td):not(th)')) return;
           const cells = getSelectedExcelCells();
           if (cells.length > 0) {
             e.preventDefault();
             copySelectedToClipboard().then(() => showToast(`Copied ${cells.length} cells`, 'info'));
           }
         } else if ((e.ctrlKey || e.metaKey) && (e.key === 'x' || e.key === 'X')) {
-          if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          if (document.activeElement === formulaInput || document.activeElement === coordBox ||
+              e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, [contenteditable="true"]:not(td):not(th)')) return;
           const cells = getSelectedExcelCells();
           if (cells.length > 0) {
             e.preventDefault();
@@ -5441,15 +5467,34 @@
             });
           }
         } else if ((e.ctrlKey || e.metaKey) && (e.key === 'v' || e.key === 'V')) {
-          if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          if (document.activeElement === formulaInput || document.activeElement === coordBox ||
+              e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, [contenteditable="true"]:not(td):not(th)')) return;
           e.preventDefault();
           pasteFromClipboard();
         } else if (e.key === 'Backspace' || e.key === 'Delete') {
           if (document.activeElement === formulaInput || document.activeElement === coordBox) return;
+          // Issue 3 & 4: Do not intercept backspace/delete inside floating notes or floating quotes!
+          if (e.target.closest?.('.excel-note-body, .excel-floating-note, .excel-quote-body, .excel-floating-quote, .doc-quote-card, .doc-note-card, [contenteditable="true"]:not(td):not(th)')) {
+            return;
+          }
           const cells = getSelectedExcelCells();
           if (cells.length > 1 || (cells.length === 1 && document.activeElement !== cells[0])) {
             e.preventDefault();
-            cells.forEach(c => { c.textContent = ''; });
+            cells.forEach(c => {
+              c.textContent = '';
+              const coord = c.dataset.coord;
+              if (coord) {
+                const attached = document.querySelectorAll(`[data-cell-coord="${coord}"]`);
+                attached.forEach(att => att.remove());
+                const targetQuotes = document.querySelectorAll(`.excel-floating-quote[data-target-coord="${coord}"]`);
+                targetQuotes.forEach(q => q.remove());
+                c.classList.remove('excel-has-quote');
+                const targetNotes = document.querySelectorAll(`.excel-floating-note[data-target-coord="${coord}"]`);
+                targetNotes.forEach(n => n.remove());
+                c.classList.remove('excel-has-note');
+                window.DocFlow.ImageManager?.restoreCellSize(coord);
+              }
+            });
             if (formulaInput && window._activeExcelCell) formulaInput.value = '';
             window.DocFlow.Editor?.notifyChange();
             showToast(`Cleared ${cells.length} cells`, 'info');
@@ -5468,7 +5513,7 @@
       editor.addEventListener('click', e => {
         if (editor.querySelector('.excel-spreadsheet-container')) {
           const isAllowed = e.target.closest(
-            '.excel-spreadsheet-container, .doc-textarea-container, .doc-shape-container, .chart-render-wrapper, .excel-floating-note, .df-img-move-handle, .df-img-handle, .df-img-toolbar, .doc-table'
+            '.excel-spreadsheet-container, .doc-textarea-container, .doc-shape-container, .chart-render-wrapper, .excel-floating-note, .excel-floating-quote, .df-img-move-handle, .df-img-handle, .df-img-toolbar, .doc-table'
           );
           if (!isAllowed) {
             e.preventDefault();
@@ -5532,6 +5577,87 @@
           };
           document.addEventListener('mousemove', onMouseMove);
           document.addEventListener('mouseup', onMouseUp);
+        });
+      }
+      const noteBody = note.querySelector('.excel-note-body');
+      if (noteBody && !noteBody._bound) {
+        noteBody._bound = true;
+        noteBody.addEventListener('click', (e) => e.stopPropagation());
+        noteBody.addEventListener('input', () => {
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.();
+          window.DocFlow.UI?.Tabs?.saveCurrent?.();
+        });
+        noteBody.addEventListener('blur', () => {
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.UI?.Tabs?.saveCurrent?.();
+        });
+      }
+    });
+
+    // Sync quotes that already exist in the container (Issue 4)
+    container.querySelectorAll('.excel-floating-quote').forEach(quote => {
+      const coord = quote.getAttribute('data-target-coord');
+      if (coord) {
+        const td = container.querySelector(`td[data-coord="${coord}"]`);
+        if (td) td.classList.add('excel-has-quote');
+      }
+      const closeBtn = quote.querySelector('.excel-quote-close-btn');
+      if (closeBtn && !closeBtn._bound) {
+        closeBtn._bound = true;
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const c = quote.getAttribute('data-target-coord');
+          quote.remove();
+          if (c) {
+            const td = container.querySelector(`td[data-coord="${c}"]`);
+            if (td) td.classList.remove('excel-has-quote');
+          }
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast('Cell quote removed', 'info');
+        });
+      }
+      const hdr = quote.querySelector('.excel-quote-header');
+      if (hdr && !hdr._bound) {
+        hdr._bound = true;
+        let isDragging = false, dragX = 0, dragY = 0, initLeft = 0, initTop = 0;
+        hdr.addEventListener('mousedown', (e) => {
+          if (e.target.closest('.excel-quote-close-btn')) return;
+          e.preventDefault();
+          isDragging = true;
+          dragX = e.clientX;
+          dragY = e.clientY;
+          initLeft = parseInt(quote.style.left, 10) || 0;
+          initTop = parseInt(quote.style.top, 10) || 0;
+          const onMouseMove = (me) => {
+            if (!isDragging) return;
+            quote._hasBeenDragged = true;
+            quote.style.left = (initLeft + (me.clientX - dragX)) + 'px';
+            quote.style.top = (initTop + (me.clientY - dragY)) + 'px';
+          };
+          const onMouseUp = () => {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            window.DocFlow.Editor?.notifyChange();
+          };
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      }
+      const quoteBody = quote.querySelector('.excel-quote-body');
+      if (quoteBody && !quoteBody._bound) {
+        quoteBody._bound = true;
+        quoteBody.addEventListener('click', (e) => e.stopPropagation());
+        quoteBody.addEventListener('input', () => {
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.();
+          window.DocFlow.UI?.Tabs?.saveCurrent?.();
+        });
+        quoteBody.addEventListener('blur', () => {
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.UI?.Tabs?.saveCurrent?.();
         });
       }
     });
@@ -6054,7 +6180,7 @@
               <span><i class="fas fa-note-sticky" style="color:#eab308;margin-right:4px;"></i> Note (${coord})</span>
               <button type="button" class="excel-note-close-btn" style="border:none;background:transparent;cursor:pointer;color:#a16207;font-size:14px;padding:0 2px;line-height:1;" title="Delete Note">&times;</button>
             </div>
-            <div class="excel-note-body" contenteditable="true" style="outline:none;min-height:50px;word-break:break-word;" data-placeholder="Enter note...">Write your note here...</div>
+            <div class="excel-note-body" contenteditable="true" style="outline:none;min-height:50px;word-break:break-word;cursor:text;" data-placeholder="Enter note..."></div>
           `;
 
           // Header dragging
@@ -6104,8 +6230,17 @@
 
           excelContainer.appendChild(noteDiv);
           const body = noteDiv.querySelector('.excel-note-body');
+          noteDiv.addEventListener('click', (e) => {
+            if (!e.target.closest('.excel-note-header')) {
+              body.focus();
+            }
+          });
+          body.addEventListener('click', (e) => {
+            e.stopPropagation();
+          });
           body.addEventListener('input', () => {
             window.DocFlow.Editor?.notifyChange();
+            window.DocFlow.Editor?.saveSnapshot?.();
             window.DocFlow.UI?.Tabs?.saveCurrent?.();
           });
           body.addEventListener('blur', () => {

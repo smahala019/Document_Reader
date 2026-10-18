@@ -326,6 +326,7 @@
         }
         t.modified = window.DocFlow.isModified || false;
         if (editorWrap) t.scroll = editorWrap.scrollTop;
+        this.save();
       }
     },
 

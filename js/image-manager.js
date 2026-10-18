@@ -163,8 +163,55 @@
       showToast('Image failed to load — please verify URL or file', 'error');
     }, { once: true });
 
-    // Insert into document using safe cursor insertion
+    const excelContainer = document.querySelector('.excel-spreadsheet-container');
+    if (excelContainer) {
+      if (getComputedStyle(excelContainer).position === 'static') {
+        excelContainer.style.position = 'relative';
+      }
+      img.style.position = 'absolute';
+      img.style.zIndex = '25';
+      const activeCell = (window._activeExcelCell && excelContainer.contains(window._activeExcelCell))
+        ? window._activeExcelCell
+        : (excelContainer.querySelector('td.excel-cell-selected') || excelContainer.querySelector('tbody td'));
+      const defaultW = 160;
+      const defaultH = 110;
+      if (!img.style.width) img.style.width = defaultW + 'px';
+      if (activeCell) {
+        expandCellToObject(activeCell, defaultW, defaultH);
+        const cRect = activeCell.getBoundingClientRect();
+        const pRect = excelContainer.getBoundingClientRect();
+        img.style.left = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + 10)) + 'px';
+        img.style.top = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop + 8)) + 'px';
+        img.dataset.cellCoord = activeCell.dataset.coord || '';
+      } else {
+        img.style.left = '60px';
+        img.style.top = '60px';
+      }
+      excelContainer.appendChild(img);
+      img.onload = () => {
+        if (activeCell) {
+          const nw = img.offsetWidth || defaultW;
+          const nh = img.offsetHeight || defaultH;
+          expandCellToObject(activeCell, nw, nh);
+        }
+        positionAllHandles(img);
+      };
+      attachImageListeners(img);
+      selectImage(img);
+      window.DocFlow.Editor?.notifyChange();
+      return img;
+    }
+
+    const sel = window.getSelection();
+    const inCell = sel && sel.anchorNode ? (sel.anchorNode.closest ? sel.anchorNode.closest('td, th') : sel.anchorNode.parentElement?.closest('td, th')) : null;
+
     window.DocFlow.Editor.insertNodeAtCursor(img);
+    if (inCell || img.closest('td, th')) {
+      const cell = inCell || img.closest('td, th');
+      const w = parseFloat(img.style.width) || 160;
+      const h = parseFloat(img.style.height) || 110;
+      expandCellToObject(cell, w, h);
+    }
     attachImageListeners(img);
     selectImage(img);
     return img;
@@ -535,6 +582,191 @@
     }
   }
 
+      // Helper: Find cell at point ignoring dragged element and handles (Problem 1)
+  function getCellAtPoint(x, y, ignoreElement) {
+    if (typeof document.elementsFromPoint === 'function') {
+      const els = document.elementsFromPoint(x, y);
+      for (const el of els) {
+        if (ignoreElement && (el === ignoreElement || ignoreElement.contains(el))) continue;
+        if (el.classList?.contains('df-img-handle') || el.classList?.contains('df-img-move-handle') || el.classList?.contains('df-img-toolbar') || el.classList?.contains('df-resize-handle')) continue;
+        const td = el.closest ? el.closest('td, th') : null;
+        if (td) return td;
+      }
+    } else {
+      let prevPE = '';
+      if (ignoreElement) {
+        prevPE = ignoreElement.style.pointerEvents;
+        ignoreElement.style.pointerEvents = 'none';
+      }
+      const el = document.elementFromPoint(x, y);
+      if (ignoreElement) {
+        ignoreElement.style.pointerEvents = prevPE;
+      }
+      return el ? el.closest('td, th') : null;
+    }
+    return null;
+  }
+
+  // Auto-expand cell when shape, image, or chart is placed in cell (Problem 1)
+  function expandCellToObject(cell, objWidth, objHeight) {
+    if (!cell) return;
+    const table = cell.closest('table');
+    if (!table) return;
+
+    const tr = cell.closest('tr');
+    const isExcel = !!table.classList.contains('excel-grid-table');
+    const colIndex = cell.cellIndex;
+    const theadTh = isExcel ? (table.querySelector('thead tr')?.children[colIndex] || table.querySelector(`thead th:nth-child(${colIndex + 1})`)) : null;
+
+    const targetW = Math.max(Math.round(objWidth + 24), cell.offsetWidth || 100);
+    const targetH = Math.max(Math.round(objHeight + 20), cell.offsetHeight || 30);
+
+    if (theadTh && !theadTh.dataset.origWidth) {
+      theadTh.dataset.origWidth = theadTh.style.width || (theadTh.offsetWidth ? (theadTh.offsetWidth + 'px') : '90px');
+    }
+    if (!cell.dataset.origWidth) {
+      cell.dataset.origWidth = cell.style.width || (cell.offsetWidth ? (cell.offsetWidth + 'px') : '90px');
+    }
+    if (tr && !tr.dataset.origHeight) {
+      tr.dataset.origHeight = tr.style.height || (tr.offsetHeight ? (tr.offsetHeight + 'px') : '28px');
+    }
+
+    if (targetW > cell.offsetWidth) {
+      if (theadTh) {
+        theadTh.style.width = targetW + 'px';
+        theadTh.style.minWidth = targetW + 'px';
+      }
+      if (isExcel) {
+        table.querySelectorAll('tbody tr').forEach(r => {
+          const c = r.cells[colIndex];
+          if (c) {
+            c.style.width = targetW + 'px';
+            c.style.minWidth = targetW + 'px';
+          }
+        });
+      } else {
+        cell.style.width = targetW + 'px';
+        cell.style.minWidth = targetW + 'px';
+      }
+    }
+
+    if (tr && targetH > tr.offsetHeight) {
+      tr.style.height = targetH + 'px';
+      Array.from(tr.cells).forEach(c => {
+        c.style.height = targetH + 'px';
+      });
+    }
+
+    cell.dataset.hasAttachedObject = 'true';
+  }
+
+  // Auto-resize cell back when shape, image, or chart is moved away or removed (Problem 1)
+  function restoreCellSize(cellOrCoord) {
+    if (!cellOrCoord) return;
+    const ignoreEl = arguments[1] || selectedImage;
+    let cell = null;
+    if (typeof cellOrCoord === 'string') {
+      cell = document.querySelector(`.excel-grid-table td[data-coord="${cellOrCoord}"], td[data-coord="${cellOrCoord}"]`);
+    } else if (cellOrCoord.nodeType === 1) {
+      cell = cellOrCoord;
+    }
+    if (!cell) return;
+
+    const table = cell.closest('table');
+    if (!table) return;
+
+    const tr = cell.closest('tr');
+    const coord = cell.dataset.coord;
+    const colIndex = cell.cellIndex;
+    const isExcel = !!table.classList.contains('excel-grid-table');
+    const theadTh = isExcel ? (table.querySelector('thead tr')?.children[colIndex] || table.querySelector(`thead th:nth-child(${colIndex + 1})`)) : null;
+
+    let otherInCell = 0;
+    if (coord) {
+      const attached = document.querySelectorAll(`[data-cell-coord="${coord}"]`);
+      attached.forEach(el => {
+        if (el !== ignoreEl && el.isConnected) otherInCell++;
+      });
+    }
+    cell.querySelectorAll('.doc-shape-container, .doc-chart-container, img').forEach(el => {
+      if (el !== ignoreEl && el.isConnected) otherInCell++;
+    });
+
+    if (otherInCell > 0) return;
+
+    delete cell.dataset.hasAttachedObject;
+
+    let anyInRow = false;
+    if (tr) {
+      const rowCells = Array.from(tr.querySelectorAll('td'));
+      for (const rc of rowCells) {
+        if (rc === cell) continue;
+        if (rc.dataset.hasAttachedObject) {
+          anyInRow = true;
+          break;
+        }
+        if (rc.dataset.coord) {
+          const att = document.querySelectorAll(`[data-cell-coord="${rc.dataset.coord}"]`);
+          let count = 0;
+          att.forEach(el => { if (el !== ignoreEl && el.isConnected) count++; });
+          if (count > 0) { anyInRow = true; break; }
+        }
+        let innerCount = 0;
+        rc.querySelectorAll('.doc-shape-container, .doc-chart-container, img').forEach(el => {
+          if (el !== ignoreEl && el.isConnected) innerCount++;
+        });
+        if (innerCount > 0) { anyInRow = true; break; }
+      }
+      if (!anyInRow) {
+        const origH = tr.dataset.origHeight || (isExcel ? '28px' : '');
+        tr.style.height = origH;
+        Array.from(tr.cells).forEach(c => {
+          c.style.height = origH;
+        });
+        delete tr.dataset.origHeight;
+      }
+    }
+
+    let anyInCol = false;
+    if (isExcel) {
+      const colCells = [];
+      table.querySelectorAll('tbody tr').forEach(r => {
+        const c = r.cells[colIndex];
+        if (c) colCells.push(c);
+      });
+      for (const cc of colCells) {
+        if (cc === cell) continue;
+        if (cc.dataset.hasAttachedObject) {
+          anyInCol = true;
+          break;
+        }
+        if (cc.dataset.coord) {
+          const att = document.querySelectorAll(`[data-cell-coord="${cc.dataset.coord}"]`);
+          let count = 0;
+          att.forEach(el => { if (el !== ignoreEl && el.isConnected) count++; });
+          if (count > 0) { anyInCol = true; break; }
+        }
+      }
+      if (!anyInCol) {
+        const origW = (theadTh && theadTh.dataset.origWidth) || cell.dataset.origWidth || '90px';
+        if (theadTh) {
+          theadTh.style.width = origW;
+          theadTh.style.minWidth = '';
+          delete theadTh.dataset.origWidth;
+        }
+        colCells.forEach(c => {
+          c.style.width = origW;
+          c.style.minWidth = '';
+          delete c.dataset.origWidth;
+        });
+      }
+    } else {
+      cell.style.width = cell.dataset.origWidth || '';
+      cell.style.minWidth = cell.dataset.origWidth || '';
+      delete cell.dataset.origWidth;
+    }
+  }
+
   function createHandles(img) {
     activeResizeHandles.forEach(h => h.remove());
     activeResizeHandles = [];
@@ -688,6 +920,8 @@
       }
     };
 
+    // Cell expand & restore handled by module-level functions
+
     const onDragEnd = e => {
       if (!isMoving) return;
       isMoving = false;
@@ -701,27 +935,32 @@
       const clientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
 
       const excelContainer = document.querySelector('.excel-spreadsheet-container');
-      const isOverExcel = excelContainer && (
-        img.closest('.excel-spreadsheet-container') ||
-        (clientX && clientY && document.elementFromPoint(clientX, clientY)?.closest('.excel-spreadsheet-container'))
-      );
+      const cell = (clientX && clientY) ? getCellAtPoint(clientX, clientY, img) : null;
+      const w = parseFloat(img.style.width) || img.offsetWidth || 120;
+      const h = parseFloat(img.style.height) || img.offsetHeight || 80;
 
-      if (isOverExcel && clientX && clientY) {
-        const cell = document.elementFromPoint(clientX, clientY)?.closest('.excel-grid-table td');
-        if (cell) {
+      if (cell) {
+        const isExcelCell = cell.closest('.excel-grid-table');
+        const prevCoord = img.dataset.cellCoord;
+        const prevTd = img.closest('td, th');
+
+        if (isExcelCell && excelContainer) {
+          img.dataset.cellCoord = cell.dataset.coord || '';
+          if (prevCoord && prevCoord !== cell.dataset.coord) {
+            restoreCellSize(prevCoord);
+          }
+          if (prevTd && prevTd !== cell) {
+            restoreCellSize(prevTd);
+          }
+          expandCellToObject(cell, w, h);
           const cRect = cell.getBoundingClientRect();
           const pRect = excelContainer.getBoundingClientRect();
           img.style.position = 'absolute';
-          img.style.left = Math.round(cRect.left - pRect.left + excelContainer.scrollLeft) + 'px';
-          img.style.top = Math.round(cRect.top - pRect.top + excelContainer.scrollTop) + 'px';
-          img.style.width = Math.max(20, Math.round(cRect.width)) + 'px';
-          img.style.height = Math.max(20, Math.round(cRect.height)) + 'px';
+          img.style.left = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + 10)) + 'px';
+          img.style.top = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop + 8)) + 'px';
           img.style.margin = '0px';
-          const svg = img.querySelector('svg');
-          if (svg) {
-            svg.setAttribute('width', '100%');
-            svg.setAttribute('height', '100%');
-          }
+          img.style.zIndex = '25';
+          img.dataset.cellCoord = cell.dataset.coord || '';
           if (!excelContainer.contains(img)) {
             excelContainer.appendChild(img);
           }
@@ -733,9 +972,45 @@
           if (activeImageToolbar) positionImageToolbar(img, activeImageToolbar);
           window.DocFlow.Editor?.notifyChange();
           window.DocFlow.Editor?.saveSnapshot?.(true);
-          showToast(`Shape fitted to cell ${cell.dataset.coord || ''}`, 'success');
+          showToast(`Element fitted to cell ${cell.dataset.coord || ''}`, 'success');
+          return;
+        } else {
+          // Document table cell
+          if (prevCoord) {
+            restoreCellSize(prevCoord);
+            delete img.dataset.cellCoord;
+          }
+          if (prevTd && prevTd !== cell) {
+            restoreCellSize(prevTd);
+          }
+          img.style.position = 'relative';
+          img.style.left = '';
+          img.style.top = '';
+          img.style.margin = '4px';
+          img.style.zIndex = '25';
+          cell.appendChild(img);
+          expandCellToObject(cell, w, h);
+          if (ghostIndicator) {
+            ghostIndicator.remove();
+            ghostIndicator = null;
+          }
+          positionAllHandles(img);
+          if (activeImageToolbar) positionImageToolbar(img, activeImageToolbar);
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          showToast('Element fitted into table cell', 'success');
           return;
         }
+      }
+
+      if (img.dataset.cellCoord) {
+        const prevCoord = img.dataset.cellCoord;
+        delete img.dataset.cellCoord;
+        restoreCellSize(prevCoord, img);
+      }
+      const prevTd = img.closest('td, th');
+      if (prevTd) {
+        restoreCellSize(prevTd, img);
       }
 
       const editor = $('#editor');
@@ -945,12 +1220,20 @@
         });
       } else if (action === 'delete') {
         const parentDock = img.closest('.excel-chart-dock-area');
+        const prevCoord = img.dataset.cellCoord;
+        const parentTd = img.closest('td, th');
         img.remove();
         if (parentDock && !parentDock.querySelector('.doc-chart-container')) {
           parentDock.remove();
         }
+        if (prevCoord) {
+          restoreCellSize(prevCoord);
+        } else if (parentTd) {
+          restoreCellSize(parentTd);
+        }
         deselectImage();
         window.DocFlow.Editor.notifyChange();
+        window.DocFlow.Editor?.saveSnapshot?.(true);
         showToast('Element removed', 'info');
       }
     });
@@ -1187,6 +1470,16 @@
         const img = window._movingImg;
         window._movingImg = null;
 
+        if (img && img.dataset?.cellCoord) {
+          const prevCoord = img.dataset.cellCoord;
+          delete img.dataset.cellCoord;
+          restoreCellSize(prevCoord, img);
+        }
+        const prevTd = img ? img.closest('td, th') : null;
+        if (prevTd) {
+          restoreCellSize(prevTd, img);
+        }
+
         let range = null;
         if (document.caretRangeFromPoint) {
           range = document.caretRangeFromPoint(e.clientX, e.clientY);
@@ -1246,18 +1539,27 @@
       if (selectedImage && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
         const parentDock = selectedImage.closest('.excel-chart-dock-area');
+        const prevCoord = selectedImage.dataset.cellCoord;
+        const parentTd = selectedImage.closest('td, th');
         selectedImage.remove();
         if (parentDock && !parentDock.querySelector('.doc-chart-container')) {
           parentDock.remove();
         }
+        if (prevCoord) {
+          restoreCellSize(prevCoord);
+        } else if (parentTd) {
+          restoreCellSize(parentTd);
+        }
         deselectImage();
         window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.Editor?.saveSnapshot?.(true);
         showToast('Element deleted', 'info');
       } else if (selectedLine && (e.key === 'Delete' || e.key === 'Backspace')) {
         e.preventDefault();
         selectedLine.remove();
         deselectLine();
         window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.Editor?.saveSnapshot?.(true);
         showToast('Line deleted', 'info');
       }
     });
@@ -1662,12 +1964,10 @@
       selectImage(shape);
     });
 
-    // Support dragging shape directly in Excel
+    // Support dragging shape directly in Excel & Document (Problem 1)
     let isDragging = false, startX = 0, startY = 0, initLeft = 0, initTop = 0;
     shape.addEventListener('mousedown', e => {
-      if (e.target.closest('.df-img-handle, .df-img-move-handle, .df-img-toolbar')) return;
-      const excelContainer = document.querySelector('.excel-spreadsheet-container');
-      if (!excelContainer || !excelContainer.contains(shape)) return;
+      if (e.target.closest('.df-img-handle, .df-img-move-handle, .df-img-toolbar, .df-resize-handle')) return;
 
       selectImage(shape);
       isDragging = true;
@@ -1693,27 +1993,79 @@
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
 
-        // Snap and adjust dimensions to fit destination cell
-        const cell = document.elementFromPoint(me.clientX, me.clientY)?.closest('.excel-grid-table td');
-        if (cell && excelContainer) {
-          const cRect = cell.getBoundingClientRect();
-          const pRect = excelContainer.getBoundingClientRect();
-          shape.style.position = 'absolute';
-          shape.style.left = Math.round(cRect.left - pRect.left + excelContainer.scrollLeft) + 'px';
-          shape.style.top = Math.round(cRect.top - pRect.top + excelContainer.scrollTop) + 'px';
-          shape.style.width = Math.max(20, Math.round(cRect.width)) + 'px';
-          shape.style.height = Math.max(20, Math.round(cRect.height)) + 'px';
-          shape.style.margin = '0px';
-          const svg = shape.querySelector('svg');
-          if (svg) {
-            svg.setAttribute('width', '100%');
-            svg.setAttribute('height', '100%');
+        const excelContainer = document.querySelector('.excel-spreadsheet-container');
+        const cell = getCellAtPoint(me.clientX, me.clientY, shape);
+        const w = parseFloat(shape.style.width) || shape.offsetWidth || 120;
+        const h = parseFloat(shape.style.height) || shape.offsetHeight || 80;
+
+        if (cell) {
+          const isExcelCell = cell.closest('.excel-grid-table');
+          const prevCoord = shape.dataset.cellCoord;
+          const prevTd = shape.closest('td, th');
+
+          if (isExcelCell && excelContainer) {
+            shape.dataset.cellCoord = cell.dataset.coord || '';
+            if (prevCoord && prevCoord !== cell.dataset.coord) {
+              restoreCellSize(prevCoord);
+            }
+            if (prevTd && prevTd !== cell) {
+              restoreCellSize(prevTd);
+            }
+            expandCellToObject(cell, w, h);
+            const cRect = cell.getBoundingClientRect();
+            const pRect = excelContainer.getBoundingClientRect();
+            shape.style.position = 'absolute';
+            shape.style.left = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + 10)) + 'px';
+            shape.style.top = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop + 8)) + 'px';
+            shape.style.margin = '0px';
+            shape.style.zIndex = '25';
+            shape.dataset.cellCoord = cell.dataset.coord || '';
+            if (!excelContainer.contains(shape)) {
+              excelContainer.appendChild(shape);
+            }
+            positionAllHandles(shape);
+            if (activeImageToolbar) positionImageToolbar(shape, activeImageToolbar);
+            window.DocFlow.Editor?.notifyChange();
+            window.DocFlow.Editor?.saveSnapshot?.(true);
+            showToast(`Shape fitted to cell ${cell.dataset.coord || ''}`, 'success');
+            return;
+          } else {
+            // Document table cell
+            if (prevCoord) {
+              restoreCellSize(prevCoord);
+              delete shape.dataset.cellCoord;
+            }
+            if (prevTd && prevTd !== cell) {
+              restoreCellSize(prevTd);
+            }
+            shape.style.position = 'relative';
+            shape.style.left = '';
+            shape.style.top = '';
+            shape.style.margin = '4px';
+            shape.style.zIndex = '25';
+            cell.appendChild(shape);
+            expandCellToObject(cell, w, h);
+            positionAllHandles(shape);
+            if (activeImageToolbar) positionImageToolbar(shape, activeImageToolbar);
+            window.DocFlow.Editor?.notifyChange();
+            window.DocFlow.Editor?.saveSnapshot?.(true);
+            showToast('Shape fitted into table cell', 'success');
+            return;
+          }
+        } else {
+          if (shape.dataset.cellCoord) {
+            const prevCoord = shape.dataset.cellCoord;
+            delete shape.dataset.cellCoord;
+            restoreCellSize(prevCoord, shape);
+          }
+          const prevTd = shape.closest('td, th');
+          if (prevTd) {
+            restoreCellSize(prevTd, shape);
           }
           positionAllHandles(shape);
           if (activeImageToolbar) positionImageToolbar(shape, activeImageToolbar);
           window.DocFlow.Editor?.notifyChange();
           window.DocFlow.Editor?.saveSnapshot?.(true);
-          showToast(`Shape fitted to cell ${cell.dataset.coord || ''}`, 'success');
         }
       };
 
@@ -2044,10 +2396,12 @@
           ? window._activeExcelCell
           : (excelContainer.querySelector('td.excel-cell-selected') || excelContainer.querySelector('tbody td'));
         if (activeCell) {
+          expandCellToObject(activeCell, w, h);
           const cRect = activeCell.getBoundingClientRect();
           const pRect = excelContainer.getBoundingClientRect();
-          node.style.left = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + 15)) + 'px';
-          node.style.top = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop + 15)) + 'px';
+          node.style.left = Math.max(10, Math.round(cRect.left - pRect.left + excelContainer.scrollLeft + 10)) + 'px';
+          node.style.top = Math.max(10, Math.round(cRect.top - pRect.top + excelContainer.scrollTop + 8)) + 'px';
+          node.dataset.cellCoord = activeCell.dataset.coord || '';
         } else {
           node.style.left = '60px';
           node.style.top = '60px';
@@ -2063,12 +2417,20 @@
       }
     }
 
+    const sel = window.getSelection();
+    const inDocCell = sel && sel.anchorNode ? (sel.anchorNode.closest ? sel.anchorNode.closest('td, th') : sel.anchorNode.parentElement?.closest('td, th')) : null;
+
     window.DocFlow.Editor?.insertHtmlAtCursor(shapeHtml);
     window.DocFlow.Editor?.notifyChange();
 
     setTimeout(() => {
       const el = document.getElementById(shapeId);
       if (el) {
+        const targetCell = inDocCell || el.closest('td, th');
+        if (targetCell) {
+          expandCellToObject(targetCell, w, h);
+          targetCell.dataset.hasAttachedObject = 'true';
+        }
         attachShapeListeners(el);
         selectImage(el);
       }
@@ -2086,6 +2448,9 @@
   // Export module
   window.DocFlow = window.DocFlow || {};
   window.DocFlow.ImageManager = {
+    expandCellToObject,
+    restoreCellSize,
+    getCellAtPoint,
     initImageManager,
     insertImageIntoDocument,
     insertShapeIntoDocument,

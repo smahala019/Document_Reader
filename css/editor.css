@@ -552,8 +552,8 @@
 }
 
 .excel-grid-table .excel-col-hdr {
-  background: #dcfce7 !important;
   font-weight: 700 !important;
+  background: #dcfce7 !important;
   color: #000000 !important;
   text-align: center;
   font-size: 11.5px;
@@ -765,6 +765,27 @@
   user-select: none !important;
 }
 
+/* Excel Cell Default Cursor & Hide Table Move Handle over Spreadsheet (Problem 2) */
+.excel-grid-table td {
+  cursor: cell !important;
+}
+
+.excel-grid-table th {
+  cursor: default !important;
+}
+
+.excel-grid-table th.excel-col-hdr,
+.excel-grid-table td.excel-row-hdr {
+  cursor: pointer !important;
+}
+
+.excel-spreadsheet-container .df-table-move-handle,
+.excel-spreadsheet-container .df-table-corner-handle {
+  display: none !important;
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
 /* Excel Table Cell & Header Selections — Heavy, distinct visual styling (Bug 6 & Issue 4) */
 td.excel-cell-selected,
 .excel-grid-table td.excel-cell-selected {
@@ -789,7 +810,7 @@ td.excel-cell-selected,
   outline-offset: -2px !important;
   box-shadow: inset 0 0 0 2px #ffffff, 0 0 10px rgba(22, 163, 74, 0.65) !important;
   background-color: #dcfce7 !important;
-  z-index: 10 !important;
+  z-index: 2 !important;
 }
 
 [data-theme="dark"] .excel-grid-table td:focus,
@@ -799,7 +820,7 @@ td.excel-cell-selected,
   box-shadow: inset 0 0 0 2px #0f172a, 0 0 10px rgba(74, 222, 128, 0.65) !important;
   background-color: rgba(34, 197, 94, 0.35) !important;
   color: #ffffff !important;
-  z-index: 10 !important;
+  z-index: 2 !important;
 }
 
 /* Excel Row and Column Full Selection Highlighting (Issue 2) */
@@ -4080,6 +4101,37 @@ body.is-table-resizing-row * {
   pointer-events: none;
   z-index: 5;
 }
+
+/* Excel Quote Badge Indicator (Problem 3) */
+.excel-grid-table td.excel-has-quote {
+  position: relative !important;
+}
+.excel-grid-table td.excel-has-quote::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 7px 7px 0;
+  border-color: transparent #16a34a transparent transparent;
+  pointer-events: none;
+  z-index: 5;
+}
+.excel-grid-table td.excel-has-note.excel-has-quote::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 7px 7px 0 0;
+  border-color: #16a34a transparent transparent transparent;
+  pointer-events: none;
+  z-index: 5;
+}
 /* Excel High-Contrast Applied Borders (Requirement 1.5) */
 .excel-grid-table td[style*="border"],
 .excel-grid-table td.excel-border-applied {
@@ -4484,4 +4536,151 @@ tr.excel-page-break-bottom td {
     break-inside: avoid !important;
     box-shadow: none !important;
   }
+}
+
+/* ==========================================================================
+   Table Resizer (Red Cursor & Indicator) & Table Handle Fixes (Issue 2)
+   ========================================================================== */
+.df-table-resizer-line {
+  position: fixed;
+  z-index: 10001;
+  pointer-events: none;
+  display: none;
+  border-radius: 1px;
+  /* background: #ef4444 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8) !important; */
+}
+
+:root {
+  --cursor-col-resize-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23ef4444' stroke='%23ffffff' stroke-width='1.5' stroke-linejoin='round' d='M8 7l-5 5 5 5v-3h8v3l5-5-5-5v3H8V7z'/%3E%3C/svg%3E") 12 12, col-resize;
+  --cursor-row-resize-red: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath fill='%23ef4444' stroke='%23ffffff' stroke-width='1.5' stroke-linejoin='round' d='M7 8l5-5 5 5h-3v8h3l-5 5-5-5h3V8H7z'/%3E%3C/svg%3E") 12 12, row-resize;
+}
+
+.df-table-resizer-line.col {
+  width: 3px;
+  cursor: var(--cursor-col-resize-red) !important;
+}
+
+.df-table-resizer-line.row {
+  height: 3px;
+  cursor: var(--cursor-row-resize-red) !important;
+}
+
+body.is-table-resizing-col,
+body.is-table-resizing-col * {
+  cursor: var(--cursor-col-resize-red) !important;
+  user-select: none !important;
+}
+
+body.is-table-resizing-row,
+body.is-table-resizing-row * {
+  cursor: var(--cursor-row-resize-red) !important;
+  user-select: none !important;
+}
+
+/* ==========================================================================
+   Excel Floating Notes & Floating Quotes (Issue 3 & 4)
+   ========================================================================== */
+.excel-floating-note,
+.excel-floating-quote {
+  position: absolute;
+  z-index: 35 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18), 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.15s ease;
+  user-select: auto;
+}
+
+.excel-floating-quote {
+  background: #f0fdf4 !important;
+  border: 1px solid #86efac !important;
+  border-radius: 6px;
+  padding: 8px 10px;
+  width: 210px;
+  min-height: 95px;
+  font-size: 12px;
+  color: #1e293b;
+  box-sizing: border-box;
+}
+
+.excel-quote-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-size: 11px;
+  color: #15803d;
+  border-bottom: 1px solid #bbf7d0;
+  padding-bottom: 3px;
+  cursor: move;
+  user-select: none;
+}
+
+.excel-note-body,
+.excel-quote-body {
+  cursor: text !important;
+  user-select: text !important;
+  outline: none;
+  min-height: 50px;
+  word-break: break-word;
+  white-space: pre-wrap;
+  font-family: inherit;
+}
+
+.excel-note-body:empty::before,
+.excel-note-body[data-empty="true"]::before,
+.excel-quote-body:empty::before,
+.excel-quote-body[data-empty="true"]::before {
+  content: attr(data-placeholder);
+  color: #94a3b8 !important;
+  pointer-events: none;
+  font-style: italic;
+  cursor: text;
+}
+
+/* ==========================================================================
+   Excel Shape, Image & Chart Cell Protection (Issue 1)
+   ========================================================================== */
+.excel-spreadsheet-container .doc-shape-container,
+.excel-spreadsheet-container .doc-chart-container,
+.excel-spreadsheet-container img[data-wrap="inline"],
+.excel-spreadsheet-container img[data-cell-coord] {
+  z-index: 25 !important;
+  pointer-events: auto !important;
+}
+
+/* Active focus on excel cell must not conceal floating shapes */
+.excel-grid-table td:focus,
+.excel-grid-table td.excel-cell-focus,
+.excel-grid-table td.excel-cell-selected {
+  z-index: 2 !important;
+}
+
+/* Full row line styling (Issue 4) */
+tr.excel-row-line td,
+tr.excel-row-line th {
+  border-bottom-width: var(--excel-row-line-width, 2px) !important;
+  border-bottom-style: var(--excel-row-line-style, solid) !important;
+  border-bottom-color: var(--excel-row-line-color, #0284c7) !important;
+}
+
+.onenote-checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.onenote-checklist-checkbox {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent, #0284c7);
+  flex-shrink: 0;
+}
+
+.onenote-checklist-text {
+  outline: none;
+  flex: 1;
 }
