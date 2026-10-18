@@ -469,7 +469,10 @@
 
     editor.addEventListener('paste', async e => {
       const clipboard = e.clipboardData;
-      if (!clipboard) return;
+      if (!clipboard) {
+        window.showPasteModal?.('', 'Manual Paste', 'Clipboard access denied or empty. Please paste your content below:');
+        return;
+      }
 
       const items = Array.from(clipboard.items || []);
       const imageItem = items.find(it => it.type && it.type.startsWith('image/'));
@@ -490,22 +493,33 @@
         return;
       }
 
+      const plainText = clipboard.getData('text/plain') || '';
+      if (plainText.length > 5000) {
+        e.preventDefault();
+        window.showPasteModal?.(plainText, 'Large Content Paste', `Large amount of content detected (${plainText.length.toLocaleString()} characters). Review below:`);
+        return;
+      }
+
       // If pasting text with external styles, sanitize
       const html = clipboard.getData('text/html');
       if (html && (html.includes('<meta') || html.includes('style="') || html.includes('class='))) {
         e.preventDefault();
-        const temp = document.createElement('div');
-        temp.innerHTML = html;
-        temp.querySelectorAll('*').forEach(el => {
-          [...el.attributes].forEach(attr => {
-            const name = attr.name.toLowerCase();
-            if (name === 'style' || name === 'class' || name === 'id' || name.startsWith('on')) {
-              el.removeAttribute(attr.name);
-            }
+        try {
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+          temp.querySelectorAll('*').forEach(el => {
+            [...el.attributes].forEach(attr => {
+              const name = attr.name.toLowerCase();
+              if (name === 'style' || name === 'class' || name === 'id' || name.startsWith('on')) {
+                el.removeAttribute(attr.name);
+              }
+            });
           });
-        });
-        temp.querySelectorAll('script,style,meta,link,iframe,object,embed').forEach(el => el.remove());
-        window.DocFlow.Editor.insertHtmlAtCursor(temp.innerHTML);
+          temp.querySelectorAll('script,style,meta,link,iframe,object,embed').forEach(el => el.remove());
+          window.DocFlow.Editor.insertHtmlAtCursor(temp.innerHTML);
+        } catch (err) {
+          window.showPasteModal?.(plainText, 'Manual Paste', 'Error formatting pasted content. Preserved below:');
+        }
       }
     });
   }
@@ -1053,6 +1067,58 @@
     });
 
     positionAllHandles(img);
+  }
+
+  // Keep shapes, images, charts, and handles anchored to cells on scroll (Problem 1)
+  function syncExcelAnchoredObjects(container) {
+    if (!container) container = document.querySelector('.excel-spreadsheet-container');
+    if (!container) return;
+    const table = container.querySelector('.excel-grid-table');
+    if (!table) return;
+
+    const viewport = container.querySelector('.excel-sheet-viewport') || container;
+    const vRect = viewport.getBoundingClientRect();
+    const pRect = container.getBoundingClientRect();
+
+    const anchored = container.querySelectorAll('[data-cell-coord], .doc-chart-container');
+    anchored.forEach(obj => {
+      const coord = obj.dataset.cellCoord;
+      if (!coord) return;
+      const cell = table.querySelector(`td[data-coord="${coord}"]`);
+      if (!cell) return;
+
+      const cRect = cell.getBoundingClientRect();
+      const leftPos = Math.max(10, Math.round(cRect.left - pRect.left + container.scrollLeft + 10));
+      const topPos = Math.max(10, Math.round(cRect.top - pRect.top + container.scrollTop + 8));
+
+      obj.style.left = leftPos + 'px';
+      obj.style.top = topPos + 'px';
+
+      // Visibility clipping when cell scrolls out of viewport
+      if (cRect.bottom < vRect.top || cRect.top > vRect.bottom || cRect.right < vRect.left || cRect.left > vRect.right) {
+        obj.style.visibility = 'hidden';
+      } else {
+        obj.style.visibility = 'visible';
+      }
+    });
+
+    if (selectedImage && document.body.contains(selectedImage)) {
+      positionAllHandles(selectedImage);
+      if (activeImageToolbar) positionImageToolbar(selectedImage, activeImageToolbar);
+    }
+  }
+
+  function setupScrollAnchoring() {
+    const onScroll = () => {
+      syncExcelAnchoredObjects();
+      if (selectedImage && document.body.contains(selectedImage)) {
+        positionAllHandles(selectedImage);
+        if (activeImageToolbar) positionImageToolbar(selectedImage, activeImageToolbar);
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
+    $('#editorWrap')?.addEventListener('scroll', onScroll, { passive: true });
   }
 
   function positionAllHandles(img) {
@@ -2443,6 +2509,7 @@
     setupClipboardPaste();
     setupDocumentImageListeners();
     setupShapesModal();
+    setupScrollAnchoring();
   }
 
   // Export module
@@ -2451,6 +2518,7 @@
     expandCellToObject,
     restoreCellSize,
     getCellAtPoint,
+    syncExcelAnchoredObjects,
     initImageManager,
     insertImageIntoDocument,
     insertShapeIntoDocument,

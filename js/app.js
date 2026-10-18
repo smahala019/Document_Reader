@@ -4605,6 +4605,78 @@
     showToast(isArea ? 'Print Area defined for document' : 'Print Area cleared', 'info');
   }
 
+  // Dynamic Scan to identify last row & column with data or in use (first.txt Problem 1)
+  function getLastUsedExcelCoord(container, returnExactCell = false) {
+    if (!container) container = document.querySelector('.excel-spreadsheet-container');
+    if (!container) return 'A1';
+    const table = container.querySelector('.excel-grid-table');
+    if (!table) return 'A1';
+
+    let maxRow = 1;
+    let maxColIdx = 0;
+    let foundData = false;
+
+    const trs = Array.from(table.querySelectorAll('tbody tr'));
+    trs.forEach((tr, rIdx) => {
+      const rowNum = parseInt(tr.dataset.row, 10) || (rIdx + 1);
+      const cells = Array.from(tr.querySelectorAll('td'));
+      cells.forEach((td, cIdx) => {
+        const coord = td.dataset.coord;
+        const text = (td.textContent || '').trim();
+        const formula = td.getAttribute('data-formula') || td.dataset.formula || (text.startsWith('=') ? text : '');
+        const hasFormula = Boolean(formula) || text.startsWith('=') || td.hasAttribute('data-formula');
+        const hasContent = text.length > 0 ||
+          hasFormula ||
+          td.dataset.customFill === 'true' ||
+          (td.style.backgroundColor && td.style.backgroundColor !== 'transparent' && td.style.backgroundColor !== 'rgba(0, 0, 0, 0)') ||
+          td.querySelector('img, svg, canvas, .excel-text-highlight, .doc-shape-container, .doc-chart-container') ||
+          td.classList.contains('excel-has-note') ||
+          td.classList.contains('excel-has-quote') ||
+          (coord && container.querySelector(`[data-cell-coord="${coord}"]`));
+
+        if (hasContent) {
+          foundData = true;
+          if (rowNum > maxRow) maxRow = rowNum;
+          let colIdx = cIdx;
+          if (coord) {
+            const match = coord.match(/^([A-Z]+)/);
+            if (match) {
+              const letters = match[1];
+              let c = 0;
+              for (let i = 0; i < letters.length; i++) {
+                c = c * 26 + (letters.charCodeAt(i) - 64);
+              }
+              colIdx = c - 1;
+            }
+          }
+          if (colIdx > maxColIdx) maxColIdx = colIdx;
+        }
+      });
+    });
+
+    const getLetter = window.DocFlow.FileIO?.getExcelColLetter || (i => {
+      let letter = '';
+      let temp = i;
+      while (temp >= 0) {
+        letter = String.fromCharCode((temp % 26) + 65) + letter;
+        temp = Math.floor(temp / 26) - 1;
+      }
+      return letter;
+    });
+
+    const maxColLetter = getLetter(maxColIdx);
+    container.dataset.lastUsedRow = String(maxRow);
+    container.dataset.lastUsedCol = maxColLetter;
+    container.dataset.lastUsedExact = `${maxColLetter}${maxRow}`;
+
+    if (!foundData) {
+      return 'A1';
+    }
+
+    // "For example, if the last used row is 70 and the last used column is H, navigate to A70."
+    return returnExactCell ? `${maxColLetter}${maxRow}` : `A${maxRow}`;
+  }
+
   // True Excel Capacity & Coordinates Controller (Issues 7, 8, 9)
   function jumpToExcelCoord(container, coordStr) {
     if (!container || !coordStr) return;
@@ -4735,6 +4807,22 @@
       });
     };
     container._syncExcelNotesVisibility = syncExcelNotesVisibility;
+
+    const onExcelScroll = () => {
+      window.DocFlow.ImageManager?.syncExcelAnchoredObjects?.(container);
+      if (window._activeExcelCell) {
+        syncExcelNotesVisibility(window._activeExcelCell);
+      }
+    };
+    const viewport = container.querySelector('.excel-sheet-viewport');
+    if (viewport && !viewport._excelScrollBound) {
+      viewport._excelScrollBound = true;
+      viewport.addEventListener('scroll', onExcelScroll, { passive: true });
+    }
+    if (!container._excelScrollBound) {
+      container._excelScrollBound = true;
+      container.addEventListener('scroll', onExcelScroll, { passive: true });
+    }
 
     const attachCellSync = (td) => {
       if (td._excelSynced) return;
@@ -5182,7 +5270,8 @@
         if (type === 'home') {
           jumpToExcelCoord(container, 'A1');
         } else if (type === 'end') {
-          jumpToExcelCoord(container, 'XFD1048576');
+          const lastUsed = getLastUsedExcelCoord(container);
+          jumpToExcelCoord(container, lastUsed);
         }
       });
     });
@@ -5694,6 +5783,192 @@
 
     return inner;
   }
+
+  // =========================================================================
+  // Dedicated Paste Container & Fallback Modal (first.txt Problem 2)
+  // =========================================================================
+  let modalCallback = null;
+  window.modalCallback = null;
+
+  function insertSafeContentIntoDoc(text) {
+    const editor = document.getElementById('editor');
+    if (!editor) return;
+
+    const excelContainer = editor.querySelector('.excel-spreadsheet-container');
+    const activeCell = (window._activeExcelCell && document.body.contains(window._activeExcelCell))
+      ? window._activeExcelCell
+      : (excelContainer?.querySelector('td.excel-cell-selected'));
+
+    if (excelContainer && activeCell) {
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      if (text.includes('\t') || text.includes('\n')) {
+        if (typeof pasteFromClipboard === 'function') {
+          pasteFromClipboard(text);
+        } else {
+          activeCell.textContent = text;
+        }
+      } else {
+        activeCell.textContent = text;
+        const formulaInput = document.getElementById('excelFormulaInput') || excelContainer.querySelector('.excel-formula-input');
+        if (formulaInput) formulaInput.value = text;
+      }
+      window.DocFlow.Editor?.notifyChange?.();
+      return;
+    }
+
+    window.DocFlow.Editor?.saveSnapshot?.(true);
+    if (typeof window.DocFlow.Editor?.focusEditor === 'function') {
+      window.DocFlow.Editor.focusEditor();
+    } else {
+      editor.focus();
+    }
+
+    const sel = window.getSelection();
+    let range = null;
+    if (sel && sel.rangeCount > 0 && editor.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+      range = sel.getRangeAt(0);
+      range.deleteContents();
+    } else {
+      range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+    }
+
+    const fragment = document.createDocumentFragment();
+    const lines = text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) fragment.appendChild(document.createElement('br'));
+      if (lines[i].length > 0) fragment.appendChild(document.createTextNode(lines[i]));
+    }
+
+    const lastNode = fragment.lastChild;
+    range.insertNode(fragment);
+
+    if (lastNode && sel) {
+      const newRange = document.createRange();
+      newRange.setStartAfter(lastNode);
+      newRange.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(newRange);
+    }
+
+    window.DocFlow.Editor?.notifyChange?.();
+    window.DocFlow.Editor?.saveSnapshot?.(true);
+  }
+
+  function showPasteModal(initialText = '', customTitle = '', customMessage = '') {
+    const modalContent = document.getElementById('modal-content');
+    const modalTitle = document.getElementById('modal-title');
+    const modalConfirm = document.getElementById('modal-confirm');
+    const modalOverlay = document.getElementById('modal-overlay');
+
+    const defaultMsg = customMessage || (initialText ? 'Large amount of content detected. Review your content below before inserting:' : 'Clipboard access denied or empty. Please paste your content below:');
+    const title = customTitle || (initialText ? 'Large Content Paste' : 'Manual Paste');
+
+    if (modalContent) {
+      modalContent.innerHTML = 
+        `<div style="margin-bottom: 12px; color: var(--text-secondary); font-size: 13px;">${defaultMsg}</div>` +
+        '<textarea class="paste-modal-textarea" id="paste-textarea" placeholder="Paste your code or text here..." autofocus></textarea>';
+    }
+
+    if (modalTitle) modalTitle.textContent = title;
+    if (modalConfirm) modalConfirm.textContent = 'Insert';
+
+    const ta = document.getElementById('paste-textarea');
+    if (ta && initialText) {
+      ta.value = initialText;
+    }
+
+    modalCallback = function() {
+      const textarea = document.getElementById('paste-textarea');
+      if (textarea) {
+        const text = textarea.value;
+        if (text) {
+          const editor = window.editor || document.getElementById('editor');
+          if (editor && typeof editor.getSelection === 'function' && typeof editor.executeEdits === 'function') {
+            const selection = editor.getSelection();
+            editor.executeEdits('', [{
+              range: selection,
+              text: text,
+              forceMoveMarkers: true
+            }]);
+            showToast('Content inserted', 'success');
+          } else if (editor) {
+            insertSafeContentIntoDoc(text);
+            showToast('Content inserted', 'success');
+          } else {
+            // FIX: Fallback to active element if editor is null (e.g., terminal input)
+            const active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+              const start = active.selectionStart || 0;
+              const end = active.selectionEnd || 0;
+              active.value = active.value.substring(0, start) + text + active.value.substring(end);
+              active.selectionStart = active.selectionEnd = start + text.length;
+              showToast('Content inserted', 'success');
+            } else {
+              showToast('No active editor to paste into', 'warning');
+            }
+          }
+        }
+      }
+    };
+    window.modalCallback = modalCallback;
+
+    if (modalOverlay) modalOverlay.classList.add('show');
+
+    setTimeout(function() {
+      const textarea = document.getElementById('paste-textarea');
+      if (textarea) {
+        textarea.focus();
+        if (initialText) {
+          textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+        }
+      }
+    }, 100);
+  }
+
+  function setupPasteModalListeners() {
+    const modalOverlay = document.getElementById('modal-overlay');
+    const confirmBtn = document.getElementById('modal-confirm');
+    const cancelBtn = document.getElementById('modal-cancel');
+    const closeBtn = document.getElementById('modal-close');
+
+    const close = () => {
+      if (modalOverlay) modalOverlay.classList.remove('show');
+    };
+
+    if (confirmBtn && !confirmBtn._pasteBound) {
+      confirmBtn._pasteBound = true;
+      confirmBtn.addEventListener('click', () => {
+        if (typeof modalCallback === 'function') {
+          modalCallback();
+        } else if (typeof window.modalCallback === 'function') {
+          window.modalCallback();
+        }
+        close();
+      });
+    }
+
+    if (cancelBtn && !cancelBtn._pasteBound) {
+      cancelBtn._pasteBound = true;
+      cancelBtn.addEventListener('click', close);
+    }
+
+    if (closeBtn && !closeBtn._pasteBound) {
+      closeBtn._pasteBound = true;
+      closeBtn.addEventListener('click', close);
+    }
+
+    if (modalOverlay && !modalOverlay._pasteBound) {
+      modalOverlay._pasteBound = true;
+      modalOverlay.addEventListener('click', e => {
+        if (e.target === modalOverlay) close();
+      });
+    }
+  }
+
+  window.showPasteModal = showPasteModal;
+  window.insertSafeContentIntoDoc = insertSafeContentIntoDoc;
 
   // Ribbon Action Handlers
   function initRibbon() {
@@ -7420,94 +7695,330 @@
       }
     });
 
-    // Problem 3: Grammar & Spelling Inspector
+    // Problem 3 & Issue 2: Enhanced Grammar & Spelling Inspector with in-text highlighting
+    function clearSpellHighlights(root) {
+      if (!root) root = $('#editor');
+      if (!root) return;
+      root.querySelectorAll('mark.df-spell-error, mark.df-grammar-error').forEach(mark => {
+        const parent = mark.parentNode;
+        if (!parent) return;
+        while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+        mark.remove();
+      });
+      root.normalize?.();
+    }
+    window._clearSpellHighlights = clearSpellHighlights;
+
+    const typoDict = {
+      'teh': 'the', 'recieve': 'receive', 'seperate': 'separate', 'untill': 'until',
+      'occured': 'occurred', 'definately': 'definitely', 'goverment': 'government',
+      'writting': 'writing', 'grammer': 'grammar', 'truely': 'truly', 'wierd': 'weird',
+      'accomodate': 'accommodate', 'adress': 'address', 'calender': 'calendar',
+      'thier': 'their', 'mispell': 'misspell', 'alot': 'a lot', 'wich': 'which',
+      'realy': 'really', 'becuase': 'because', 'becasue': 'because', 'beleive': 'believe',
+      'neccessary': 'necessary', 'enviroment': 'environment', 'tommorrow': 'tomorrow',
+      'succesful': 'successful', 'begining': 'beginning', 'pronounciation': 'pronunciation',
+      'refered': 'referred', 'concious': 'conscious', 'peice': 'piece', 'freind': 'friend',
+      'oppurtunity': 'opportunity', 'posession': 'possession', 'embarass': 'embarrass',
+      'maintainance': 'maintenance', 'acess': 'access', 'acheive': 'achieve',
+      'accross': 'across', 'aggresive': 'aggressive', 'allways': 'always',
+      'apparant': 'apparent', 'arguement': 'argument', 'basicly': 'basically',
+      'beautifull': 'beautiful', 'buisness': 'business', 'collegue': 'colleague',
+      'comittee': 'committee', 'completeley': 'completely', 'curiousity': 'curiosity',
+      'disapear': 'disappear', 'disapoint': 'disappoint', 'embarras': 'embarrass',
+      'existance': 'existence', 'familar': 'familiar', 'futher': 'further',
+      'garantee': 'guarantee', 'happend': 'happened', 'harrass': 'harass',
+      'heigth': 'height', 'immediatly': 'immediately', 'incidently': 'incidentally',
+      'independant': 'independent', 'intresting': 'interesting', 'knowlege': 'knowledge',
+      'liason': 'liaison', 'millenium': 'millennium', 'noticable': 'noticeable',
+      'ocassion': 'occasion', 'occurence': 'occurrence', 'paralel': 'parallel',
+      'persue': 'pursue', 'posible': 'possible', 'prefered': 'preferred',
+      'priviledge': 'privilege', 'procede': 'proceed', 'recommand': 'recommend',
+      'religous': 'religious', 'rememberance': 'remembrance', 'resistence': 'resistance',
+      'sence': 'sense', 'tomorow': 'tomorrow', 'twelth': 'twelfth',
+      'unforseen': 'unforeseen', 'usefull': 'useful', 'vehical': 'vehicle',
+      'viscious': 'vicious', 'wether': 'whether'
+    };
+
+    const grammarRules = [
+      {
+        regex: /\b([a-zA-Z]{2,})\s+\1\b/gi,
+        type: 'Repeated Word',
+        getSuggestion: m => m[1],
+        getDesc: m => `Word "${m[1]}" is repeated consecutively.`
+      },
+      {
+        regex: /\ba\s+([aeioAEIO][a-z]*)\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `an ${m[1]}`,
+        getDesc: m => `Use "an" before vowel sounds: "an ${m[1]}".`
+      },
+      {
+        regex: /\ban\s+([bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ][a-z]*)\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `a ${m[1]}`,
+        getDesc: m => `Use "a" before consonant sounds: "a ${m[1]}".`,
+        filter: m => !/^(hour|honest|honor|heir)/i.test(m[1])
+      },
+      {
+        regex: /\b(could|should|would|must)\s+of\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `${m[1]} have`,
+        getDesc: m => `Use "${m[1]} have" instead of "${m[1]} of".`
+      },
+      {
+        regex: /\bsuppose\s+to\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: () => 'supposed to',
+        getDesc: () => 'The correct phrase is "supposed to".'
+      },
+      {
+        regex: /\buse\s+to\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: () => 'used to',
+        getDesc: () => 'The correct phrase is "used to".'
+      },
+      {
+        regex: /\b(they|we|you)\s+is\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `${m[1]} are`,
+        getDesc: m => `Subject-verb agreement: use "${m[1]} are".`
+      },
+      {
+        regex: /\b(they|we)\s+was\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `${m[1]} were`,
+        getDesc: m => `Subject-verb agreement: use "${m[1]} were".`
+      },
+      {
+        regex: /\b(he|she|it)\s+have\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `${m[1]} has`,
+        getDesc: m => `Subject-verb agreement: use "${m[1]} has".`
+      },
+      {
+        regex: /\btheir\s+(is|are|was|were)\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `there ${m[1]}`,
+        getDesc: m => `Use "there ${m[1]}" to indicate existence.`
+      },
+      {
+        regex: /\byour\s+welcome\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: () => "you're welcome",
+        getDesc: () => 'Use "you\'re welcome" (you are welcome).'
+      },
+      {
+        regex: /\b(more|better|worse|less|greater|faster|slower|higher|lower)\s+then\b/gi,
+        type: 'Grammar Error',
+        getSuggestion: m => `${m[1]} than`,
+        getDesc: m => `Use comparison word "${m[1]} than".`
+      },
+      {
+        regex: /[.!?]\s+([a-z])/g,
+        type: 'Capitalization',
+        getSuggestion: m => m[0].toUpperCase(),
+        getDesc: () => 'Sentences should begin with a capital letter.'
+      }
+    ];
+
     $('#viewSpellCheckBtn')?.addEventListener('click', () => {
       const editor = $('#editor');
       if (!editor || window.DocFlow.currentMode !== 'edit') {
         showToast('Open a document in edit mode to run Grammar & Spelling check', 'info');
         return;
       }
-      const text = editor.innerText || '';
-      if (!text.trim()) {
+
+      clearSpellHighlights(editor);
+
+      const rawText = editor.innerText || '';
+      if (!rawText.trim()) {
         showToast('Document is empty — nothing to check', 'info');
         return;
       }
 
       const issues = [];
-      const repeatedRegex = /\b([a-zA-Z]{2,})\s+\1\b/gi;
-      let match;
-      while ((match = repeatedRegex.exec(text)) !== null) {
-        issues.push({
-          type: 'Repeated Word',
-          phrase: match[0],
-          suggestion: match[1],
-          desc: `Word "${match[1]}" is repeated consecutively.`
-        });
-      }
-      const typoDict = {
-        'teh': 'the', 'recieve': 'receive', 'seperate': 'separate', 'untill': 'until',
-        'occured': 'occurred', 'definately': 'definitely', 'goverment': 'government',
-        'writting': 'writing', 'grammer': 'grammar', 'truely': 'truly', 'wierd': 'weird',
-        'accomodate': 'accommodate', 'adress': 'address', 'calender': 'calendar'
-      };
-      Object.entries(typoDict).forEach(([bad, good]) => {
-        const reg = new RegExp(`\\b${bad}\\b`, 'gi');
-        if (reg.test(text)) {
-          issues.push({
-            type: 'Spelling Error',
-            phrase: bad,
-            suggestion: good,
-            desc: `Probable spelling mistake: replace "${bad}" with "${good}".`
-          });
+      let issueIdCounter = 0;
+
+      // 1. Collect text nodes to safely inspect & highlight without breaking HTML tags
+      const textNodes = [];
+      const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT, {
+        acceptNode: node => {
+          if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+          const parent = node.parentElement;
+          if (!parent) return NodeFilter.FILTER_REJECT;
+          if (parent.closest('script, style, .excel-floating-note, .excel-floating-quote, .df-img-toolbar, .df-comment-popover, svg')) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
         }
       });
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
 
-      const capRegex = /[.!?]\s+([a-z])/g;
-      while ((match = capRegex.exec(text)) !== null) {
-        issues.push({
-          type: 'Capitalization',
-          phrase: match[0],
-          suggestion: match[0].toUpperCase(),
-          desc: 'Sentences should begin with a capital letter.'
+      // 2. Scan and highlight in text nodes
+      textNodes.forEach(tNode => {
+        let text = tNode.nodeValue;
+        if (!text) return;
+
+        // Check typos
+        Object.entries(typoDict).forEach(([bad, good]) => {
+          const reg = new RegExp(`\\b${bad}\\b`, 'gi');
+          let m;
+          while ((m = reg.exec(text)) !== null) {
+            const errId = `spell_err_${++issueIdCounter}`;
+            issues.push({
+              id: errId,
+              type: 'Spelling Error',
+              phrase: m[0],
+              suggestion: (m[0][0] === m[0][0].toUpperCase() && good[0]) ? (good[0].toUpperCase() + good.slice(1)) : good,
+              desc: `Probable spelling mistake: replace "${m[0]}" with "${good}".`,
+              node: tNode,
+              offset: m.index,
+              length: m[0].length
+            });
+          }
         });
-      }
 
+        // Check grammar rules
+        grammarRules.forEach(rule => {
+          const reg = new RegExp(rule.regex.source, rule.regex.flags);
+          let m;
+          while ((m = reg.exec(text)) !== null) {
+            if (rule.filter && !rule.filter(m)) continue;
+            const errId = `spell_err_${++issueIdCounter}`;
+            const sug = rule.getSuggestion(m);
+            issues.push({
+              id: errId,
+              type: rule.type,
+              phrase: m[0],
+              suggestion: sug,
+              desc: rule.getDesc(m),
+              node: tNode,
+              offset: m.index,
+              length: m[0].length
+            });
+          }
+        });
+      });
+
+      // 3. Apply highlights in reverse order per text node to preserve character offsets
+      const nodesMap = new Map();
+      issues.forEach(iss => {
+        if (!nodesMap.has(iss.node)) nodesMap.set(iss.node, []);
+        nodesMap.get(iss.node).push(iss);
+      });
+
+      nodesMap.forEach((nodeIssues, node) => {
+        // Sort descending by offset
+        nodeIssues.sort((a, b) => b.offset - a.offset);
+        let curTextNode = node;
+        nodeIssues.forEach(iss => {
+          try {
+            if (iss.offset + iss.length > curTextNode.nodeValue.length) return;
+            const midNode = curTextNode.splitText(iss.offset);
+            midNode.splitText(iss.length);
+
+            const mark = document.createElement('mark');
+            mark.className = iss.type === 'Spelling Error' ? 'df-spell-error' : 'df-grammar-error';
+            mark.setAttribute('data-error-id', iss.id);
+            mark.title = `${iss.type}: ${iss.phrase} → ${iss.suggestion}`;
+            mark.textContent = midNode.nodeValue;
+
+            midNode.parentNode.replaceChild(mark, midNode);
+            iss.markEl = mark;
+          } catch (_) {}
+        });
+      });
+
+      // 4. Render results in the Spell Check Modal
       const listContainer = $('#spellCheckList');
       const badge = $('#spellCheckCountBadge');
       if (!listContainer) return;
 
+      const updateBadge = () => {
+        const remaining = listContainer.querySelectorAll('.spell-issue-card').length;
+        if (badge) badge.textContent = remaining === 0 ? '0 issues detected' : `${remaining} issue(s) detected`;
+        if (remaining === 0) {
+          listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#10b981;font-weight:600;"><i class="fas fa-circle-check" style="font-size:28px;display:block;margin-bottom:10px;"></i>All spelling and grammar issues resolved! Document looks clean.</div>';
+        }
+      };
+
       if (issues.length === 0) {
-        listContainer.innerHTML = '<div style="padding:24px;text-align:center;color:#10b981;font-weight:600;"><i class="fas fa-circle-check" style="font-size:24px;display:block;margin-bottom:8px;"></i>No spelling or grammar issues found! Document looks clean.</div>';
+        listContainer.innerHTML = '<div style="padding:28px;text-align:center;color:#10b981;font-weight:600;"><i class="fas fa-circle-check" style="font-size:28px;display:block;margin-bottom:10px;"></i>No spelling or grammar issues found! Document looks clean.</div>';
         if (badge) badge.textContent = '0 issues detected';
       } else {
         if (badge) badge.textContent = `${issues.length} issue(s) detected`;
-        listContainer.innerHTML = issues.map((iss, i) => `
-          <div class="spell-issue-card" style="background:var(--bg-secondary);border:1px solid var(--border);border-left:4px solid #10b981;border-radius:6px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
-            <div>
-              <div style="font-size:11px;font-weight:700;color:#10b981;text-transform:uppercase;">${escHtml(iss.type)}</div>
-              <div style="font-size:13px;font-weight:600;margin:2px 0;">Found: <span style="color:#ef4444;text-decoration:underline wavy #ef4444;">${escHtml(iss.phrase)}</span> &rarr; Suggestion: <strong style="color:#10b981;">${escHtml(iss.suggestion)}</strong></div>
-              <div style="font-size:12px;color:var(--text-muted);">${escHtml(iss.desc)}</div>
+        listContainer.innerHTML = issues.map(iss => {
+          const typeColor = iss.type === 'Spelling Error' ? '#ef4444' : (iss.type === 'Repeated Word' ? '#f59e0b' : '#10b981');
+          return `
+            <div class="spell-issue-card" id="card_${iss.id}" data-error-id="${iss.id}" style="background:var(--bg-secondary);border:1px solid var(--border);border-left:4px solid ${typeColor};border-radius:6px;padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;">
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:700;color:${typeColor};text-transform:uppercase;letter-spacing:0.5px;">${escHtml(iss.type)}</div>
+                <div style="font-size:13px;font-weight:600;margin:3px 0;">Found: <span style="color:#ef4444;text-decoration:underline wavy #ef4444;">${escHtml(iss.phrase)}</span> &rarr; Suggestion: <strong style="color:#10b981;">${escHtml(iss.suggestion)}</strong></div>
+                <div style="font-size:12px;color:var(--text-muted);">${escHtml(iss.desc)}</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button class="modal-btn" style="font-size:11.5px;padding:5px 10px;background:var(--accent);color:#fff;" onclick="window._fixSpellWord('${iss.id}', '${escHtml(iss.suggestion)}')">Replace</button>
+                <button class="modal-btn" style="font-size:11.5px;padding:5px 8px;background:var(--bg-tertiary);" onclick="window._ignoreSpellWord('${iss.id}')">Ignore</button>
+              </div>
             </div>
-            <button class="modal-btn" style="flex-shrink:0;font-size:11.5px;padding:5px 10px;" onclick="window._fixSpellWord('${escHtml(iss.phrase)}', '${escHtml(iss.suggestion)}')">Replace</button>
-          </div>
-        `).join('');
+          `;
+        }).join('');
+
+        // Card click scrolls to highlighted mark in text
+        listContainer.querySelectorAll('.spell-issue-card').forEach(card => {
+          card.addEventListener('click', e => {
+            if (e.target.closest('button')) return;
+            const errId = card.dataset.errorId;
+            const mark = editor.querySelector(`mark[data-error-id="${errId}"]`);
+            if (mark) {
+              editor.querySelectorAll('mark.active-focus').forEach(m => m.classList.remove('active-focus'));
+              mark.classList.add('active-focus');
+              mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          });
+        });
       }
+
+      window._fixSpellWord = (errId, good) => {
+        const mark = editor.querySelector(`mark[data-error-id="${errId}"]`);
+        if (mark) {
+          const textNode = document.createTextNode(good);
+          mark.parentNode.replaceChild(textNode, mark);
+          window.DocFlow.Editor?.notifyChange?.();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+        }
+        const card = document.getElementById(`card_${errId}`);
+        if (card) card.remove();
+        updateBadge();
+        showToast('Suggestion applied successfully', 'success');
+      };
+
+      window._ignoreSpellWord = (errId) => {
+        const mark = editor.querySelector(`mark[data-error-id="${errId}"]`);
+        if (mark) {
+          const textNode = document.createTextNode(mark.textContent);
+          mark.parentNode.replaceChild(textNode, mark);
+        }
+        const card = document.getElementById(`card_${errId}`);
+        if (card) card.remove();
+        updateBadge();
+      };
 
       window.DocFlow.UI?.openModal?.('#spellCheckModal');
     });
 
-    window._fixSpellWord = (bad, good) => {
+    const closeSpellModal = () => {
       const editor = $('#editor');
-      if (!editor) return;
-      const regex = new RegExp(`\\b${bad}\\b`, 'g');
-      editor.innerHTML = editor.innerHTML.replace(regex, good);
-      window.DocFlow.Editor?.notifyChange?.();
-      showToast(`Replaced "${bad}" with "${good}"`, 'success');
-      $('#viewSpellCheckBtn')?.click();
+      if (editor) clearSpellHighlights(editor);
+      window.DocFlow.UI?.closeModal?.('#spellCheckModal');
     };
 
-    $('#spellCheckCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#spellCheckModal'));
-    $('#spellCheckDoneBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#spellCheckModal'));
+    $('#spellCheckCloseBtn')?.addEventListener('click', closeSpellModal);
+    $('#spellCheckDoneBtn')?.addEventListener('click', closeSpellModal);
+
+    // Initialize paste modal listeners
+    setupPasteModalListeners();
 
     function updateWordOnlyTools(tab) {
       const activeTab = tab || window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
@@ -11246,6 +11757,8 @@
   window.DocFlow.handleTabSave = handleTabSave;
   window.DocFlow.setupExcelInteractions = setupExcelInteractions;
   window.DocFlow.jumpToExcelCoord = jumpToExcelCoord;
+  window.DocFlow.getLastUsedExcelCoord = getLastUsedExcelCoord;
+  window.DocFlow.showPasteModal = showPasteModal;
   window.DocFlow.startSlideShow = startSlideShow;
   window.DocFlow.insertPptSlide = insertPptSlide;
   window.DocFlow.insertChartIntoDocument = insertChartIntoDocument;

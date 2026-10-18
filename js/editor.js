@@ -3001,14 +3001,18 @@
         if (navigator.clipboard && navigator.clipboard.readText) {
           const text = await navigator.clipboard.readText();
           if (text) {
+            if (text.length > 5000) {
+              window.showPasteModal?.(text, 'Large Content Paste', `Large amount of content detected (${text.length.toLocaleString()} characters). Review below:`);
+              return;
+            }
             insertHtmlAtCursor(escHtml(text).replace(/\n/g, '<br>'));
             showToast('Pasted from clipboard', 'info');
             return;
           }
         }
-        document.execCommand('paste');
+        window.showPasteModal?.('', 'Manual Paste', 'Clipboard access denied or empty. Please paste your content below:');
       } catch (e) {
-        showToast('Use Ctrl+V to paste', 'info');
+        window.showPasteModal?.('', 'Manual Paste', 'Clipboard access denied or empty. Please paste your content below:');
       }
     });
 

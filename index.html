@@ -2960,6 +2960,26 @@
     </div>
   </div>
 
+  <!-- Dedicated Paste Container Modal (Large Content & Clipboard Fallback - first.txt Problem 2) -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-label="Manual Paste">
+    <div class="modal" style="width:580px;max-width:94vw;padding:22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 id="modal-title" style="margin:0;font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--text-primary);">
+          <i class="fas fa-paste" style="color:var(--accent);"></i> Manual Paste
+        </h3>
+        <button class="modal-close-icon" id="modal-close" type="button" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
+      </div>
+      <div id="modal-content">
+        <div style="margin-bottom: 12px; color: var(--text-secondary); font-size: 13px;">Clipboard access denied or empty. Please paste your content below:</div>
+        <textarea class="paste-modal-textarea" id="paste-textarea" placeholder="Paste your code or text here..." autofocus style="width:100%;height:220px;min-height:160px;max-height:60vh;padding:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-primary);color:var(--text-primary);font-family:monospace;font-size:13px;line-height:1.5;resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+      </div>
+      <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button class="modal-btn" id="modal-cancel" type="button">Cancel</button>
+        <button class="modal-btn primary" id="modal-confirm" type="button" style="background:var(--accent);color:#fff;font-weight:600;"><i class="fas fa-file-import" style="margin-right:4px;"></i> Insert</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Custom Watermark Modal (Bug 5 / bug.txt: degree, opacity, position, and count) -->
   <div class="modal-overlay" id="customWatermarkModal">
     <div class="modal" style="width:460px;max-width:92vw;" role="dialog" aria-modal="true" aria-label="Custom Watermark">

@@ -620,7 +620,6 @@
         <span class="excel-fx-badge" contenteditable="false">fx</span>
         <input type="text" class="excel-formula-input" placeholder="Select cell or enter formula / value">
         <button type="button" class="excel-jump-btn" data-jump="home" title="Jump to Home Cell A1" style="font-size:11px;padding:2px 8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;">A1</button>
-        <button type="button" class="excel-jump-btn" data-jump="end" title="Jump to End Cell XFD1048576" style="font-size:11px;padding:2px 8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:4px;color:var(--text-secondary);cursor:pointer;">End</button>
       </div>
       <div class="excel-sheet-viewport">
         <table class="excel-grid-table">

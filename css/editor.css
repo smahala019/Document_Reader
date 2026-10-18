@@ -4684,3 +4684,60 @@ tr.excel-row-line th {
   outline: none;
   flex: 1;
 }
+
+/* In-Text Spelling & Grammar Highlighting (Problem 2) */
+mark.df-spell-error {
+  background: rgba(239, 68, 68, 0.12) !important;
+  text-decoration: underline wavy #ef4444 !important;
+  text-decoration-skip-ink: none !important;
+  color: inherit !important;
+  padding: 0 1px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+mark.df-spell-error:hover,
+mark.df-spell-error.active-focus {
+  background: rgba(239, 68, 68, 0.28) !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+}
+
+mark.df-grammar-error {
+  background: rgba(16, 185, 129, 0.12) !important;
+  text-decoration: underline wavy #10b981 !important;
+  text-decoration-skip-ink: none !important;
+  color: inherit !important;
+  padding: 0 1px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+mark.df-grammar-error:hover,
+mark.df-grammar-error.active-focus {
+  background: rgba(16, 185, 129, 0.28) !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4);
+}
+
+/* Dedicated Paste Container Textarea (first.txt Problem 2) */
+.paste-modal-textarea {
+  width: 100%;
+  height: 220px;
+  min-height: 160px;
+  max-height: 60vh;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: monospace, Consolas, "Courier New", Courier;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.paste-modal-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
