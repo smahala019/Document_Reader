@@ -113,6 +113,15 @@
             </button>
             <div class="dropdown save-dropdown-menu" id="ribbonSaveDropdown" role="menu">
               <div class="save-dropdown-header">Save Document As</div>
+              <button class="dropdown-item" id="ribbonSaveDocx" role="menuitem">
+                <i class="fas fa-file-word" style="color:#2563eb;"></i> Save as Word <span class="shortcut">.docx</span>
+              </button>
+              <button class="dropdown-item" id="ribbonSaveXlsx" role="menuitem">
+                <i class="fas fa-file-excel" style="color:#16a34a;"></i> Save as Excel <span class="shortcut">.xlsx</span>
+              </button>
+              <button class="dropdown-item" id="ribbonSavePptx" role="menuitem">
+                <i class="fas fa-file-powerpoint" style="color:#ea580c;"></i> Save as PowerPoint <span class="shortcut">.pptx</span>
+              </button>
               <button class="dropdown-item" id="ribbonSaveHtml" role="menuitem">
                 <i class="fas fa-code" style="color:#e34c26;"></i> Save as HTML <span class="shortcut">.html</span>
               </button>
@@ -1326,12 +1335,9 @@
             <i class="fas fa-font"></i><span class="color-bar" id="textColorBar" style="background:#1a1a1a;"></span>
             <input type="color" class="fmt-color-input" id="textColorInput" value="#1a1a1a" aria-label="Text color picker" tabindex="-1">
           </button>
-          <button class="fmt-btn fmt-color-btn" id="bgColorBtn" type="button" title="Highlight Text" aria-label="Highlight Text">
+          <button class="fmt-btn fmt-color-btn" id="bgColorBtn" type="button" title="Text Highlight Color" aria-label="Text Highlight Color">
             <i class="fas fa-highlighter"></i><span class="color-bar" id="bgColorBar" style="background:#fbbf24;"></span>
             <input type="color" class="fmt-color-input" id="bgColorInput" value="#fbbf24" aria-label="Highlight color picker" tabindex="-1">
-          </button>
-          <button class="fmt-btn" id="defaultColorBtn" type="button" title="Default / Normal Text (Remove color & highlighter for next typing)" aria-label="Default Text Color">
-            <i class="fas fa-font" style="opacity:0.65;"></i><span style="position:absolute;bottom:1px;right:2px;font-size:7px;color:var(--text-muted);font-weight:700;">auto</span>
           </button>
         </div>
       </div>
@@ -4106,11 +4112,11 @@
         <button class="modal-close-icon" id="docProtectCloseBtn" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--text-muted);"><i class="fas fa-xmark"></i></button>
       </div>
       <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;line-height:1.5;">
-        Locking this document prevents unauthorized changes. The editor will be switched to read-only mode until unlocked.
+        Locking this document prevents unauthorized changes. The document will be closed automatically and will require this password to unlock when reopened.
       </p>
       <div class="form-group" style="margin-bottom:16px;">
-        <label for="docProtectPinInput" style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:var(--text-primary);">Set Optional Unlock Password / PIN (Leave empty for quick lock)</label>
-        <input type="password" id="docProtectPinInput" class="form-input" placeholder="e.g. 1234 or password..." style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;">
+        <label for="docProtectPinInput" style="font-size:12px;font-weight:600;display:block;margin-bottom:6px;color:var(--text-primary);">Enter Unlock Password / PIN</label>
+        <input type="password" id="docProtectPinInput" class="form-input" placeholder="Enter password to protect document..." style="width:100%;padding:8px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-size:13px;" required>
       </div>
       <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;">
         <button class="modal-btn" id="docProtectCancelBtn">Cancel</button>

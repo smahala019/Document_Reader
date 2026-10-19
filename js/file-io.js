@@ -1105,6 +1105,273 @@ ${cleanHtml}
     }
   }
 
+  async function saveAsDocx() {
+    const editor = $('#editor');
+    if (!editor) return;
+    const docTitle = getBaseName();
+    if (typeof window.JSZip === 'undefined') {
+      showToast('DOCX zip packager library not loaded', 'error');
+      return;
+    }
+
+    try {
+      const zip = new window.JSZip();
+
+      // [Content_Types].xml
+      zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`);
+
+      // _rels/.rels
+      zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+      // word/_rels/document.xml.rels
+      zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+
+      // word/styles.xml
+      zip.file('word/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault>
+      <w:rPr>
+        <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
+        <w:sz w:val="22"/>
+      </w:rPr>
+    </w:rPrDefault>
+  </w:docDefaults>
+</w:styles>`);
+
+      // Convert editor content into OpenXML word/document.xml
+      const xmlEsc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      let bodyXml = '';
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = window.DocFlow.Find?.getCleanHtml ? window.DocFlow.Find.getCleanHtml() : editor.innerHTML;
+      tempDiv.querySelectorAll('.df-resize-handle, .df-table-move-handle, .df-table-corner-handle, .tab-menu-dropdown').forEach(el => el.remove());
+
+      const blocks = tempDiv.children.length ? Array.from(tempDiv.children) : [tempDiv];
+      blocks.forEach(block => {
+        const tag = block.tagName ? block.tagName.toLowerCase() : '';
+        if (tag === 'table') {
+          bodyXml += '<w:tbl><w:tblPr><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:left w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:right w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="CCCCCC"/></w:tblBorders></w:tblPr>';
+          block.querySelectorAll('tr').forEach(tr => {
+            bodyXml += '<w:tr>';
+            tr.querySelectorAll('th, td').forEach(td => {
+              const cellText = xmlEsc(td.innerText || td.textContent || '');
+              bodyXml += `<w:tc><w:p><w:r><w:t>${cellText}</w:t></w:r></w:p></w:tc>`;
+            });
+            bodyXml += '</w:tr>';
+          });
+          bodyXml += '</w:tbl>';
+        } else if (tag === 'hr') {
+          bodyXml += '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="12" w:space="1" w:color="E2E8F0"/></w:pBdr></w:pPr></w:p>';
+        } else {
+          let isHeading = false;
+          let headingSz = '24';
+          if (tag === 'h1') { isHeading = true; headingSz = '36'; }
+          else if (tag === 'h2') { isHeading = true; headingSz = '30'; }
+          else if (tag === 'h3') { isHeading = true; headingSz = '26'; }
+
+          const paraText = xmlEsc(block.innerText || block.textContent || '');
+          if (paraText.trim().length === 0) {
+            bodyXml += '<w:p/>';
+          } else {
+            bodyXml += '<w:p><w:r>';
+            if (isHeading) {
+              bodyXml += `<w:rPr><w:b/><w:sz w:val="${headingSz}"/></w:rPr>`;
+            }
+            bodyXml += `<w:t xml:space="preserve">${paraText}</w:t></w:r></w:p>`;
+          }
+        }
+      });
+
+      if (!bodyXml) {
+        bodyXml = '<w:p><w:r><w:t></w:t></w:r></w:p>';
+      }
+
+      zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    ${bodyXml}
+    <w:sectPr>
+      <w:pgSz w:w="12240" w:h="15840"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`);
+
+      const contentBlob = await zip.generateAsync({
+        type: 'blob',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+
+      downloadBlob(contentBlob, docTitle + '.docx');
+      window.DocFlow.setModified(false);
+      window.DocFlow.UI.Tabs.save();
+      if (window.DocFlow && window.DocFlow.Recent) {
+        window.DocFlow.Recent.updateContent(docTitle + '.docx', editor.innerHTML, contentBlob.size);
+      }
+      showToast('Saved as Word (.docx)', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save as DOCX: ' + (err.message || 'Error'), 'error');
+    }
+  }
+
+  async function saveAsXlsx() {
+    const editor = $('#editor');
+    if (!editor) return;
+    const docTitle = getBaseName();
+    if (typeof window.XLSX === 'undefined') {
+      showToast('Excel exporter library not loaded', 'error');
+      return;
+    }
+
+    try {
+      let wb;
+      const table = editor.querySelector('.excel-grid-table') || editor.querySelector('.excel-table') || editor.querySelector('table');
+      if (table) {
+        const clone = table.cloneNode(true);
+        clone.querySelectorAll('th.excel-col-hdr, th.excel-row-hdr, .excel-corner-hdr').forEach(h => h.remove());
+        clone.querySelectorAll('.excel-note-header, .excel-quote-header, .excel-floating-note, .excel-floating-quote').forEach(n => n.remove());
+        wb = window.XLSX.utils.table_to_book(clone, { raw: false });
+      } else {
+        const text = editor.innerText || '';
+        const rows = text.split('\n').filter(r => r.length > 0).map(line => [line]);
+        const ws = window.XLSX.utils.aoa_to_sheet(rows.length ? rows : [['']]);
+        wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+      }
+
+      const wbout = window.XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      downloadBlob(blob, docTitle + '.xlsx');
+      window.DocFlow.setModified(false);
+      window.DocFlow.UI.Tabs.save();
+      if (window.DocFlow && window.DocFlow.Recent) {
+        window.DocFlow.Recent.updateContent(docTitle + '.xlsx', editor.innerHTML, blob.size);
+      }
+      showToast('Saved as Excel (.xlsx)', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save as XLSX: ' + (err.message || 'Error'), 'error');
+    }
+  }
+
+  async function saveAsPptx() {
+    const editor = $('#editor');
+    if (!editor) return;
+    const docTitle = getBaseName();
+    if (typeof window.JSZip === 'undefined') {
+      showToast('PPTX zip packager library not loaded', 'error');
+      return;
+    }
+
+    try {
+      const zip = new window.JSZip();
+      const slideCards = Array.from(editor.querySelectorAll('.pptx-slide-card'));
+      const slides = slideCards.length ? slideCards : [editor];
+
+      const xmlEsc = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+      let contentTypesOverrides = '';
+      let presRels = '';
+      let presSlideIdList = '';
+
+      slides.forEach((slide, idx) => {
+        const sNum = idx + 1;
+        contentTypesOverrides += `  <Override PartName="/ppt/slides/slide${sNum}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>\n`;
+        presRels += `  <Relationship Id="rId${sNum + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${sNum}.xml"/>\n`;
+        presSlideIdList += `    <p:sldId id="${255 + sNum}" r:id="rId${sNum + 1}"/>\n`;
+
+        const titleEl = slide.querySelector('.pptx-slide-title');
+        const bodyEl = slide.querySelector('.pptx-slide-body');
+        const titleText = xmlEsc(titleEl ? (titleEl.innerText || titleEl.textContent || '') : `Slide ${sNum}`);
+        const bodyText = xmlEsc(bodyEl ? (bodyEl.innerText || bodyEl.textContent || '') : (slide.innerText || slide.textContent || ''));
+
+        const slideXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:cSld>
+    <p:spTree>
+      <p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+      <p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="685800" y="609600"/><a:ext cx="7772400" cy="1143000"/></a:xfrm></p:spPr>
+        <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" dirty="0"/><a:t>${titleText}</a:t></a:r></a:p></p:txBody>
+      </p:sp>
+      <p:sp>
+        <p:nvSpPr><p:cNvPr id="3" name="Content"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph idx="1"/></p:nvPr></p:nvSpPr>
+        <p:spPr><a:xfrm><a:off x="685800" y="1981200"/><a:ext cx="7772400" cy="4114800"/></a:xfrm></p:spPr>
+        <p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr lang="en-US" dirty="0"/><a:t>${bodyText}</a:t></a:r></a:p></p:txBody>
+      </p:sp>
+    </p:spTree>
+  </p:cSld>
+</p:sld>`;
+
+        zip.file(`ppt/slides/slide${sNum}.xml`, slideXml);
+        zip.file(`ppt/slides/_rels/slide${sNum}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+</Relationships>`);
+      });
+
+      // [Content_Types].xml
+      zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+${contentTypesOverrides}</Types>`);
+
+      // _rels/.rels
+      zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+</Relationships>`);
+
+      // ppt/_rels/presentation.xml.rels
+      zip.file('ppt/_rels/presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${presRels}</Relationships>`);
+
+      // ppt/presentation.xml
+      zip.file('ppt/presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+  <p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+  <p:sldIdLst>
+${presSlideIdList}  </p:sldIdLst>
+  <p:sldSz cx="9144000" cy="5143500"/>
+</p:presentation>`);
+
+      const contentBlob = await zip.generateAsync({
+        type: 'blob',
+        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+      });
+
+      downloadBlob(contentBlob, docTitle + '.pptx');
+      window.DocFlow.setModified(false);
+      window.DocFlow.UI.Tabs.save();
+      if (window.DocFlow && window.DocFlow.Recent) {
+        window.DocFlow.Recent.updateContent(docTitle + '.pptx', editor.innerHTML, contentBlob.size);
+      }
+      showToast('Saved as PowerPoint (.pptx)', 'success');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to save as PPTX: ' + (err.message || 'Error'), 'error');
+    }
+  }
+
   // ==========================================================================
   // File IO Setup & Listeners
   // ==========================================================================
@@ -1157,6 +1424,9 @@ ${cleanHtml}
           else if (saveType === 'txt') saveAsTxt();
           else if (saveType === 'pdf') exportAsPdf();
           else if (saveType === 'md') saveAsMarkdown();
+          else if (saveType === 'docx') saveAsDocx();
+          else if (saveType === 'xlsx') saveAsXlsx();
+          else if (saveType === 'pptx') saveAsPptx();
         });
       });
     }
@@ -1244,6 +1514,9 @@ ${cleanHtml}
     saveAsTxt,
     saveAsMarkdown,
     exportAsPdf,
+    saveAsDocx,
+    saveAsXlsx,
+    saveAsPptx,
     excelToHtml,
     createBlankExcelGrid,
     parseExcelCoord,

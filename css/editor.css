@@ -59,15 +59,14 @@
 .editor-page:not(.excel-view-mode) h2,
 .editor-page:not(.excel-view-mode) h3,
 .editor-page:not(.excel-view-mode) h4,
-.editor-page:not(.excel-view-mode) p:not(.excel-spreadsheet-container *),
+.editor-page:not(.excel-view-mode) p:not(.excel-spreadsheet-container *):not(.doc-note-card *):not(.doc-textarea-container *):not(blockquote *),
 .editor-page:not(.excel-view-mode) li,
 .editor-page:not(.excel-view-mode) td:not(.excel-grid-table td),
 .editor-page:not(.excel-view-mode) th:not(.excel-grid-table th),
-.editor-page:not(.excel-view-mode) blockquote,
-.editor-page:not(.excel-view-mode) span:not(.excel-spreadsheet-container *),
-.editor-page:not(.excel-view-mode) div:not(.excel-spreadsheet-container *),
-.editor-page:not(.excel-view-mode) strong:not(.excel-spreadsheet-container *),
-.editor-page:not(.excel-view-mode) em:not(.excel-spreadsheet-container *) {
+.editor-page:not(.excel-view-mode) span:not(.excel-spreadsheet-container *):not(.doc-note-card *):not(.doc-textarea-container *):not(blockquote *),
+.editor-page:not(.excel-view-mode) div:not(.excel-spreadsheet-container *):not(.doc-note-card *):not(.doc-textarea-container *):not(blockquote *),
+.editor-page:not(.excel-view-mode) strong:not(.excel-spreadsheet-container *):not(.doc-note-card *):not(.doc-textarea-container *):not(blockquote *),
+.editor-page:not(.excel-view-mode) em:not(.excel-spreadsheet-container *):not(.doc-note-card *):not(.doc-textarea-container *):not(blockquote *) {
   color: #1a1a1a;
 }
 
@@ -239,7 +238,7 @@
   border-left: 4px solid var(--accent);
   margin: 16px 0;
   padding: 8px 16px;
-  color: #475569 !important;
+  color: #334155;
   background: #f8fafc;
   border-radius: 0 4px 4px 0;
 }
@@ -4630,7 +4629,18 @@ body.is-table-resizing-row * {
 .excel-note-body:empty::before,
 .excel-note-body[data-empty="true"]::before,
 .excel-quote-body:empty::before,
-.excel-quote-body[data-empty="true"]::before {
+.excel-quote-body[data-empty="true"]::before,
+.doc-note-body:empty::before,
+.doc-note-body[data-empty="true"]::before,
+.doc-textarea-body:empty::before,
+.doc-textarea-body[data-empty="true"]::before,
+blockquote[data-placeholder]:empty::before,
+blockquote[data-placeholder][data-empty="true"]::before,
+blockquote[data-placeholder]:has(> br:only-child)::before,
+.doc-textarea-body:has(> br:only-child)::before,
+.doc-note-body:has(> br:only-child)::before,
+.excel-note-body:has(> br:only-child)::before,
+.excel-quote-body:has(> br:only-child)::before {
   content: attr(data-placeholder);
   color: #94a3b8 !important;
   pointer-events: none;
@@ -4741,3 +4751,454 @@ mark.df-grammar-error.active-focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
+
+/* ==========================================================================
+   Comprehensive Dark Mode Text Visibility & Contrast Fixes (Issues 1c, 2d & 3b)
+   ========================================================================== */
+
+/* 0. Text Shadows Popover in Dark Mode (Issue 1c) */
+[data-theme="dark"] #textShadowPopover {
+  background: var(--bg-elevated, #1c1c1f) !important;
+  border-color: var(--border, #2e2e33) !important;
+}
+
+[data-theme="dark"] #textShadowPopover .spacing-opt-item {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] #textShadowPopover .spacing-opt-item span:last-child {
+  color: #f8fafc !important;
+}
+
+/* 1. PPT Slide Cards & Deck Components in Dark Mode (Issue 3b) */
+[data-theme="dark"] .pptx-slide-card,
+html[data-theme="dark"] .pptx-slide-card {
+  background: var(--bg-secondary, #141416) !important;
+  color: #f5f5f5 !important;
+  border-color: var(--border, #2e2e33) !important;
+}
+
+[data-theme="dark"] .pptx-slide-header,
+[data-theme="dark"] .pptx-slide-badge {
+  color: #a1a1aa !important;
+}
+
+[data-theme="dark"] .pptx-slide-title,
+[data-theme="dark"] .pptx-slide-card h1,
+[data-theme="dark"] .pptx-slide-card h2,
+[data-theme="dark"] .pptx-slide-card h3,
+[data-theme="dark"] .pptx-slide-card h4,
+[data-theme="dark"] .pptx-slide-card .slide-title-box {
+  color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .pptx-slide-body,
+[data-theme="dark"] .pptx-slide-card p,
+[data-theme="dark"] .pptx-slide-card li,
+[data-theme="dark"] .pptx-slide-card span:not(.pptx-slide-badge):not(.badge),
+[data-theme="dark"] .pptx-slide-card div:not(.slide-quick-action-bar):not(.slide-plus-menu):not(.slide-plus-shapes-grid):not(.pptx-slide-header):not(.doc-shape-container),
+[data-theme="dark"] .pptx-slide-card font {
+  color: #f1f5f9 !important;
+}
+
+/* Invert or brighten hardcoded dark/black text inside PPT slides in dark mode */
+[data-theme="dark"] .pptx-slide-card [style*="color:#0"],
+[data-theme="dark"] .pptx-slide-card [style*="color: #0"],
+[data-theme="dark"] .pptx-slide-card [style*="color:black"],
+[data-theme="dark"] .pptx-slide-card [style*="color: black"],
+[data-theme="dark"] .pptx-slide-card [style*="color:#1"],
+[data-theme="dark"] .pptx-slide-card [style*="color: #1"],
+[data-theme="dark"] .pptx-slide-card [style*="color:#2"],
+[data-theme="dark"] .pptx-slide-card [style*="color: #2"],
+[data-theme="dark"] .pptx-slide-card [style*="color:#3"],
+[data-theme="dark"] .pptx-slide-card [style*="color: #3"],
+[data-theme="dark"] .pptx-slide-card [style*="color:#4"],
+[data-theme="dark"] .pptx-slide-card [style*="color: #4"],
+[data-theme="dark"] .pptx-slide-card [style*="color:#5"],
+[data-theme="dark"] .pptx-slide-card [style*="color: #5"],
+[data-theme="dark"] .pptx-slide-card [style*="color:#6"],
+[data-theme="dark"] .pptx-slide-card [style*="color: #6"],
+[data-theme="dark"] .pptx-slide-card [style*="color:rgb(0"],
+[data-theme="dark"] .pptx-slide-card [style*="color: rgb(0"],
+[data-theme="dark"] .pptx-slide-card [style*="color:rgb(1"],
+[data-theme="dark"] .pptx-slide-card [style*="color: rgb(1"],
+[data-theme="dark"] .pptx-slide-card [style*="color:rgb(2"],
+[data-theme="dark"] .pptx-slide-card [style*="color: rgb(2"],
+[data-theme="dark"] .pptx-slide-card [style*="color:rgb(3"],
+[data-theme="dark"] .pptx-slide-card [style*="color: rgb(3"],
+[data-theme="dark"] .pptx-slide-card [style*="color:rgb(4"],
+[data-theme="dark"] .pptx-slide-card [style*="color: rgb(4"],
+[data-theme="dark"] .pptx-slide-card [style*="color:rgb(5"],
+[data-theme="dark"] .pptx-slide-card [style*="color: rgb(5"] {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .slide-freeform-rect,
+[data-theme="dark"] .slide-nested-card {
+  background: #1e1e24 !important;
+  border-color: #3f3f46 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .slide-freeform-rect *,
+[data-theme="dark"] .slide-nested-card * {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .slide-title-box {
+  color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .slide-content-box,
+[data-theme="dark"] .slide-content-box * {
+  color: #e2e8f0 !important;
+}
+
+/* 2. Resizable Text Area in Dark Mode (Issue 2c, 2d & 3b) */
+[data-theme="dark"] .doc-textarea-container {
+  background: #18181b !important;
+  border-color: #3f3f46 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+}
+
+[data-theme="dark"] .doc-textarea-header,
+html[data-theme="dark"] .doc-textarea-header {
+  background: #27272a !important;
+  border-bottom: 1px solid #3f3f46 !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .doc-textarea-header > span,
+[data-theme="dark"] .doc-textarea-header > span *,
+html[data-theme="dark"] .doc-textarea-header > span,
+html[data-theme="dark"] .doc-textarea-header > span * {
+  color: #f1f5f9 !important;
+}
+
+/* Close & Delete Buttons Hover / Colors (Issue 2c) */
+.doc-note-delete-btn,
+.excel-note-close-btn,
+.doc-textarea-del-btn,
+.excel-quote-close-btn,
+.doc-quote-delete-btn {
+  transition: all 0.15s ease !important;
+  border-radius: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+}
+
+.doc-note-delete-btn:hover,
+.excel-note-close-btn:hover {
+  background: rgba(234, 179, 8, 0.25) !important;
+  color: #713f12 !important;
+}
+
+.doc-textarea-del-btn:hover {
+  background: rgba(239, 68, 68, 0.22) !important;
+  color: #dc2626 !important;
+}
+
+.excel-quote-close-btn:hover,
+.doc-quote-delete-btn:hover {
+  background: rgba(22, 163, 74, 0.22) !important;
+  color: #14532d !important;
+}
+
+/* Close/Delete Buttons in Dark Mode (Issue 2c) */
+[data-theme="dark"] .doc-textarea-del-btn,
+html[data-theme="dark"] .doc-textarea-del-btn {
+  color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  opacity: 1 !important;
+}
+
+[data-theme="dark"] .doc-textarea-del-btn i,
+html[data-theme="dark"] .doc-textarea-del-btn i {
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .doc-textarea-del-btn:hover,
+html[data-theme="dark"] .doc-textarea-del-btn:hover {
+  background: rgba(239, 68, 68, 0.38) !important;
+  color: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.45) !important;
+  opacity: 1 !important;
+}
+
+[data-theme="dark"] .doc-textarea-del-btn:hover i,
+html[data-theme="dark"] .doc-textarea-del-btn:hover i {
+  color: #fee2e2 !important;
+}
+
+[data-theme="dark"] .doc-note-delete-btn,
+[data-theme="dark"] .excel-note-close-btn,
+html[data-theme="dark"] .doc-note-delete-btn,
+html[data-theme="dark"] .excel-note-close-btn {
+  color: #facc15 !important;
+  background: rgba(250, 204, 21, 0.15) !important;
+  border: 1px solid rgba(250, 204, 21, 0.35) !important;
+  opacity: 1 !important;
+}
+
+[data-theme="dark"] .doc-note-delete-btn:hover,
+[data-theme="dark"] .excel-note-close-btn:hover,
+html[data-theme="dark"] .doc-note-delete-btn:hover,
+html[data-theme="dark"] .excel-note-close-btn:hover {
+  background: rgba(250, 204, 21, 0.38) !important;
+  color: #fef08a !important;
+  border-color: #facc15 !important;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.45) !important;
+  opacity: 1 !important;
+}
+
+[data-theme="dark"] .excel-quote-close-btn,
+[data-theme="dark"] .doc-quote-delete-btn,
+html[data-theme="dark"] .excel-quote-close-btn,
+html[data-theme="dark"] .doc-quote-delete-btn {
+  color: #4ade80 !important;
+  background: rgba(34, 197, 94, 0.15) !important;
+  border: 1px solid rgba(34, 197, 94, 0.35) !important;
+  opacity: 1 !important;
+}
+
+[data-theme="dark"] .excel-quote-close-btn:hover,
+[data-theme="dark"] .doc-quote-delete-btn:hover,
+html[data-theme="dark"] .excel-quote-close-btn:hover,
+html[data-theme="dark"] .doc-quote-delete-btn:hover {
+  background: rgba(34, 197, 94, 0.38) !important;
+  color: #dcfce7 !important;
+  border-color: #4ade80 !important;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.45) !important;
+  opacity: 1 !important;
+}
+
+/* 2. Resizable Text Area in Dark Mode */
+[data-theme="dark"] .doc-textarea-body,
+html[data-theme="dark"] .doc-textarea-body {
+  background: #18181b !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .doc-textarea-body *,
+[data-theme="dark"] .doc-textarea-container textarea,
+html[data-theme="dark"] .doc-textarea-body *,
+html[data-theme="dark"] .doc-textarea-container textarea {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .doc-textarea-body:empty::before,
+[data-theme="dark"] .doc-textarea-body[data-empty="true"]::before,
+[data-theme="dark"] .doc-textarea-body:has(> br:only-child)::before,
+html[data-theme="dark"] .doc-textarea-body:empty::before,
+html[data-theme="dark"] .doc-textarea-body[data-empty="true"]::before,
+html[data-theme="dark"] .doc-textarea-body:has(> br:only-child)::before {
+  color: #a1a1aa !important;
+}
+
+/* 3. Sticky Notes & Excel Floating Notes in Dark Mode (Issue 2a & 3b) */
+[data-theme="dark"] .doc-note-card,
+[data-theme="dark"] .onenote-sticky-note,
+[data-theme="dark"] .excel-floating-note,
+html[data-theme="dark"] .doc-note-card,
+html[data-theme="dark"] .onenote-sticky-note,
+html[data-theme="dark"] .excel-floating-note {
+  background: #2a2412 !important;
+  border: 1px solid #854d0e !important;
+  border-left: 5px solid #eab308 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+  color: #fef08a !important;
+}
+
+/* Note Headers in Dark Mode (Issue 2a) */
+[data-theme="dark"] .doc-note-header,
+[data-theme="dark"] .excel-note-header,
+html[data-theme="dark"] .doc-note-header,
+html[data-theme="dark"] .excel-note-header {
+  color: #fde047 !important;
+  border-bottom: 1px solid #854d0e !important;
+}
+
+[data-theme="dark"] .doc-note-header > span,
+[data-theme="dark"] .doc-note-header > span *,
+[data-theme="dark"] .excel-note-header > span,
+[data-theme="dark"] .excel-note-header > span *,
+html[data-theme="dark"] .doc-note-header > span,
+html[data-theme="dark"] .doc-note-header > span *,
+html[data-theme="dark"] .excel-note-header > span,
+html[data-theme="dark"] .excel-note-header > span * {
+  color: #fde047 !important;
+}
+
+[data-theme="dark"] .doc-note-body,
+[data-theme="dark"] .doc-note-body *,
+[data-theme="dark"] .excel-note-body,
+[data-theme="dark"] .excel-note-body *,
+html[data-theme="dark"] .doc-note-body,
+html[data-theme="dark"] .doc-note-body *,
+html[data-theme="dark"] .excel-note-body,
+html[data-theme="dark"] .excel-note-body * {
+  color: #fef9c3 !important;
+}
+
+[data-theme="dark"] .doc-note-body:empty::before,
+[data-theme="dark"] .doc-note-body[data-empty="true"]::before,
+[data-theme="dark"] .doc-note-body:has(> br:only-child)::before,
+[data-theme="dark"] .excel-note-body:empty::before,
+[data-theme="dark"] .excel-note-body[data-empty="true"]::before,
+[data-theme="dark"] .excel-note-body:has(> br:only-child)::before,
+html[data-theme="dark"] .doc-note-body:empty::before,
+html[data-theme="dark"] .doc-note-body[data-empty="true"]::before,
+html[data-theme="dark"] .doc-note-body:has(> br:only-child)::before,
+html[data-theme="dark"] .excel-note-body:empty::before,
+html[data-theme="dark"] .excel-note-body[data-empty="true"]::before,
+html[data-theme="dark"] .excel-note-body:has(> br:only-child)::before {
+  color: #ca8a04 !important;
+}
+
+/* 4. Quotes, Blockquotes & Excel Floating Quotes in Dark Mode (Issue 2a, 2b & 3b) */
+[data-theme="dark"] .excel-floating-quote,
+[data-theme="dark"] .doc-quote-card,
+html[data-theme="dark"] .excel-floating-quote,
+html[data-theme="dark"] .doc-quote-card {
+  background: #142e1d !important;
+  border: 1px solid #166534 !important;
+  border-left: 5px solid #22c55e !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .editor-page blockquote,
+[data-theme="dark"] blockquote,
+html[data-theme="dark"] .editor-page blockquote,
+html[data-theme="dark"] blockquote {
+  border-left: 4px solid var(--accent, #e85d04) !important;
+  background: #27272a !important;
+  color: #f1f5f9 !important;
+}
+
+/* Quote Headers in Dark Mode (Issue 2a) */
+[data-theme="dark"] .excel-quote-header,
+[data-theme="dark"] .doc-quote-header,
+html[data-theme="dark"] .excel-quote-header,
+html[data-theme="dark"] .doc-quote-header {
+  color: #86efac !important;
+  border-bottom: 1px solid #166534 !important;
+}
+
+[data-theme="dark"] .excel-quote-header > span,
+[data-theme="dark"] .excel-quote-header > span *,
+[data-theme="dark"] .doc-quote-header > span,
+[data-theme="dark"] .doc-quote-header > span *,
+html[data-theme="dark"] .excel-quote-header > span,
+html[data-theme="dark"] .excel-quote-header > span *,
+html[data-theme="dark"] .doc-quote-header > span,
+html[data-theme="dark"] .doc-quote-header > span * {
+  color: #86efac !important;
+}
+
+/* Quote Text Visibility in Dark Mode (Issue 2b) */
+[data-theme="dark"] .excel-quote-body,
+[data-theme="dark"] .excel-quote-body *,
+[data-theme="dark"] .doc-quote-body,
+[data-theme="dark"] .doc-quote-body *,
+[data-theme="dark"] .editor-page blockquote,
+[data-theme="dark"] .editor-page blockquote *,
+[data-theme="dark"] .editor-page blockquote p,
+[data-theme="dark"] .editor-page blockquote span,
+[data-theme="dark"] .editor-page blockquote div,
+[data-theme="dark"] blockquote,
+[data-theme="dark"] blockquote *,
+[data-theme="dark"] blockquote p,
+[data-theme="dark"] blockquote span,
+[data-theme="dark"] blockquote div,
+[data-theme="dark"] .pptx-slide-card blockquote,
+[data-theme="dark"] .pptx-slide-card blockquote *,
+html[data-theme="dark"] .excel-quote-body,
+html[data-theme="dark"] .excel-quote-body *,
+html[data-theme="dark"] .doc-quote-body,
+html[data-theme="dark"] .doc-quote-body *,
+html[data-theme="dark"] .editor-page blockquote,
+html[data-theme="dark"] .editor-page blockquote *,
+html[data-theme="dark"] blockquote,
+html[data-theme="dark"] blockquote * {
+  color: #f1f5f9 !important;
+}
+
+/* Quote Placeholders in Dark Mode */
+[data-theme="dark"] blockquote[data-placeholder]:empty::before,
+[data-theme="dark"] blockquote[data-placeholder][data-empty="true"]::before,
+[data-theme="dark"] blockquote[data-placeholder]:has(> br:only-child)::before,
+[data-theme="dark"] .excel-quote-body:empty::before,
+[data-theme="dark"] .excel-quote-body[data-empty="true"]::before,
+[data-theme="dark"] .excel-quote-body:has(> br:only-child)::before,
+[data-theme="dark"] .doc-quote-body:empty::before,
+[data-theme="dark"] .doc-quote-body[data-empty="true"]::before,
+[data-theme="dark"] .doc-quote-body:has(> br:only-child)::before,
+html[data-theme="dark"] blockquote[data-placeholder]:empty::before,
+html[data-theme="dark"] blockquote[data-placeholder][data-empty="true"]::before,
+html[data-theme="dark"] blockquote[data-placeholder]:has(> br:only-child)::before,
+html[data-theme="dark"] .excel-quote-body:empty::before,
+html[data-theme="dark"] .excel-quote-body[data-empty="true"]::before,
+html[data-theme="dark"] .excel-quote-body:has(> br:only-child)::before,
+html[data-theme="dark"] .doc-quote-body:empty::before,
+html[data-theme="dark"] .doc-quote-body[data-empty="true"]::before,
+html[data-theme="dark"] .doc-quote-body:has(> br:only-child)::before {
+  color: #94a3b8 !important;
+}
+
+/* 5. PPT Speaker Notes & Presentation Elements in Dark Mode (Issue 3b) */
+[data-theme="dark"] .slide-speaker-notes,
+html[data-theme="dark"] .slide-speaker-notes {
+  background: var(--bg-tertiary, #1c1c1f) !important;
+  border-color: var(--border, #2e2e33) !important;
+  color: #f5f5f5 !important;
+}
+
+[data-theme="dark"] .slide-speaker-notes-title,
+html[data-theme="dark"] .slide-speaker-notes-title {
+  color: var(--accent, #e85d04) !important;
+}
+
+[data-theme="dark"] .slide-speaker-notes-content,
+[data-theme="dark"] .slide-speaker-notes-content *,
+html[data-theme="dark"] .slide-speaker-notes-content,
+html[data-theme="dark"] .slide-speaker-notes-content * {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .pptx-slide-sidebar,
+html[data-theme="dark"] .pptx-slide-sidebar {
+  background: var(--bg-secondary, #141416) !important;
+  border-color: var(--border, #2e2e33) !important;
+}
+
+/* 6. Tables & Breaks in Dark Mode */
+[data-theme="dark"] .doc-table {
+  border-color: var(--border, #3f3f46) !important;
+}
+
+[data-theme="dark"] .doc-table th {
+  background: var(--bg-tertiary, #27272a) !important;
+  color: #f8fafc !important;
+  border-color: var(--border, #3f3f46) !important;
+}
+
+[data-theme="dark"] .doc-table td {
+  border-color: var(--border, #3f3f46) !important;
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .doc-table td * {
+  color: #f1f5f9 !important;
+}
+
+[data-theme="dark"] .doc-column-break,
+[data-theme="dark"] .doc-page-break {
+  color: var(--text-muted, #9ca3af) !important;
+}
+
+

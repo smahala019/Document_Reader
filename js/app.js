@@ -346,7 +346,10 @@
         mode: doc.mode || (isPdf ? 'view' : 'edit'),
         content: doc.content || '<p><br></p>',
         size: calcSize,
-        timestamp: Date.now()
+        createdAt: doc.createdAt || Date.now(),
+        timestamp: Date.now(),
+        isLocked: !!doc.isLocked,
+        lockPin: doc.lockPin || ''
       };
 
       if (doc.pdfData) {
@@ -406,6 +409,23 @@
     openDocument(item) {
       if (!item) return;
 
+      if (item.isLocked) {
+        window._pendingUnlockTarget = {
+          type: 'recent',
+          item: item
+        };
+        const pinInput = $('#docUnlockPinInput');
+        if (pinInput) pinInput.value = '';
+        window.DocFlow.UI?.openModal?.('#docUnlockModal');
+        setTimeout(() => pinInput?.focus(), 100);
+        showToast(`Document "${item.name}" is locked. Enter password to open.`, 'info');
+        return;
+      }
+
+      this._performOpen(item);
+    },
+
+    _performOpen(item) {
       // Update timestamp and bring to top of recents when reopened (Issue 1)
       item.timestamp = Date.now();
       let list = this.getAll().filter(d => d.name.toLowerCase() !== item.name.toLowerCase());
@@ -428,6 +448,8 @@
           if (data) {
             const tab = window.DocFlow.UI.Tabs.create(item.name, '', 'PDF', 'pdf');
             tab.pdfData = data;
+            tab.isLocked = !!item.isLocked;
+            tab.lockPin = item.lockPin || '';
             window.DocFlow.PDF?.loadPdfTab?.(tab);
             window.DocFlow.UI.Tabs.activateTab(tab);
             showToast(`Reopened PDF "${item.name}"`, 'success');
@@ -444,6 +466,8 @@
 
       // Reopen with exact saved data without conflict
       const tab = window.DocFlow.UI.Tabs.create(item.name, item.content, item.type || 'DOC', 'edit');
+      tab.isLocked = !!item.isLocked;
+      tab.lockPin = item.lockPin || '';
       window.DocFlow.UI.Tabs.activateTab(tab);
       showToast(`Reopened "${item.name}"`, 'success');
     },
@@ -481,7 +505,13 @@
 
         const sizeVal = item.size || (item.content ? new Blob([item.content]).size : 1024);
         const sizeStr = formatFileSize(sizeVal);
-        const timeStr = formatRelativeTime(item.timestamp);
+        const createdTs = item.createdAt || item.timestamp || Date.now();
+        const createdDate = new Date(createdTs);
+        const dateStr = createdDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        const timeStr = createdDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        const createdFormatted = `${dateStr} ${timeStr}`;
+
+        const lockBadge = item.isLocked ? '<span style="color:#e11d48;margin-left:6px;font-size:11px;" title="Password Protected"><i class="fas fa-lock"></i></span>' : '';
 
         // Delete button placed in front of each item (front/left)
         card.innerHTML = `
@@ -490,11 +520,11 @@
           </button>
           <div class="recent-item-icon">${iconHtml}</div>
           <div class="recent-item-info">
-            <div class="recent-item-title" title="${escHtml(item.name)}">${escHtml(item.name)}</div>
+            <div class="recent-item-title" title="${escHtml(item.name)}">${escHtml(item.name)}${lockBadge}</div>
             <div class="recent-item-meta">
               <span>${escHtml(item.type || ext.toUpperCase() || 'DOC')}</span> &bull; 
               <span class="recent-item-size" style="font-weight:600;color:var(--accent);">${sizeStr}</span> &bull; 
-              <span>${timeStr}</span>
+              <span class="recent-item-created" title="Created: ${createdFormatted}"><i class="far fa-calendar-alt" style="font-size:10px;margin-right:3px;"></i>${createdFormatted}</span>
             </div>
           </div>
         `;
@@ -784,6 +814,12 @@
       window.DocFlow.FileIO?.saveAsMarkdown();
     } else if (ext === 'pdf') {
       window.DocFlow.FileIO?.exportAsPdf();
+    } else if (ext === 'docx' || ext === 'doc') {
+      window.DocFlow.FileIO?.saveAsDocx();
+    } else if (ext === 'xlsx' || ext === 'xls') {
+      window.DocFlow.FileIO?.saveAsXlsx();
+    } else if (ext === 'pptx' || ext === 'ppt') {
+      window.DocFlow.FileIO?.saveAsPptx();
     } else {
       window.DocFlow.FileIO?.saveAsHtml();
     }
@@ -1115,6 +1151,30 @@
             }
             break;
           case 'a': {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar, .excel-formula-input, .excel-coord-box, #docProtectPinInput, #docUnlockPinInput')) {
+              return;
+            }
+
+            // Check if user is inside a note, quote, or textarea body (Issue 3c)
+            const specialTarget = e.target?.closest?.('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote, .doc-note-card, .doc-quote-card, .doc-textarea-container, .excel-floating-note, .excel-floating-quote');
+            if (specialTarget) {
+              const body = specialTarget.matches('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote')
+                ? specialTarget
+                : (specialTarget.querySelector('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote') || specialTarget);
+              if (body) {
+                e.preventDefault();
+                body.focus();
+                const sel = window.getSelection();
+                if (sel) {
+                  const range = document.createRange();
+                  range.selectNodeContents(body);
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+                }
+                return;
+              }
+            }
+
             const excelContainer = document.querySelector('.excel-spreadsheet-container');
             if (excelContainer && window.DocFlow.currentMode === 'edit') {
               e.preventDefault();
@@ -1124,6 +1184,23 @@
                 allTds.forEach(td => td.classList.add('excel-cell-selected'));
                 showToast(`Selected all ${allTds.length} spreadsheet cells`, 'info');
                 window.DocFlow.Editor?.updateToolbarState?.();
+              }
+              return;
+            }
+            const isPpt = document.querySelector('.pptx-slide-card, .pptx-slide-wrapper, .pptx-container') || document.body.classList.contains('slide-deck-mode');
+            if (!isPpt && window.DocFlow?.currentMode === 'edit') {
+              const editor = document.getElementById('editor');
+              if (editor) {
+                e.preventDefault();
+                editor.focus();
+                const sel = window.getSelection();
+                if (sel) {
+                  const range = document.createRange();
+                  range.selectNodeContents(editor);
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+                }
+                window.DocFlow?.Editor?.saveSelection?.();
               }
             }
             break;
@@ -6008,6 +6085,18 @@
       });
     }
 
+    $('#ribbonSaveDocx')?.addEventListener('click', () => {
+      ribbonSaveDropdown?.classList.remove('show');
+      window.DocFlow.FileIO?.saveAsDocx();
+    });
+    $('#ribbonSaveXlsx')?.addEventListener('click', () => {
+      ribbonSaveDropdown?.classList.remove('show');
+      window.DocFlow.FileIO?.saveAsXlsx();
+    });
+    $('#ribbonSavePptx')?.addEventListener('click', () => {
+      ribbonSaveDropdown?.classList.remove('show');
+      window.DocFlow.FileIO?.saveAsPptx();
+    });
     $('#ribbonSaveHtml')?.addEventListener('click', () => {
       ribbonSaveDropdown?.classList.remove('show');
       window.DocFlow.FileIO?.saveAsHtml();
@@ -6071,9 +6160,20 @@
     });
 
     // 3. Insert Panel (Text Area, Picture, Table, Charts, Symbols)
-    $('#ribbonInsertTextAreaBtn')?.addEventListener('click', () => {
+    let isInsertingTextArea = false;
+    $('#ribbonInsertTextAreaBtn')?.addEventListener('click', (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      if (isInsertingTextArea) return;
+      isInsertingTextArea = true;
+      setTimeout(() => { isInsertingTextArea = false; }, 400);
+
       if (window.DocFlow.currentMode !== 'edit') {
         showToast('Open a document in edit mode first', 'info');
+        return;
+      }
+      if (window.DocFlow.Editor?.isCursorInSpecialContainer?.()) {
+        showToast('Cannot insert a text area inside a note, quote, or text area', 'warning');
         return;
       }
       const textAreaId = 'ta_' + Date.now();
@@ -6083,9 +6183,7 @@
             <span><i class="fas fa-pen-to-square" style="margin-right:5px;color:var(--accent,#0284c7);"></i>Text Area</span>
             <button type="button" class="doc-textarea-del-btn" title="Remove Text Area" contenteditable="false"><i class="fas fa-trash-can"></i></button>
           </div>
-          <div class="doc-textarea-body" contenteditable="true">
-            <p style="margin:0;">Type your notes, explanations, or text area contents here...</p>
-          </div>
+          <div class="doc-textarea-body" contenteditable="true" data-placeholder="Type your notes or text here..."></div>
         </div>`;
 
       const activeSlide = window.DocFlow?.getCurrentSlideWrapper?.() || document.querySelector('.pptx-slide-wrapper.active-slide') || document.querySelector('.pptx-slide-card.active-slide');
@@ -6101,6 +6199,7 @@
           node.style.zIndex = '12';
           node.style.maxWidth = '400px';
           slideContent.appendChild(node);
+          node.querySelector('.doc-textarea-body')?.focus();
           window.DocFlow.Editor?.notifyChange();
           window.DocFlow.Editor?.saveSnapshot?.(true);
           showToast('Text Area added to slide', 'success');
@@ -6114,6 +6213,7 @@
         temp.innerHTML = textAreaHtml;
         const node = temp.firstElementChild;
         excelContainer.parentNode.insertBefore(node, excelContainer.nextSibling);
+        node.querySelector('.doc-textarea-body')?.focus();
         window.DocFlow.Editor?.notifyChange();
         window.DocFlow.Editor?.saveSnapshot?.(true);
         showToast('Text Area inserted below spreadsheet', 'success');
@@ -6121,6 +6221,8 @@
       }
 
       window.DocFlow.Editor?.insertHtmlAtCursor(textAreaHtml + '<p><br></p>');
+      const inserted = document.getElementById(textAreaId);
+      inserted?.querySelector('.doc-textarea-body')?.focus();
       window.DocFlow.Editor?.notifyChange();
       window.DocFlow.Editor?.saveSnapshot?.(true);
       showToast('Text Area inserted into document', 'success');
@@ -6178,19 +6280,176 @@
       }
     }, true);
 
-    // Save entered data in textarea immediately on input and blur (Bug 1.3)
+    // Save entered data in textarea, note, and quote immediately on input and blur with snapshot for undo (Bug 1.3, Issue 2, Issue 3c)
     document.addEventListener('input', (e) => {
-      if (e.target.closest('.doc-textarea-body')) {
+      const target = e.target.closest?.('.doc-textarea-body, .doc-note-body, .excel-note-body, .excel-quote-body, .doc-quote-body, blockquote[data-placeholder]');
+      if (target) {
+        if (!target.textContent || !target.textContent.trim()) {
+          target.setAttribute('data-empty', 'true');
+        } else {
+          target.removeAttribute('data-empty');
+        }
         window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.Editor?.debouncedSnapshot?.(300);
         window.DocFlow.UI?.Tabs?.saveCurrent?.();
       }
     });
     document.addEventListener('blur', (e) => {
-      if (e.target.closest?.('.doc-textarea-body')) {
+      const target = e.target.closest?.('.doc-textarea-body, .doc-note-body, .excel-note-body, .excel-quote-body, .doc-quote-body, blockquote[data-placeholder]');
+      if (target) {
+        if (!target.textContent || !target.textContent.trim()) {
+          target.setAttribute('data-empty', 'true');
+        } else {
+          target.removeAttribute('data-empty');
+        }
         window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.Editor?.saveSnapshot?.();
         window.DocFlow.UI?.Tabs?.saveCurrent?.();
       }
     }, true);
+
+    // Issues 2a & 2b: Enter key inside quote, note, or textarea creates a new line (<br>) without inserting duplicate entries
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        const sel = window.getSelection();
+        const anchorEl = sel?.anchorNode ? (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement) : null;
+        const specialTarget = (anchorEl && anchorEl.closest?.('blockquote, .doc-note-body, .doc-textarea-body, .excel-note-body, .excel-quote-body, .doc-quote-body')) ||
+          e.target.closest?.('blockquote, .doc-note-body, .doc-textarea-body, .excel-note-body, .excel-quote-body, .doc-quote-body');
+        if (specialTarget) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!sel || !sel.rangeCount) return;
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+
+          const br = document.createElement('br');
+          range.insertNode(br);
+
+          // Check if br is the last child in specialTarget or followed only by empty text
+          let next = br.nextSibling;
+          let hasVisibleNext = false;
+          while (next) {
+            if (next.nodeType === 1) { hasVisibleNext = true; break; }
+            if (next.nodeType === 3 && next.textContent.replace(/\r?\n/g, '').length > 0) { hasVisibleNext = true; break; }
+            next = next.nextSibling;
+          }
+
+          if (!hasVisibleNext) {
+            const extraBr = document.createElement('br');
+            br.parentNode.insertBefore(extraBr, br.nextSibling);
+          }
+
+          const newRange = document.createRange();
+          newRange.setStartAfter(br);
+          newRange.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+
+          window.DocFlow?.Editor?.saveSelection?.();
+          window.DocFlow?.Editor?.notifyChange?.();
+          window.DocFlow?.Editor?.saveSnapshot?.();
+          window.DocFlow?.UI?.Tabs?.saveCurrent?.();
+          return;
+        }
+      }
+    }, true);
+
+    // Issue 3a & 3c: Select all document content with Ctrl+A in DOCX and editable documents, or current note/quote/textarea
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+        if (e.target && e.target.closest && e.target.closest('input:not([readonly]), textarea, select, .formula-input, #excelFormulaInput, #findInput, #replaceInput, #docProtectPinInput, #docUnlockPinInput')) {
+          return;
+        }
+
+        // Check if cursor is inside a note, quote, or textarea body (Issue 3c)
+        const sel = window.getSelection();
+        const anchorNode = sel?.anchorNode;
+        const anchorEl = anchorNode ? (anchorNode.nodeType === 1 ? anchorNode : anchorNode.parentElement) : null;
+        const specialTarget = (anchorEl && anchorEl.closest?.('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote, .doc-note-card, .doc-quote-card, .doc-textarea-container, .excel-floating-note, .excel-floating-quote')) ||
+          (e.target && e.target.closest?.('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote, .doc-note-card, .doc-quote-card, .doc-textarea-container, .excel-floating-note, .excel-floating-quote'));
+
+        if (specialTarget) {
+          const body = specialTarget.matches('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote')
+            ? specialTarget
+            : (specialTarget.querySelector('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote') || specialTarget);
+          if (body) {
+            e.preventDefault();
+            e.stopPropagation();
+            body.focus();
+            if (sel) {
+              const range = document.createRange();
+              range.selectNodeContents(body);
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+            return;
+          }
+        }
+
+        const excelContainer = document.querySelector('.excel-spreadsheet-container');
+        const isPpt = document.querySelector('.pptx-slide-card, .pptx-slide-wrapper, .pptx-container') || document.body.classList.contains('slide-deck-mode');
+        if (excelContainer || isPpt) return;
+
+        const editor = document.getElementById('editor');
+        if (editor && window.DocFlow?.currentMode === 'edit') {
+          e.preventDefault();
+          e.stopPropagation();
+          editor.focus();
+          const sel2 = window.getSelection();
+          if (sel2) {
+            const range = document.createRange();
+            range.selectNodeContents(editor);
+            sel2.removeAllRanges();
+            sel2.addRange(range);
+          }
+          window.DocFlow?.Editor?.saveSelection?.();
+        }
+      }
+    }, true);
+
+    // Prevent backspace or delete in empty note, quote, or textarea body from removing whole container unintentionally
+    document.addEventListener('keydown', (e) => {
+      const target = e.target.closest?.('.doc-textarea-body, .doc-note-body, .excel-note-body, .excel-quote-body, .doc-quote-body, blockquote');
+      if (target && (e.key === 'Backspace' || e.key === 'Delete')) {
+        if (!target.textContent || !target.textContent.trim()) {
+          e.stopPropagation();
+        }
+      }
+    }, true);
+
+    // Handle delete button on note and quote containers
+    document.addEventListener('click', (e) => {
+      const delBtn = e.target.closest?.('.doc-note-delete-btn, .doc-quote-delete-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        const card = delBtn.closest('.doc-note-card, .onenote-sticky-note, .doc-quote-card');
+        if (card) {
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          let next = card.nextSibling;
+          while (next && (next.nodeType === 3 && !next.textContent.trim() || (next.nodeType === 1 && (next.tagName === 'BR' || (next.tagName === 'P' && !next.textContent.trim()))))) {
+            const temp = next.nextSibling;
+            next.remove();
+            next = temp;
+          }
+          card.remove();
+          window.DocFlow.Editor?.notifyChange();
+          window.DocFlow.Editor?.saveSnapshot?.(true);
+          window.DocFlow.UI?.Tabs?.saveCurrent?.();
+          showToast(delBtn.classList.contains('doc-quote-delete-btn') ? 'Quote removed' : 'Note removed', 'info');
+        }
+      }
+    }, true);
+
+    // Focus note or quote body when clicking note card (Issue 2b)
+    document.addEventListener('click', (e) => {
+      const card = e.target.closest?.('.doc-note-card, .onenote-sticky-note, .doc-quote-card');
+      if (card && !e.target.closest('.doc-note-delete-btn, .doc-quote-delete-btn')) {
+        const body = card.querySelector('.doc-note-body, .excel-note-body, .doc-quote-body');
+        if (body && document.activeElement !== body) {
+          body.focus();
+        }
+      }
+    });
 
     // Drag to move / reposition textarea by clicking and dragging .doc-textarea-header (Requirement 4)
     let isDraggingTa = false;
@@ -6239,6 +6498,10 @@
     $('#ribbonInsertChartBtn')?.addEventListener('click', () => {
       if (window.DocFlow.currentMode !== 'edit') {
         showToast('Open a document in edit mode first', 'info');
+        return;
+      }
+      if (window.DocFlow.Editor?.isCursorInSpecialContainer?.()) {
+        showToast('Cannot insert a chart inside a note, quote, or text area', 'warning');
         return;
       }
       const excelContainer = document.querySelector('.excel-spreadsheet-container');
@@ -6427,8 +6690,19 @@
       showToast('Inserted Interactive Checklist', 'info');
     });
 
-    $('#insertStickyNoteBtn')?.addEventListener('click', () => {
+    let isInsertingStickyNote = false;
+    $('#insertStickyNoteBtn')?.addEventListener('click', (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      if (isInsertingStickyNote) return;
+      isInsertingStickyNote = true;
+      setTimeout(() => { isInsertingStickyNote = false; }, 400);
+
       if (window.DocFlow.currentMode !== 'edit') return;
+      if (window.DocFlow.Editor?.isCursorInSpecialContainer?.()) {
+        showToast('Cannot insert a note inside another note, quote, or text area', 'warning');
+        return;
+      }
       const excelContainer = document.querySelector('.excel-spreadsheet-container');
       if (excelContainer) {
         window.DocFlow.Editor?.saveSnapshot?.(true);
@@ -6530,8 +6804,51 @@
         }
       }
 
-      const noteHtml = `<div class="onenote-sticky-note" contenteditable="true"><strong><i class="fas fa-note-sticky"></i> Note:</strong> Write your note here...</div><p><br></p>`;
+      const activeSlide = window.DocFlow?.getCurrentSlideWrapper?.() || document.querySelector('.pptx-slide-wrapper.active-slide') || document.querySelector('.pptx-slide-card.active-slide') || document.querySelector('.pptx-slide-card');
+      const isPpt = activeSlide && (document.body.classList.contains('slide-deck-mode') || window.DocFlow?.isPptxDocument?.() || document.querySelector('.pptx-container'));
+      if (isPpt) {
+        window.DocFlow.Editor?.saveSnapshot?.(true);
+        const slideTarget = activeSlide.querySelector('.pptx-slide-body') || activeSlide.querySelector('.pptx-slide-card') || activeSlide;
+        const noteId = 'note_' + Date.now();
+        const noteHtml = `
+          <div class="onenote-sticky-note doc-note-card" id="${noteId}" contenteditable="false" style="position:relative;margin:12px 0;background:#fef9c3;border:1px solid #facc15;border-left:5px solid #eab308;border-radius:0 8px 8px 0;padding:10px 14px;box-shadow:0 2px 8px rgba(234,179,8,0.15);color:#713f12;z-index:15;box-sizing:border-box;">
+            <div class="doc-note-header" contenteditable="false" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:700;font-size:12px;color:#854d0e;user-select:none;">
+              <span><i class="fas fa-note-sticky" style="color:#eab308;margin-right:6px;"></i>Note</span>
+              <button type="button" class="doc-note-delete-btn" contenteditable="false" style="border:none;background:transparent;cursor:pointer;color:#a16207;font-size:16px;line-height:1;padding:0 4px;" title="Delete Note">&times;</button>
+            </div>
+            <div class="doc-note-body" contenteditable="true" data-placeholder="Write your note here..." style="outline:none;min-height:30px;word-break:break-word;cursor:text;color:#1e293b;"></div>
+          </div>
+        `;
+        const temp = document.createElement('div');
+        temp.innerHTML = noteHtml;
+        const noteNode = temp.firstElementChild;
+        slideTarget.appendChild(noteNode);
+        noteNode.querySelector('.doc-note-body')?.focus();
+        window.DocFlow.Editor?.notifyChange();
+        window.DocFlow.Editor?.saveSnapshot?.(true);
+        window.DocFlow.UI?.Tabs?.saveCurrent?.();
+        showToast('Note inserted into slide', 'success');
+        return;
+      }
+
+      // Consistent note insertion across Word (.docx), PDF, TXT, MD, HTML
+      const noteId = 'note_' + Date.now();
+      const noteHtml = `
+        <div class="onenote-sticky-note doc-note-card" id="${noteId}" contenteditable="false" style="position:relative;margin:14px 0;background:#fef9c3;border:1px solid #facc15;border-left:5px solid #eab308;border-radius:0 8px 8px 0;padding:10px 14px;box-shadow:0 2px 8px rgba(234,179,8,0.15);color:#713f12;box-sizing:border-box;">
+          <div class="doc-note-header" contenteditable="false" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:700;font-size:12px;color:#854d0e;user-select:none;">
+            <span><i class="fas fa-note-sticky" style="color:#eab308;margin-right:6px;"></i>Note</span>
+            <button type="button" class="doc-note-delete-btn" contenteditable="false" style="border:none;background:transparent;cursor:pointer;color:#a16207;font-size:16px;line-height:1;padding:0 4px;" title="Delete Note">&times;</button>
+          </div>
+          <div class="doc-note-body" contenteditable="true" data-placeholder="Write your note here..." style="outline:none;min-height:30px;word-break:break-word;cursor:text;color:#1e293b;"></div>
+        </div>
+        <p><br></p>
+      `;
       window.DocFlow.Editor?.insertHtmlAtCursor(noteHtml);
+      const insertedNote = document.getElementById(noteId);
+      insertedNote?.querySelector('.doc-note-body')?.focus();
+      window.DocFlow.Editor?.notifyChange();
+      window.DocFlow.Editor?.saveSnapshot?.(true);
+      window.DocFlow.UI?.Tabs?.saveCurrent?.();
       showToast('Inserted Sticky Note', 'info');
     });
 
@@ -8082,20 +8399,52 @@
       const activeTab = window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
       if (!activeTab) return;
       const pin = $('#docProtectPinInput')?.value.trim() || '';
+      if (!pin) {
+        showToast('Please enter a password or PIN to protect this document', 'warning');
+        $('#docProtectPinInput')?.focus();
+        return;
+      }
       activeTab.isLocked = true;
       activeTab.lockPin = pin;
       window.DocFlow.UI?.Tabs?.saveCurrent?.();
       window.DocFlow.UI?.Tabs?.save?.();
+
+      if (window.DocFlow?.Recent) {
+        const recents = window.DocFlow.Recent.getAll();
+        const rItem = recents.find(d => d.name.toLowerCase() === activeTab.name.toLowerCase());
+        if (rItem) {
+          rItem.isLocked = true;
+          rItem.lockPin = pin;
+          window.DocFlow.Recent.saveAll(recents);
+          window.DocFlow.Recent.render();
+        }
+      }
+
       window.DocFlow.UI?.closeModal?.('#docProtectModal');
-      updateDocLockUI(activeTab);
-      showToast('Document protected and locked! Editing is now disabled.', 'success');
+      const docName = activeTab.name;
+      const tabId = activeTab.id;
+      showToast(`Document "${docName}" locked and closed successfully.`, 'success');
+      // After a file is locked, close it automatically as required by Issue 4
+      window.DocFlow.UI?.Tabs?.close?.(tabId, true);
+    });
+
+    $('#docProtectPinInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        $('#docProtectConfirmBtn')?.click();
+      }
     });
 
     function openUnlockDocModal(tab) {
       if (!tab) return;
+      window._pendingUnlockTarget = {
+        type: 'tab',
+        tab: tab
+      };
       const pinInput = $('#docUnlockPinInput');
       if (pinInput) pinInput.value = '';
       window.DocFlow.UI?.openModal?.('#docUnlockModal');
+      setTimeout(() => pinInput?.focus(), 100);
     }
 
     $('#docUnlockBannerBtn')?.addEventListener('click', () => {
@@ -8103,24 +8452,78 @@
       openUnlockDocModal(activeTab);
     });
 
-    $('#docUnlockCloseBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#docUnlockModal'));
-    $('#docUnlockCancelBtn')?.addEventListener('click', () => window.DocFlow.UI?.closeModal?.('#docUnlockModal'));
+    $('#docUnlockCloseBtn')?.addEventListener('click', () => {
+      window._pendingUnlockTarget = null;
+      window.DocFlow.UI?.closeModal?.('#docUnlockModal');
+    });
+    $('#docUnlockCancelBtn')?.addEventListener('click', () => {
+      window._pendingUnlockTarget = null;
+      window.DocFlow.UI?.closeModal?.('#docUnlockModal');
+    });
 
     $('#docUnlockConfirmBtn')?.addEventListener('click', () => {
-      const activeTab = window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
-      if (!activeTab) return;
       const entered = $('#docUnlockPinInput')?.value.trim() || '';
+      const target = window._pendingUnlockTarget;
+
+      if (target && target.type === 'recent') {
+        const item = target.item;
+        if (!item) return;
+        if (item.lockPin && entered !== item.lockPin) {
+          showToast('Incorrect password. Access denied.', 'error');
+          $('#docUnlockPinInput')?.focus();
+          $('#docUnlockPinInput')?.select();
+          return;
+        }
+        item.isLocked = false;
+        delete item.lockPin;
+        const recents = window.DocFlow.Recent.getAll();
+        const rItem = recents.find(d => d.name.toLowerCase() === item.name.toLowerCase());
+        if (rItem) {
+          rItem.isLocked = false;
+          delete rItem.lockPin;
+          window.DocFlow.Recent.saveAll(recents);
+          window.DocFlow.Recent.render();
+        }
+        window.DocFlow.UI?.closeModal?.('#docUnlockModal');
+        window._pendingUnlockTarget = null;
+        showToast(`Document "${item.name}" unlocked successfully! Editing restored.`, 'success');
+        window.DocFlow.Recent._performOpen(item);
+        return;
+      }
+
+      const activeTab = (target && target.tab) || window.DocFlow.UI?.Tabs?.get?.(window.DocFlow.UI.Tabs.activeId);
+      if (!activeTab) return;
       if (activeTab.lockPin && entered !== activeTab.lockPin) {
-        showToast('Incorrect password / PIN. Document remains locked.', 'error');
+        showToast('Incorrect password. Document remains locked.', 'error');
+        $('#docUnlockPinInput')?.focus();
+        $('#docUnlockPinInput')?.select();
         return;
       }
       activeTab.isLocked = false;
       delete activeTab.lockPin;
+      if (window.DocFlow?.Recent) {
+        const recents = window.DocFlow.Recent.getAll();
+        const rItem = recents.find(d => d.name.toLowerCase() === activeTab.name.toLowerCase());
+        if (rItem) {
+          rItem.isLocked = false;
+          delete rItem.lockPin;
+          window.DocFlow.Recent.saveAll(recents);
+          window.DocFlow.Recent.render();
+        }
+      }
       window.DocFlow.UI?.Tabs?.saveCurrent?.();
       window.DocFlow.UI?.Tabs?.save?.();
       window.DocFlow.UI?.closeModal?.('#docUnlockModal');
+      window._pendingUnlockTarget = null;
       updateDocLockUI(activeTab);
-      showToast('Document unlocked successfully! Editing restored.', 'success');
+      showToast(`Document "${activeTab.name}" unlocked successfully! Editing restored.`, 'success');
+    });
+
+    $('#docUnlockPinInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        $('#docUnlockConfirmBtn')?.click();
+      }
     });
 
     const splitDividerEl = $('#splitDividerBar');

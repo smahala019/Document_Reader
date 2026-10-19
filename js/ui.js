@@ -663,7 +663,9 @@
           fileType: t.fileType,
           type: t.type,
           modified: false,
-          scroll: t.scroll
+          scroll: t.scroll,
+          isLocked: !!t.isLocked,
+          lockPin: t.lockPin || ''
         }));
         localStorage.setItem('df-tabs', JSON.stringify(meta));
         localStorage.setItem('df-active', this.activeId || '');
@@ -714,6 +716,8 @@
             modified: false,
             scroll: m.scroll || 0,
             content,
+            isLocked: !!m.isLocked,
+            lockPin: m.lockPin || '',
             pdfData: null,
             pdfDoc: null
           };

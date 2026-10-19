@@ -2177,6 +2177,10 @@
         showToast('Open a document in edit mode first', 'info');
         return;
       }
+      if (window.DocFlow.Editor?.isCursorInSpecialContainer?.()) {
+        showToast('Cannot insert shapes inside a note, quote, or text area', 'warning');
+        return;
+      }
       openModal('#shapeModal');
       setTimeout(updateShapePreview, 50);
     });
@@ -2235,6 +2239,11 @@
     });
 
     $('#shapeInsertBtn')?.addEventListener('click', () => {
+      if (window.DocFlow.Editor?.isCursorInSpecialContainer?.()) {
+        closeModal('#shapeModal');
+        showToast('Cannot insert shapes inside a note, quote, or text area', 'warning');
+        return;
+      }
       const activeBtn = $('#shapesGrid .shape-opt-btn.active');
       const shapeType = activeBtn ? activeBtn.dataset.shape : 'rectangle';
       const fill = $('#shapeFillColor')?.value || '#e85d04';

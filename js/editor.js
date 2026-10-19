@@ -81,6 +81,11 @@
 
   function focusEditor() {
     if (editor) {
+      if (document.activeElement && (
+        document.activeElement.closest?.('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote')
+      )) {
+        return;
+      }
       const excelContainer = document.querySelector('.excel-spreadsheet-container');
       if (excelContainer) {
         if (window._activeExcelCell && excelContainer.contains(window._activeExcelCell)) {
@@ -143,9 +148,25 @@
     notifyChange();
   }
 
+  function isCursorInSpecialContainer() {
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    const node = sel.anchorNode;
+    const elem = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
+    return !!elem?.closest('blockquote, .doc-note-card, .doc-note-body, .doc-quote-card, .doc-quote-body, .doc-textarea-container, .doc-textarea-body, .excel-floating-note, .excel-note-body, .excel-floating-quote, .excel-quote-body, .onenote-sticky-note');
+  }
+
   function insertHtmlAtCursor(html) {
     if (!editor) return;
+
+    // Issue 2c: In note, quote, and textarea components, prevent inserting additional containers, shapes, or other elements
     const isSpecialBlock = /<table|<svg|doc-chart-container|doc-page-break/i.test(html);
+    const isContainerOrShape = /<blockquote|<table|<svg|doc-shape-container|doc-textarea-container|onenote-sticky-note|doc-note-card|doc-quote-card|chart-render-wrapper|doc-page-break|excel-spreadsheet-container/i.test(html);
+    if (isContainerOrShape && isCursorInSpecialContainer()) {
+      showToast('Cannot insert containers, shapes, or tables inside a note, quote, or textarea', 'warning');
+      return null;
+    }
+
     const excelContainer = document.querySelector('.excel-spreadsheet-container');
     const activeCell = (window._activeExcelCell && document.body.contains(window._activeExcelCell))
       ? window._activeExcelCell
@@ -235,30 +256,40 @@
       return null;
     }
 
+    // Issue 2b: Single insertion via DOM Range without duplicate fallback
     saveSnapshot();
     focusEditor();
-    let inserted = false;
-    try {
-      inserted = document.execCommand('insertHTML', false, html);
-    } catch (e) {
-      inserted = false;
-    }
-    if (!inserted) {
-      const fragment = document.createRange().createContextualFragment(html);
-      const lastNode = fragment.lastChild;
-      insertNodeAtCursor(fragment);
-      notifyChange();
-      return lastNode;
-    }
-    // Collapse selection to end of inserted content (Issue 2)
+    restoreSelection();
+
     const sel = window.getSelection();
+    let range;
     if (sel && sel.rangeCount > 0) {
-      const r = sel.getRangeAt(0);
-      r.collapse(false);
-      savedSelection = r.cloneRange();
+      range = sel.getRangeAt(0);
+    } else {
+      range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+    }
+
+    const fragment = document.createRange().createContextualFragment(html);
+    const lastNode = fragment.lastElementChild || fragment.lastChild;
+    range.deleteContents();
+    range.insertNode(fragment);
+
+    if (lastNode) {
+      try {
+        const newRange = document.createRange();
+        newRange.setStartAfter(lastNode);
+        newRange.collapse(true);
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(newRange);
+        }
+        savedSelection = newRange.cloneRange();
+      } catch (_) {}
     }
     notifyChange();
-    return null;
+    return lastNode;
   }
 
   // Clear All Formatting (Issue 1.10: Button & Command, across all documents and Excel)
@@ -297,6 +328,7 @@
     try {
       document.execCommand('unlink', false, null);
     } catch (e) { }
+    disableHighlighter();
 
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -465,15 +497,6 @@
     }
     if (window.DocFlow.currentMode !== 'edit' && window.DocFlow.currentMode !== 'empty') return false;
 
-    if (document.activeElement?.closest?.('.excel-note-body, .excel-quote-body')) {
-      try {
-        if (document.execCommand('undo')) {
-          notifyChange();
-          return true;
-        }
-      } catch (_) {}
-    }
-
     // First ensure latest current edits are captured on top of undoStack before undoing
     const currentState = getCurrentDocState();
     if (currentState && undoStack.length > 0) {
@@ -531,6 +554,16 @@
       showToast('Undo performed', 'info');
       return true;
     } else {
+      // Fallback to native execCommand undo
+      try {
+        if (document.execCommand('undo')) {
+          notifyChange();
+          updateToolbarState();
+          updateUndoRedoUI();
+          showToast('Undo performed', 'info');
+          return true;
+        }
+      } catch (_) {}
       showToast('Nothing to undo', 'info');
       return false;
     }
@@ -542,15 +575,6 @@
       return window.DocFlow.PDF.redoPdf();
     }
     if (window.DocFlow.currentMode !== 'edit' && window.DocFlow.currentMode !== 'empty') return false;
-
-    if (document.activeElement?.closest?.('.excel-note-body, .excel-quote-body')) {
-      try {
-        if (document.execCommand('redo')) {
-          notifyChange();
-          return true;
-        }
-      } catch (_) {}
-    }
 
     if (redoStack.length > 0) {
       isUndoRedoing = true;
@@ -598,6 +622,15 @@
       showToast('Redo performed', 'info');
       return true;
     } else {
+      try {
+        if (document.execCommand('redo')) {
+          notifyChange();
+          updateToolbarState();
+          updateUndoRedoUI();
+          showToast('Redo performed', 'info');
+          return true;
+        }
+      } catch (_) {}
       showToast('Nothing to redo', 'info');
       return false;
     }
@@ -609,7 +642,7 @@
     if (btnUndo) {
       const canUndo = (window.DocFlow?.currentMode === 'view')
         ? (window.DocFlow?.PDF?.canUndoPdf?.() || false)
-        : (undoStack.length > 1);
+        : (undoStack.length > 1 || (window.DocFlow?.currentMode === 'edit' && editor && editor.innerHTML !== (undoStack[0]?.html || '')));
       btnUndo.classList.toggle('disabled', !canUndo);
       btnUndo.style.opacity = canUndo ? '1' : '0.45';
     }
@@ -654,7 +687,8 @@
     }
     focusEditor();
 
-    const excelCells = getSelectedExcelCells();
+    const isSpecialBody = document.activeElement?.closest?.('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote');
+    const excelCells = isSpecialBody ? [] : getSelectedExcelCells();
     if (excelCells.length > 0) {
       saveSnapshot();
       const targetCell = window._activeExcelCell || excelCells[0];
@@ -1058,6 +1092,74 @@
     }
   }
 
+  // Helpers for text color & highlight boundaries (Issue 1a)
+  function isTooLight(hex) {
+    if (!hex || typeof hex !== 'string') return false;
+    const h = hex.trim().toLowerCase();
+    if (h === '#ffffff' || h === '#f8fafc' || h === '#fff' || h === 'white' || h === 'rgb(255, 255, 255)' || h === 'rgb(255,255,255)') return true;
+    if (h.startsWith('#') && h.length === 7) {
+      const r = parseInt(h.slice(1, 3), 16);
+      const g = parseInt(h.slice(3, 5), 16);
+      const b = parseInt(h.slice(5, 7), 16);
+      return (((0.299 * r + 0.587 * g + 0.114 * b) / 255) > 0.82);
+    }
+    return false;
+  }
+
+  // Continuous Active Highlighter State (Issue 1b)
+  let isHighlighterActive = false;
+  let activeHighlightColor = localStorage.getItem('docflow_default_highlight_color') || '#fbbf24';
+
+  function enableHighlighter(color) {
+    if (color) {
+      activeHighlightColor = color;
+      try {
+        localStorage.setItem('docflow_default_highlight_color', color);
+      } catch (_) {}
+    }
+    isHighlighterActive = true;
+    const bgBtn = $('#bgColorBtn');
+    if (bgBtn) {
+      bgBtn.classList.add('active');
+      bgBtn.setAttribute('title', 'Highlighter Active (Click to disable)');
+    }
+    const bgBar = $('#bgColorBar');
+    if (bgBar) bgBar.style.background = activeHighlightColor;
+    const bgInput = $('#bgColorInput');
+    if (bgInput) bgInput.value = activeHighlightColor;
+
+    if (window.DocFlow.currentMode === 'edit') {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed && editor && (editor.contains(sel.anchorNode) || editor === sel.anchorNode)) {
+        try {
+          document.execCommand('styleWithCSS', false, true);
+          document.execCommand('hiliteColor', false, activeHighlightColor);
+        } catch (_) {
+          try {
+            document.execCommand('backColor', false, activeHighlightColor);
+          } catch (_) {}
+        }
+        notifyChange();
+        saveSnapshot();
+      }
+    }
+  }
+
+  function disableHighlighter() {
+    isHighlighterActive = false;
+    const bgBtn = $('#bgColorBtn');
+    if (bgBtn) {
+      bgBtn.classList.remove('active');
+      bgBtn.setAttribute('title', 'Text Highlight Color');
+    }
+    if (window.DocFlow.currentMode === 'edit') {
+      try {
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('hiliteColor', false, 'transparent');
+      } catch (_) {}
+    }
+  }
+
   // Color Pickers Wiring
   function setupColorPickers() {
     const textBtn = $('#textColorBtn');
@@ -1068,11 +1170,20 @@
     const bgInput = $('#bgColorInput');
     const bgBar = $('#bgColorBar');
 
+    // Load persisted defaults
+    const savedTextColor = localStorage.getItem('docflow_default_text_color') || '#1a1a1a';
+    const savedHighlightColor = localStorage.getItem('docflow_default_highlight_color') || '#fbbf24';
+    const initialTextClr = isTooLight(savedTextColor) ? '#1a1a1a' : savedTextColor;
+    if (textBar) textBar.style.background = initialTextClr;
+    if (textInput) textInput.value = initialTextClr;
+    if (bgBar) bgBar.style.background = savedHighlightColor;
+    if (bgInput) bgInput.value = savedHighlightColor;
+
     if (textBtn && textInput) {
       textBtn.addEventListener('click', () => {
         saveSelection();
         if (typeof textInput.showPicker === 'function') {
-          textInput.showPicker();
+          try { textInput.showPicker(); } catch (_) { textInput.click(); }
         } else {
           textInput.click();
         }
@@ -1108,10 +1219,18 @@
     }
 
     if (bgBtn && bgInput) {
-      bgBtn.addEventListener('click', () => {
+      bgBtn.addEventListener('click', (e) => {
         saveSelection();
+        if (isHighlighterActive) {
+          e.preventDefault();
+          e.stopPropagation();
+          disableHighlighter();
+          showToast('Highlighter disabled', 'info');
+          return;
+        }
+        enableHighlighter(bgInput.value || activeHighlightColor || '#fbbf24');
         if (typeof bgInput.showPicker === 'function') {
-          bgInput.showPicker();
+          try { bgInput.showPicker(); } catch (_) { bgInput.click(); }
         } else {
           bgInput.click();
         }
@@ -1119,11 +1238,13 @@
 
       bgInput.addEventListener('input', function () {
         if (bgBar) bgBar.style.background = this.value;
+        enableHighlighter(this.value);
       });
 
       bgInput.addEventListener('change', function () {
+        enableHighlighter(this.value);
         if (window.DocFlow.currentMode !== 'edit') {
-          showToast('Open a document in edit mode to highlight text', 'info');
+          showToast(`Highlight color (${this.value}) active`, 'info');
           return;
         }
         const excelCells = getSelectedExcelCells();
@@ -1149,7 +1270,7 @@
           }
           notifyChange();
           saveSnapshot();
-          showToast('Text highlight applied', 'success');
+          showToast('Text highlight applied to cells', 'success');
           return;
         }
         restoreSelection();
@@ -1164,48 +1285,9 @@
         showToast('Text highlight color applied', 'success');
       });
     }
-
-    const defaultColorBtn = $('#defaultColorBtn');
-    if (defaultColorBtn) {
-      defaultColorBtn.addEventListener('click', () => {
-        if (window.DocFlow.currentMode !== 'edit') return;
-        focusEditor();
-        const sel = window.getSelection();
-        if (!sel || !sel.rangeCount) return;
-
-        const range = sel.getRangeAt(0);
-
-        if (range.collapsed) {
-          // Caret is collapsed: user wants subsequent typing in default color without highlighter
-          const span = document.createElement('span');
-          span.style.color = 'inherit';
-          span.style.backgroundColor = 'transparent';
-          span.innerHTML = '&#8203;';
-          insertNodeAtCursor(span);
-
-          const newRange = document.createRange();
-          newRange.setStart(span.firstChild, 1);
-          newRange.setEnd(span.firstChild, 1);
-          sel.removeAllRanges();
-          sel.addRange(newRange);
-          savedSelection = newRange.cloneRange();
-          showToast('Typing in default text color (no highlight)', 'info');
-        } else {
-          // Selection exists: reset text color and highlight for selection
-          try {
-            document.execCommand('styleWithCSS', false, true);
-            document.execCommand('foreColor', false, 'inherit');
-            document.execCommand('hiliteColor', false, 'transparent');
-          } catch (e) { }
-          notifyChange();
-          showToast('Reset to default text color on selection', 'info');
-        }
-        updateToolbarState();
-      });
-    }
   }
 
-  // Insert Table
+  // Insert Table (Guarded from special containers - Issue 2c)
   function setupTableInsert() {
     const btn = $('#insertTableBtn') || $('#ribbonInsertTableBtn');
     const insertBtn = $('#tableInsert');
@@ -1214,6 +1296,10 @@
       btn.addEventListener('click', () => {
         if (window.DocFlow.currentMode !== 'edit') {
           showToast('Open a document in edit mode first', 'info');
+          return;
+        }
+        if (isCursorInSpecialContainer()) {
+          showToast('Cannot insert a table inside a note, quote, or textarea', 'warning');
           return;
         }
         saveSelection();
@@ -1228,6 +1314,10 @@
       linesBtn.addEventListener('click', () => {
         if (window.DocFlow.currentMode !== 'edit') {
           showToast('Open a document in edit mode first', 'info');
+          return;
+        }
+        if (isCursorInSpecialContainer()) {
+          showToast('Cannot insert a table inside a note, quote, or textarea', 'warning');
           return;
         }
         saveSelection();
@@ -1245,6 +1335,11 @@
 
     if (insertBtn) {
       insertBtn.addEventListener('click', () => {
+        if (isCursorInSpecialContainer()) {
+          closeModal('#tableModal');
+          showToast('Cannot insert a table inside a note, quote, or textarea', 'warning');
+          return;
+        }
         const rows = Math.min(25, Math.max(1, parseInt($('#tableRows').value) || 3));
         const cols = Math.min(12, Math.max(1, parseInt($('#tableCols').value) || 3));
         const includeRowHeader = $('#tableRowHeaderCheck')?.checked === true;
@@ -1959,8 +2054,19 @@
       insertCustomLine();
     });
 
-    const handleQuoteInsert = () => {
+    let isInsertingQuote = false;
+    const handleQuoteInsert = (e) => {
+      e?.preventDefault?.();
+      e?.stopPropagation?.();
+      if (isInsertingQuote) return;
+      isInsertingQuote = true;
+      setTimeout(() => { isInsertingQuote = false; }, 400);
+
       if (window.DocFlow.currentMode !== 'edit') return;
+      if (isCursorInSpecialContainer()) {
+        showToast('Cannot insert a quote inside another note, quote, or textarea', 'warning');
+        return;
+      }
       saveSelection();
       const excelContainer = document.querySelector('.excel-spreadsheet-container');
       const activeCell = (window._activeExcelCell && excelContainer?.contains(window._activeExcelCell))
@@ -1972,10 +2078,45 @@
         insertQuoteIntoExcel(activeCell, excelContainer, quoteText);
         return;
       }
+
       const sel = window.getSelection();
-      const quoteText = sel && sel.toString().trim() ? sel.toString() : 'Quote text here...';
-      insertHtmlAtCursor(`<blockquote>${escHtml(quoteText)}</blockquote><p><br></p>`);
-      showToast('Blockquote inserted', 'info');
+      const quoteText = sel && sel.toString().trim() ? sel.toString().trim() : '';
+      const quoteId = 'quote_' + Date.now();
+      const quoteHtml = `
+        <div class="doc-quote-card" id="${quoteId}" contenteditable="false" style="position:relative;margin:14px 0;background:#f0fdf4;border:1px solid #86efac;border-left:5px solid #22c55e;border-radius:0 8px 8px 0;padding:10px 14px;box-shadow:0 2px 8px rgba(34,197,94,0.15);color:#14532d;box-sizing:border-box;">
+          <div class="doc-quote-header" contenteditable="false" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-weight:700;font-size:12px;color:#15803d;user-select:none;">
+            <span><i class="fas fa-quote-left" style="color:#16a34a;margin-right:6px;"></i>Quote</span>
+            <button type="button" class="doc-quote-delete-btn" contenteditable="false" style="border:none;background:transparent;cursor:pointer;color:#15803d;font-size:16px;line-height:1;padding:0 4px;" title="Delete Quote">&times;</button>
+          </div>
+          <div class="doc-quote-body" contenteditable="true" data-placeholder="Type your quote here..." style="outline:none;min-height:30px;word-break:break-word;cursor:text;color:#1e293b;font-style:italic;">${quoteText ? escHtml(quoteText) : ''}</div>
+        </div>
+        <p><br></p>
+      `;
+
+      const activeSlide = window.DocFlow?.getCurrentSlideWrapper?.() || document.querySelector('.pptx-slide-wrapper.active-slide') || document.querySelector('.pptx-slide-card.active-slide') || document.querySelector('.pptx-slide-card');
+      const isPpt = activeSlide && (document.body.classList.contains('slide-deck-mode') || window.DocFlow?.isPptxDocument?.() || document.querySelector('.pptx-container'));
+      if (isPpt) {
+        saveSnapshot(true);
+        const slideTarget = activeSlide.querySelector('.pptx-slide-body') || activeSlide.querySelector('.pptx-slide-card') || activeSlide;
+        const temp = document.createElement('div');
+        temp.innerHTML = quoteHtml;
+        const quoteNode = temp.firstElementChild;
+        slideTarget.appendChild(quoteNode);
+        quoteNode.querySelector('.doc-quote-body')?.focus();
+        notifyChange();
+        saveSnapshot(true);
+        window.DocFlow.UI?.Tabs?.saveCurrent?.();
+        showToast('Quote inserted into slide', 'success');
+        return;
+      }
+
+      insertHtmlAtCursor(quoteHtml);
+      const insertedQuote = document.getElementById(quoteId);
+      insertedQuote?.querySelector('.doc-quote-body')?.focus();
+      notifyChange();
+      saveSnapshot(true);
+      window.DocFlow.UI?.Tabs?.saveCurrent?.();
+      showToast('Inserted Quote', 'info');
     };
 
     $('#insertBlockquoteBtn')?.addEventListener('click', handleQuoteInsert);
@@ -3080,6 +3221,18 @@
 
     // Granular undo/redo on word boundaries, spaces, punctuation and enter
     editor.addEventListener('keydown', e => {
+      // Continuous active highlighter: ensure newly typed text keeps highlight color (Issue 1b)
+      if (isHighlighterActive && !e.ctrlKey && !e.metaKey && !e.altKey && (e.key.length === 1 || e.key === 'Enter')) {
+        try {
+          document.execCommand('styleWithCSS', false, true);
+          document.execCommand('hiliteColor', false, activeHighlightColor);
+        } catch (_) {
+          try {
+            document.execCommand('backColor', false, activeHighlightColor);
+          } catch (_) {}
+        }
+      }
+
       if (document.body.classList.contains('reading-mode')) {
         const modKeys = ['Backspace', 'Delete', 'Enter', 'Tab'];
         if (modKeys.includes(e.key) || (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1)) {
@@ -3130,7 +3283,7 @@
       }
     });
 
-    // Tab key inserts 4 non-breaking spaces & Contextual Ctrl+A (Issue 5)
+    // Tab key inserts 4 non-breaking spaces & Contextual Ctrl+A (Issue 3a & 5)
     editor.addEventListener('keydown', e => {
       if (e.key === 'Tab') {
         e.preventDefault();
@@ -3149,45 +3302,85 @@
           }
           return;
         }
+
         const sel = window.getSelection();
-        if (sel && sel.rangeCount) {
-          let node = sel.getRangeAt(0).commonAncestorContainer;
-          if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
 
-          // 1. If inside an inner sub-container (rectangle, card, title box, content box, table cell, quote)
-          const subContainer = node.closest(
-            '.slide-freeform-rect, .slide-nested-card, .slide-title-box, .slide-content-box, td, th, blockquote, .doc-shape-container'
-          );
-          if (subContainer) {
+        // Check if cursor/selection is inside note, quote, or textarea body (Issue 3c)
+        const specialTarget = e.target?.closest?.('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote, .doc-note-card, .doc-quote-card, .doc-textarea-container, .excel-floating-note, .excel-floating-quote');
+        if (specialTarget) {
+          const body = specialTarget.matches('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote')
+            ? specialTarget
+            : (specialTarget.querySelector('.doc-note-body, .excel-note-body, .doc-quote-body, .excel-quote-body, .doc-textarea-body, blockquote') || specialTarget);
+          if (body) {
             e.preventDefault();
             e.stopPropagation();
-            const range = document.createRange();
-            range.selectNodeContents(subContainer);
-            sel.removeAllRanges();
-            sel.addRange(range);
-            return;
-          }
-
-          // 2. If inside a PPT slide card / wrapper
-          const slideCard = node.closest('.pptx-slide-card') || node.closest('.pptx-slide-wrapper');
-          if (slideCard) {
-            e.preventDefault();
-            e.stopPropagation();
-            const targetCard = slideCard.classList.contains('pptx-slide-card') ? slideCard : (slideCard.querySelector('.pptx-slide-card') || slideCard);
-            const range = document.createRange();
-            range.selectNodeContents(targetCard);
-            sel.removeAllRanges();
-            sel.addRange(range);
+            body.focus();
+            if (sel) {
+              const range = document.createRange();
+              range.selectNodeContents(body);
+              sel.removeAllRanges();
+              sel.addRange(range);
+            }
+            savedSelection = window.getSelection()?.getRangeAt?.(0)?.cloneRange?.() || null;
             return;
           }
         }
+
+        const slideCard = sel?.rangeCount ? (sel.getRangeAt(0).commonAncestorContainer.nodeType === Node.TEXT_NODE ? sel.getRangeAt(0).commonAncestorContainer.parentElement : sel.getRangeAt(0).commonAncestorContainer).closest?.('.pptx-slide-card, .pptx-slide-wrapper') : null;
+        if (slideCard) {
+          e.preventDefault();
+          e.stopPropagation();
+          const targetCard = slideCard.classList.contains('pptx-slide-card') ? slideCard : (slideCard.querySelector('.pptx-slide-card') || slideCard);
+          const range = document.createRange();
+          range.selectNodeContents(targetCard);
+          sel.removeAllRanges();
+          sel.addRange(range);
+          savedSelection = window.getSelection()?.getRangeAt?.(0)?.cloneRange?.() || null;
+          return;
+        }
+
+        // For DOCX and all editable document formats: select all document content in editor (Issue 3a)
+        e.preventDefault();
+        e.stopPropagation();
+        editor.focus();
+        if (sel) {
+          const range = document.createRange();
+          range.selectNodeContents(editor);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        savedSelection = window.getSelection()?.getRangeAt?.(0)?.cloneRange?.() || null;
+        return;
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         const sel = window.getSelection();
         if (sel && sel.rangeCount) {
           const range = sel.getRangeAt(0);
           let node = range.commonAncestorContainer;
           if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-          const slideCard = node.closest('.pptx-slide-card');
+
+          // Check if user is inside a special note/quote/textarea container (Issue 3c)
+          const specialBody = node?.closest?.('.doc-note-body, .excel-note-body, .doc-quote-body, .doc-textarea-body, .excel-quote-body, blockquote');
+          if (specialBody) {
+            const bodyText = specialBody.textContent || '';
+            const selText = sel.toString();
+            if (selText && (selText === bodyText || (range.startContainer === specialBody && range.endContainer === specialBody) || (range.commonAncestorContainer === specialBody && range.startOffset === 0 && range.endOffset >= specialBody.childNodes.length))) {
+              e.preventDefault();
+              e.stopPropagation();
+              saveSnapshot(true);
+              specialBody.innerHTML = '<br>';
+              specialBody.setAttribute('data-empty', 'true');
+              const newRange = document.createRange();
+              newRange.selectNodeContents(specialBody);
+              newRange.collapse(true);
+              sel.removeAllRanges();
+              sel.addRange(newRange);
+              saveSnapshot(true);
+              notifyChange();
+              return;
+            }
+          }
+
+          const slideCard = node?.closest?.('.pptx-slide-card');
           if (slideCard) {
             const cardText = slideCard.textContent.trim();
             const selText = sel.toString().trim();
@@ -3198,6 +3391,7 @@
             if (isFullSelected || cardText.length <= 1) {
               e.preventDefault();
               e.stopPropagation();
+              saveSnapshot(true);
               slideCard.innerHTML = '<p class="slide-placeholder-text" style="color:var(--text-muted);font-style:italic;margin:0;">Click to add content...</p>';
               const newRange = document.createRange();
               const p = slideCard.querySelector('.slide-placeholder-text');
@@ -3207,42 +3401,48 @@
               }
               sel.removeAllRanges();
               sel.addRange(newRange);
+              saveSnapshot(true);
               notifyChange();
               return;
             }
+          }
+
+          // Full editor content selected in DOCX or editable documents (Issue 3a)
+          const editorText = editor.textContent || '';
+          const selText = sel.toString();
+          const isFullEditorSelected = (range.startContainer === editor && range.endContainer === editor) ||
+            (range.commonAncestorContainer === editor && range.startOffset === 0 && range.endOffset >= editor.childNodes.length) ||
+            (selText && editorText && selText.length >= editorText.length && selText.trim() === editorText.trim());
+
+          if (isFullEditorSelected) {
+            e.preventDefault();
+            e.stopPropagation();
+            saveSnapshot(true);
+            editor.innerHTML = '<p><br></p>';
+            editor.focus();
+            const newRange = document.createRange();
+            const p = editor.querySelector('p');
+            if (p) {
+              newRange.selectNodeContents(p);
+              newRange.collapse(true);
+            }
+            sel.removeAllRanges();
+            sel.addRange(newRange);
+            saveSnapshot(true);
+            notifyChange();
+            updateToolbarState();
+            return;
           }
         }
       }
     });
 
-    // Global Keydown Handler for Undo (Ctrl+Z), Redo (Ctrl+Y / Ctrl+Shift+Z), and Clear Format (Ctrl+\) (Issue 3)
+    // Global Keydown Handler for Clear Format (Ctrl+\)
     document.addEventListener('keydown', e => {
       if ((e.ctrlKey || e.metaKey) && (e.key === '\\' || e.code === 'Backslash')) {
         e.preventDefault();
         e.stopPropagation();
         openModal('#clearFormatModal');
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
-        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
-          return; // Allow native form input undo
-        }
-        if (e.target && e.target.closest && e.target.closest('.excel-note-body, .excel-quote-body')) {
-          return; // Allow native undo inside note and quote bodies
-        }
-        e.preventDefault();
-        e.stopPropagation();
-        undo();
-      } else if ((e.ctrlKey || e.metaKey) && ((e.key === 'y' || e.key === 'Y') || (e.shiftKey && (e.key === 'z' || e.key === 'Z')))) {
-        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.target.closest('.modal, .find-bar')) {
-          return; // Allow native form input redo
-        }
-        if (e.target && e.target.closest && e.target.closest('.excel-note-body, .excel-quote-body')) {
-          return; // Allow native redo inside note and quote bodies
-        }
-        e.preventDefault();
-        e.stopPropagation();
-        redo();
       }
     });
 
@@ -3277,6 +3477,10 @@
     focusEditor,
     insertNodeAtCursor,
     insertHtmlAtCursor,
+    isCursorInSpecialContainer,
+    enableHighlighter,
+    disableHighlighter,
+    isHighlighterActive: () => isHighlighterActive,
     insertQuoteIntoExcel,
     execCmd,
     saveSnapshot,
